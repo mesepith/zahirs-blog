@@ -1,0 +1,27 @@
+{
+    "translation-revision-date": "",
+    "generator": "WP-CLI\/2.7.1",
+    "source": "aiify\/build\/aiify__premium_only.js",
+    "domain": "messages",
+    "locale_data": {
+        "messages": {
+            "": {
+                "domain": "messages",
+                "lang": "ar",
+                "plural-forms": "nplurals=2; plural=(n > 1);"
+            },
+            "How would you like to edit this text?": [
+                "\u0643\u064a\u0641 \u062a\u0631\u064a\u062f \u062a\u062d\u0631\u064a\u0631 \u0647\u0630\u0627 \u0627\u0644\u0646\u0635\u061f"
+            ],
+            "You can ask for specific edits like : Translate to german": [
+                "\u064a\u0645\u0643\u0646\u0643 \u0637\u0644\u0628 \u062a\u0639\u062f\u064a\u0644\u0627\u062a \u0645\u0639\u064a\u0646\u0629 \u0645\u062b\u0644: \u0627\u0644\u062a\u0631\u062c\u0645\u0629 \u0625\u0644\u0649 \u0627\u0644\u0623\u0644\u0645\u0627\u0646\u064a\u0629"
+            ],
+            "Cancel": [
+                "\u0625\u0644\u063a\u0627\u0621"
+            ],
+            "Edit": [
+                "\u062a\u062d\u0631\u064a\u0631"
+            ]
+        }
+    }
+}

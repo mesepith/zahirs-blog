@@ -1,0 +1,69 @@
+{
+    "translation-revision-date": "",
+    "generator": "WP-CLI\/2.7.1",
+    "source": "aiify\/build\/index.js",
+    "domain": "messages",
+    "locale_data": {
+        "messages": {
+            "": {
+                "domain": "messages",
+                "lang": "es",
+                "plural-forms": "nplurals=2; plural=(n > 1);"
+            },
+            "Select a content type": [
+                "Seleccione un tipo de contenido"
+            ],
+            "What do you want to write today?": [
+                "\u00bfQu\u00e9 quieres escribir hoy?"
+            ],
+            "Add key information to include in the content?": [
+                ""
+            ],
+            "Add keywords to highlight in the content? (comma separated keywords)": [
+                ""
+            ],
+            "Write": [
+                ""
+            ],
+            "Clear": [
+                "Borrar"
+            ],
+            "Max words to generate": [
+                "Mots max \u00e0 g\u00e9n\u00e9rer"
+            ],
+            "Do not exceed this value": [
+                "Ne pas d\u00e9passer cette valeur"
+            ],
+            "Select writing style": [
+                "Seleccione el estilo de escritura"
+            ],
+            "Select writing tone": [
+                "Seleccionar tono de escritura"
+            ],
+            "Select an output language": [
+                "Seleccione un tipo de contenido"
+            ],
+            "Aiify Settings": [
+                "Ajustes de Aiify"
+            ],
+            "Custom edit": [
+                "Edici\u00f3n personalizada"
+            ],
+            "Aiify me": [
+                "Ay\u00fadame"
+            ],
+            "Review or edit this block": [
+                "Revisar o editar este bloque"
+            ],
+            "Generate and prepend based on this block": [
+                "Generar y anteponer en base a este bloque"
+            ],
+            "Generate and append based on this block": [
+                "Generar y agregar en base a este bloque"
+            ],
+            "Custom command": [
+                "Comando personalizado"
+            ]
+        }
+    }
+}

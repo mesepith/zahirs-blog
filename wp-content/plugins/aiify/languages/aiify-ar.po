@@ -1,0 +1,918 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: aiify\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-11 19:45+0100\n"
+"PO-Revision-Date: \n"
+"Last-Translator: Rahal <rahal.aboulfeth@gmail.com>\n"
+"Language-Team: \n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"X-Generator: Poedit 3.4.2\n"
+"X-Poedit-Basepath: ..\n"
+"X-Poedit-KeywordsList: __;_e;esc_attr_e;esc_attr__;esc_html__;esc_html_e\n"
+"X-Poedit-SearchPath-0: .\n"
+"X-Poedit-SearchPathExcluded-0: node_modules\n"
+"X-Poedit-SearchPathExcluded-1: vendor\n"
+"X-Poedit-SearchPathExcluded-2: aiify-block/build\n"
+
+#: aiify-block/src/aiify__premium_only.js:30
+msgid "How would you like to edit this text?"
+msgstr "كيف تريد تحرير هذا النص؟"
+
+#: aiify-block/src/aiify__premium_only.js:37
+msgid "You can ask for specific edits like : Translate to german"
+msgstr "يمكنك طلب تعديلات معينة مثل: الترجمة إلى الألمانية"
+
+#: aiify-block/src/aiify__premium_only.js:42
+msgid "Cancel"
+msgstr "إلغاء"
+
+#: aiify-block/src/aiify__premium_only.js:48
+msgid "Edit"
+msgstr "تحرير"
+
+#: aiify-block/src/edit.js:109
+msgid "Clear"
+msgstr "واضح"
+
+#: aiify-block/src/edit.js:114
+msgid "Select a content type"
+msgstr "حدد نوع المحتوى"
+
+#: aiify-block/src/edit.js:133
+msgid "What do you want to write today?"
+msgstr "ماذا تريد أن تكتب اليوم؟"
+
+#: aiify-block/src/edit.js:146
+msgid ""
+"Add key information to include in the content?\n"
+"- Information 1\n"
+"- Information 2"
+msgstr ""
+"أضف معلومات رئيسية لتضمينها في المحتوى؟\n"
+"- معلومة 1\n"
+"- معلومة 2"
+
+#: aiify-block/src/edit.js:158
+msgid "Add keywords to highlight in the content? (comma separated keywords)"
+msgstr ""
+"هل ترغب في إضافة كلمات رئيسية لتسليط الضوء عليها في المحتوى؟ (كلمات رئيسية "
+"مفصولة بفواصل)"
+
+#: aiify-block/src/edit.js:173
+msgid "Write"
+msgstr "اكتب"
+
+#: aiify-block/src/panel.js:29
+msgid "Max words to generate"
+msgstr "أقصى عدد كلمات لتوليد"
+
+#: aiify-block/src/panel.js:30
+msgid "Do not exceed this value"
+msgstr "لا تتجاوز هذه القيمة"
+
+#: aiify-block/src/panel.js:39
+msgid "Select writing style"
+msgstr "حدد أسلوب الكتابة"
+
+#: aiify-block/src/panel.js:49
+msgid "Select writing tone"
+msgstr "تحديد نغمة الكتابة"
+
+#: aiify-block/src/panel.js:59
+msgid "Select an output language"
+msgstr "حدد لغة الإخراج"
+
+#: aiify-block/src/panel.js:86
+msgid "Aiify Settings"
+msgstr "إعدادات Aiify"
+
+#: aiify-block/src/panel.js:91
+msgid "Last Prompt"
+msgstr "الموجه الأخير"
+
+#: aiify-block/src/toolbar.js:124
+msgid "Custom edit"
+msgstr "تعديل مخصص"
+
+#: aiify-block/src/toolbar.js:158
+msgid "Aiify me"
+msgstr "هيا لي"
+
+#: aiify-block/src/toolbar.js:164
+msgid "Review or edit this block"
+msgstr "مراجعة أو تحرير هذه المجموعة"
+
+#: aiify-block/src/toolbar.js:176
+msgid "Generate and prepend based on this block"
+msgstr "التوليد والاعتماد المسبق على أساس هذه المجموعة"
+
+#: aiify-block/src/toolbar.js:188
+msgid "Generate and append based on this block"
+msgstr "إنشاء وإلحاق بناءً على هذه المجموعة"
+
+#: aiify-block/src/toolbar.js:205
+msgid "Custom command"
+msgstr "أمر مخصص"
+
+#: aiify-block/src/tools.js:109
+msgid "Please wait..."
+msgstr "انتظر من فضلك ..."
+
+#: aiify-block/src/tools.js:281
+msgid "Response stopped due to length limitation"
+msgstr "توقف الرد بسبب تجاوز الحد المسموح للطول"
+
+#: aiify-block/src/tools.js:468
+msgid "Error while calling the AI Engine"
+msgstr "خطأ أثناء استدعاء محرك الذكاء الاصطناعي"
+
+#: aiify.php:86
+msgid "Aiify For WordPress is installed, almost ready to go"
+msgstr "Aiify لـ WordPress تم تثبيته، جاهز تقريبًا للبدء"
+
+#: aiify.php:87
+msgid ""
+"To start using AIIFY, please setup your Ai Engine, OpenAi or OpenRouter Key or "
+"Ollama URL"
+msgstr ""
+"لبدء استخدام AIIFY، يرجى إعداد محرك الذكاء الاصطناعي الخاص بك، مفتاح OpenAi أو "
+"OpenRouter، أو رابط Ollama"
+
+#: aiify.php:89
+msgid "Go to AIIFY settings"
+msgstr "انتقل إلى إعدادات Aiify"
+
+#: includes/constants.php:35
+msgid "Write a blog post about"
+msgstr "أكتب مقال حول"
+
+#: includes/constants.php:35
+msgid "a topic"
+msgstr "موضوع"
+
+#: includes/constants.php:36
+msgid "Write a press release about"
+msgstr "كتابة بيان صحفي حول"
+
+#: includes/constants.php:36
+msgid "a news event"
+msgstr "حدث إخباري"
+
+#: includes/constants.php:37
+msgid "Write a social media post about"
+msgstr "اكتب منشورًا على وسائل التواصل الاجتماعي حول"
+
+#: includes/constants.php:37
+msgid "a specific aspect of your product or service"
+msgstr "جانب معين من منتجك أو خدمتك"
+
+#: includes/constants.php:38
+msgid "Write a product description for"
+msgstr "اكتب وصفًا لمنتج"
+
+#: includes/constants.php:38
+msgid "a specific retailer or audience"
+msgstr "تاجر تجزئة أو جمهور محدد"
+
+#: includes/constants.php:39
+msgid "Write an email newsletter about"
+msgstr "اكتب رسالة إخبارية بالبريد الإلكتروني حول"
+
+#: includes/constants.php:39
+msgid "news or updates related to your business"
+msgstr "أخبار أو تحديثات متعلقة بعملك"
+
+#: includes/constants.php:40
+msgid "Write website copy for"
+msgstr "كتابة نسخة من الموقع"
+
+#: includes/constants.php:40
+msgid "a specific page or section of your website"
+msgstr "صفحة أو قسم معين من موقع الويب الخاص بك"
+
+#: includes/constants.php:41
+msgid "Write a video script for"
+msgstr "كتابة نص فيديو ل"
+
+#: includes/constants.php:41
+msgid "a promotional or instructional video"
+msgstr "فيديو ترويجي أو تعليمي"
+
+#: includes/constants.php:42
+msgid "Write a whitepaper on"
+msgstr "اكتب ورقة بيضاء عليها"
+
+#: includes/constants.php:42
+msgid "a particular topic or industry trend"
+msgstr "موضوع معين أو اتجاه الصناعة"
+
+#: includes/constants.php:43
+msgid "Write a case study about"
+msgstr "اكتب دراسة حالة حول"
+
+#: includes/constants.php:43
+msgid "a specific customer or business challenge"
+msgstr "عميل محدد أو تحدٍ تجاري"
+
+#: includes/constants.php:44
+msgid "Write an e-book on"
+msgstr "كتابة كتاب إلكتروني على"
+
+#: includes/constants.php:44
+msgid "a specific topic or industry"
+msgstr "موضوع معين أو صناعة"
+
+#: includes/constants.php:45
+msgid "Write an infographic about"
+msgstr "اكتب رسما بيانيا عن"
+
+#: includes/constants.php:45
+msgid "a specific topic or data set"
+msgstr "موضوع محدد أو مجموعة بيانات"
+
+#: includes/constants.php:46
+msgid "Write a sales letter for"
+msgstr "كتابة خطاب مبيعات ل"
+
+#: includes/constants.php:46 includes/constants.php:48
+msgid "a specific product or service"
+msgstr "منتج أو خدمة معينة"
+
+#: includes/constants.php:47
+msgid "Write a landing page for"
+msgstr "كتابة صفحة هبوط ل"
+
+#: includes/constants.php:47
+msgid "a specific offer or promotion"
+msgstr "عرض أو ترويج محدد"
+
+#: includes/constants.php:48
+msgid "Write a product review for"
+msgstr "كتابة مراجعة للمنتج"
+
+#: includes/constants.php:49
+msgid "Write a how-to guide for"
+msgstr "اكتب دليل إرشادي عن"
+
+#: includes/constants.php:49
+msgid "a specific task or process"
+msgstr "مهمة أو عملية محددة"
+
+#: includes/constants.php:50
+msgid "Write a listicle about"
+msgstr "اكتب مقالة عن"
+
+#: includes/constants.php:50
+msgid "a specific topic or set of related items"
+msgstr "موضوع محدد أو مجموعة من العناصر ذات الصلة"
+
+#: includes/constants.php:51
+msgid "Write a research paper on"
+msgstr "اكتب ورقة بحث عن"
+
+#: includes/constants.php:51
+msgid "a specific topic or question"
+msgstr "موضوع أو سؤال محدد"
+
+#: includes/constants.php:52
+msgid "Write a personal essay about"
+msgstr "كتابة مقال شخصي عن"
+
+#: includes/constants.php:52
+msgid "a personal experience or perspective"
+msgstr "تجربة شخصية أو منظور"
+
+#: includes/constants.php:53
+msgid "Write a news article about"
+msgstr "كتابة مقال إخباري عن"
+
+#: includes/constants.php:53
+msgid "a specific news event"
+msgstr "حدث إخباري معين"
+
+#: includes/constants.php:54
+msgid "Write a feature article about"
+msgstr "كتابة مقال مميز عن"
+
+#: includes/constants.php:54
+msgid "a specific person, place, or thing"
+msgstr "شخص أو مكان أو شيء معين"
+
+#: includes/constants.php:55
+msgid "Write a company profile about"
+msgstr "كتابة ملف تعريف الشركة عن"
+
+#: includes/constants.php:55
+msgid "a specific business or organization"
+msgstr "عمل أو منظمة محددة"
+
+#: includes/constants.php:56
+msgid "Write a guest post for"
+msgstr "كتابة آخر ضيف ل"
+
+#: includes/constants.php:56
+msgid "a specific blog or publication"
+msgstr "مدونة أو مطبوعة معينة"
+
+#: includes/constants.php:57
+msgid "Write a comparison article on"
+msgstr "كتابة مقالة مقارنة على"
+
+#: includes/constants.php:57
+msgid "two or more products or services"
+msgstr "اثنان أو أكثر من المنتجات أو الخدمات"
+
+#: includes/constants.php:58
+msgid "Write an interview article with"
+msgstr "كتابة مقال مقابلة مع"
+
+#: includes/constants.php:58
+msgid "a specific person or expert"
+msgstr "شخص معين أو خبير"
+
+#: includes/constants.php:59
+msgid "Write an opinion piece on"
+msgstr "كتابة مقال رأي حول"
+
+#: includes/constants.php:59
+msgid "a specific topic or issue"
+msgstr "موضوع معين أو قضية"
+
+#: includes/constants.php:60
+msgid "Write an article outline for"
+msgstr "كتابة الخطوط العريضة لمقال ل"
+
+#: includes/constants.php:60
+msgid "a specific topic or article idea"
+msgstr "موضوع محدد أو فكرة مقالة"
+
+#: includes/constants.php:68
+msgid "Fix spelling and grammar"
+msgstr "إصلاح الإملاء والنحو"
+
+#: includes/constants.php:69
+msgid "Simplify language"
+msgstr "تبسيط اللغة"
+
+#: includes/constants.php:70
+msgid "Make longer"
+msgstr "جعله أطول"
+
+#: includes/constants.php:71
+msgid "Make shorter"
+msgstr "جعل أقصر"
+
+#: includes/constants.php:72
+msgid "Improve writing"
+msgstr "تحسين الكتابة"
+
+#: includes/constants.php:73
+msgid "Paraphrase"
+msgstr "إعادة الصياغة"
+
+#: includes/constants.php:74
+msgid "Add more detail"
+msgstr "أضف المزيد من التفاصيل"
+
+#: includes/constants.php:75
+msgid "Remove redundancy"
+msgstr "إزالة التكرار"
+
+#: includes/constants.php:76
+msgid "Clarify meaning"
+msgstr "توضيح المعنى"
+
+#: includes/constants.php:77
+msgid "Strengthen argument"
+msgstr "تقوية الحجة"
+
+#: includes/constants.php:78
+msgid "Emphasize keywords"
+msgstr "التأكيد على الكلمات الأساسية"
+
+#: includes/constants.php:92
+msgid "Heading"
+msgstr "عنوان"
+
+#: includes/constants.php:93
+msgid "Tagline"
+msgstr "سطر الوصف"
+
+#: includes/constants.php:94
+msgid "Introduction"
+msgstr "مقدمة"
+
+#: includes/constants.php:95
+msgid "Summary"
+msgstr "ملخص"
+
+#: includes/constants.php:102
+msgid "Summarize"
+msgstr "تلخيص"
+
+#: includes/constants.php:103
+msgid "List Key Takeaways"
+msgstr "قائمة الوجبات السريعة الرئيسية"
+
+#: includes/constants.php:104
+msgid "Find Action Items"
+msgstr "البحث عن عناصر العمل"
+
+#: includes/constants.php:105
+msgid "Explain"
+msgstr "شرح"
+
+#: includes/constants.php:106
+msgid "Elaborate"
+msgstr "تفصيل"
+
+#: includes/constants.php:107
+msgid "Find Main Idea"
+msgstr "البحث عن الفكرة الرئيسية"
+
+#: includes/constants.php:108
+msgid "Provide Examples"
+msgstr "قدم أمثلة"
+
+#: includes/constants.php:109
+msgid "Complete with sources"
+msgstr "استكمال مع المصادر"
+
+#: includes/constants.php:110
+msgid "Evaluate and Provide Feedback"
+msgstr "تقييم وتقديم الملاحظات"
+
+#: includes/constants.php:111
+msgid "Write a Conclusion"
+msgstr "كتابة خاتمة"
+
+#: includes/constants.php:118
+msgid "Journalistic"
+msgstr "صحفي"
+
+#: includes/constants.php:119
+msgid "Academic"
+msgstr "أكاديمي"
+
+#: includes/constants.php:120
+msgid "Creative"
+msgstr "إبداعي"
+
+#: includes/constants.php:121
+msgid "Technical"
+msgstr "تقني"
+
+#: includes/constants.php:122
+msgid "Business"
+msgstr "عمل"
+
+#: includes/constants.php:123
+msgid "Scientific"
+msgstr "علمي"
+
+#: includes/constants.php:124
+msgid "Casual"
+msgstr "عرضي"
+
+#: includes/constants.php:125 includes/constants.php:156
+msgid "Formal"
+msgstr "رسمي"
+
+#: includes/constants.php:126
+msgid "Narrative"
+msgstr "سرد"
+
+#: includes/constants.php:127
+msgid "Descriptive"
+msgstr "وصفي"
+
+#: includes/constants.php:128 includes/constants.php:169
+msgid "Persuasive"
+msgstr "مقنع"
+
+#: includes/constants.php:129
+msgid "Expository"
+msgstr "تفسيري"
+
+#: includes/constants.php:130 includes/constants.php:186
+msgid "Analytical"
+msgstr "تحليلي"
+
+#: includes/constants.php:131 includes/constants.php:188
+msgid "Critical"
+msgstr "شديد الأهمية"
+
+#: includes/constants.php:132 includes/constants.php:166
+msgid "Conversational"
+msgstr "تحادثي"
+
+#: includes/constants.php:133 includes/constants.php:145
+msgid "Professional"
+msgstr "احترافي"
+
+#: includes/constants.php:134 includes/constants.php:159
+#: includes/constants.php:173
+msgid "Humorous"
+msgstr "روح الدعابة"
+
+#: includes/constants.php:135
+msgid "Instructional"
+msgstr "تعليمي"
+
+#: includes/constants.php:136
+msgid "Inspirational"
+msgstr "ملهمة"
+
+#: includes/constants.php:137
+msgid "Motivational"
+msgstr "تحفيزية"
+
+#: includes/constants.php:146
+msgid "Cheerful"
+msgstr "مبتهج"
+
+#: includes/constants.php:147
+msgid "Excited"
+msgstr "متحمس"
+
+#: includes/constants.php:148 includes/constants.php:185
+msgid "Optimistic"
+msgstr "متفائل"
+
+#: includes/constants.php:149
+msgid "Confident"
+msgstr "واثق"
+
+#: includes/constants.php:150
+msgid "Sarcastic"
+msgstr "ساخر"
+
+#: includes/constants.php:151
+msgid "Sincere"
+msgstr "صدق"
+
+#: includes/constants.php:152
+msgid "Sympathetic"
+msgstr "متعاطفة"
+
+#: includes/constants.php:153
+msgid "Concerned"
+msgstr "القلق"
+
+#: includes/constants.php:154
+msgid "Caring"
+msgstr "رعاية"
+
+#: includes/constants.php:155
+msgid "Neutral"
+msgstr "محايد"
+
+#: includes/constants.php:157 includes/constants.php:168
+msgid "Authoritative"
+msgstr "موثوق"
+
+#: includes/constants.php:158
+msgid "Serious"
+msgstr "جدي"
+
+#: includes/constants.php:160
+msgid "Playful"
+msgstr "مرح"
+
+#: includes/constants.php:161
+msgid "Friendly"
+msgstr "ودي"
+
+#: includes/constants.php:162
+msgid "Warm"
+msgstr "دافئ"
+
+#: includes/constants.php:163
+msgid "Cold"
+msgstr "جَ: بارد"
+
+#: includes/constants.php:164
+msgid "Impersonal"
+msgstr "غير شخصي"
+
+#: includes/constants.php:165
+msgid "Informative/Educational"
+msgstr "إعلامي / تربوي"
+
+#: includes/constants.php:167
+msgid "Professional/Formal"
+msgstr "مهني / رسمي"
+
+#: includes/constants.php:170
+msgid "Inspirational/Motivational"
+msgstr "ملهمة / تحفيزية"
+
+#: includes/constants.php:171
+msgid "Entertaining"
+msgstr "ترفيهي"
+
+#: includes/constants.php:172
+msgid "Controversial"
+msgstr "مثير للجدل"
+
+#: includes/constants.php:174
+msgid "Empathetic"
+msgstr "متعاطف"
+
+#: includes/constants.php:175
+msgid "Personal"
+msgstr "شخصي"
+
+#: includes/constants.php:176
+msgid "Storytelling"
+msgstr "رواية القصص"
+
+#: includes/constants.php:177
+msgid "Thought-provoking"
+msgstr "إثارة الفكر"
+
+#: includes/constants.php:178
+msgid "Authentic"
+msgstr "أصيلة"
+
+#: includes/constants.php:179
+msgid "Trustworthy"
+msgstr "جدير بالثقة"
+
+#: includes/constants.php:180
+msgid "Authorial"
+msgstr "المؤلف"
+
+#: includes/constants.php:181
+msgid "Collaborative"
+msgstr "تعاوني"
+
+#: includes/constants.php:182
+msgid "Problem-solving"
+msgstr "حل المشكلات"
+
+#: includes/constants.php:183
+msgid "Encouraging"
+msgstr "مشجع"
+
+#: includes/constants.php:184
+msgid "Straightforward"
+msgstr "مباشر"
+
+#: includes/constants.php:187
+msgid "Objective"
+msgstr "موضوعي"
+
+#: includes/constants.php:189
+msgid "Simplified"
+msgstr "مبسط"
+
+#: includes/constants.php:190
+msgid "Complex"
+msgstr "مجمع"
+
+#: includes/constants.php:191
+msgid "Curious"
+msgstr "فضولي"
+
+#: includes/constants.php:192
+msgid "Inspiring"
+msgstr "ملهم"
+
+#: includes/constants.php:193
+msgid "Motivating"
+msgstr "التحفيز"
+
+#: includes/constants.php:198
+msgid "Type \"AI+Enter\" for AI, or \"/\" to choose a block"
+msgstr "اكتب “AI + Enter” للحصول على الذكاء الاصطناعي، أو “/“ لاختيار كتلة"
+
+#: includes/init_freemius.php:53
+#, php-format
+msgid "Hey %1$s"
+msgstr "مرحبًا  %1$s"
+
+#: includes/init_freemius.php:54
+#, php-format
+msgid ""
+"Please help us improve %2$s! If you opt-in, some data about your usage of %2$s "
+"will be sent to %5$s. If you skip this, that's okay! %2$s will still work just "
+"fine."
+msgstr ""
+"من فضلك ساعدنا في تحسين %2$s! إذا قمت بالموافقة، فسيتم إرسال بعض البيانات حول "
+"استخدامك لـ %2$s إلى %5$s. إذا قررت الاستمرار بدون الموافقة، فهذا لا مشكلة! "
+"%2$s سيعمل بشكل جيد بالنسبة لك."
+
+#: includes/settings.php:13
+msgid "Aiify Blocks"
+msgstr "‫Aiify Blocks"
+
+#: includes/settings.php:20
+#, php-format
+msgid ""
+"Welcome to Aiify Blocks, feel to <a href=\"%s\" >contact us</a> if you have "
+"any question."
+msgstr ""
+"مرحبًا بك في Aiify Blocks، لا تتردد في <a href=“%s” >الاتصال بنا</a> إذا كان "
+"لديك أي أسئلة."
+
+#: includes/settings.php:24
+msgid "Aiify Blocks Settings"
+msgstr "إعدادات  Blocks Aiify"
+
+#: includes/settings.php:31
+#, php-format
+msgid "Please insert a valid %s"
+msgstr "الرجاء إدخال %s صالح"
+
+#: includes/settings.php:82
+msgid "AI Engine Settings"
+msgstr "إعدادات محرك الذكاء الاصطناعي"
+
+#: includes/settings.php:87
+msgid "Your AI Engine"
+msgstr "محرك الذكاء الاصطناعي الخاص بك"
+
+#: includes/settings.php:90
+msgid "Choose you default ai engine here"
+msgstr "اختر محرك الذكاء الاصطناعي الافتراضي الخاص بك هنا"
+
+#: includes/settings.php:96
+msgid "Temparature"
+msgstr "درجة الحرارة"
+
+#: includes/settings.php:103
+msgid ""
+"Lower temperature means model generates repetitive text like training data. "
+"Higher temperature leads to more varied and creative text."
+msgstr ""
+"تعني درجة الحرارة المنخفضة أن النموذج يولد نصًا متكررًا مثل بيانات التدريب. في "
+"حين يؤدي الارتفاع في درجة الحرارة إلى نصوص متنوعة وإبداعية أكثر."
+
+#: includes/settings.php:109
+msgid "Frequency penalty"
+msgstr "عقوبة التردد"
+
+#: includes/settings.php:116
+msgid ""
+"A frequency penalty of 0.5 reduces the likelihood of the model using "
+"frequently seen words or phrases by 50%. A penalty of 1 will eliminate them "
+"completely."
+msgstr ""
+"يخفض تطبيق عقوبة التكرار بمعدل 0.5 احتمالية استخدام النموذج للكلمات أو "
+"العبارات الشائعة بنسبة 50٪. بينما يؤدي تطبيق عقوبة بمعدل 1 إلى إزالتها تمامًا."
+
+#: includes/settings.php:121
+msgid "Presence penalty"
+msgstr "عقوبة الحضور"
+
+#: includes/settings.php:128
+msgid ""
+"With a presence penalty of 0.5, the model reduces the chance of generating "
+"words or phrases not in the training data by 50%. A penalty of 1 avoids all "
+"new words or phrases."
+msgstr ""
+"عند تطبيق عقوبة الحضور بمعدل 0.5، يقلل النموذج من فرصة إنتاج كلمات أو عبارات "
+"لم تظهر في البيانات التدريبية بنسبة 50٪. في حين أن تطبيق عقوبة بمعدل 1 يمنع "
+"تماماً ظهور أي كلمات أو عبارات جديدة."
+
+#: includes/settings.php:136
+msgid "Open AI Settings"
+msgstr "إعدادات OpenAI"
+
+#: includes/settings.php:141
+msgid "Your Open AI Key"
+msgstr "مفتاح AI المفتوح الخاص بك"
+
+#: includes/settings.php:144 includes/settings.php:212
+#, php-format
+msgid "You can get your key here : %s"
+msgstr "يمكنك الحصول على مفتاحك هنا: %s"
+
+#: includes/settings.php:152
+msgid "Open AI Model"
+msgstr "نموذج Open AI"
+
+#: includes/settings.php:154
+#, php-format
+msgid ""
+"GPT-4 is currently in a limited beta and only accessible to those who have "
+"been granted access. Please join the <a target='_blank' href='%s'>waitlist</a> "
+"to get access when capacity is available."
+msgstr ""
+"‫GPT-4 في الوقت الحالي في مرحلة بيتا محدودة ومتاحة فقط لأولئك الذين حصلوا على "
+"الوصول. يرجى الانضمام إلى <a target=‘_blank’ href=‘%s’>قائمة الانتظار</a> "
+"للحصول على الوصول عند توافر القدرة."
+
+#: includes/settings.php:155 includes/settings.php:189 includes/settings.php:223
+#, php-format
+msgid ""
+"This list is retrieved from the API, click <a href='%s'>here</a> to update it "
+"now"
+msgstr ""
+"هذه القائمة مسترجعة من الواجهة البرمجية للتطبيق، انقر <a href='%s'>هنا</a> "
+"لتحديثها الآن"
+
+#: includes/settings.php:170
+msgid "Ollama Settings"
+msgstr "إعدادات أولاما"
+
+#: includes/settings.php:175
+msgid "Your Ollama Service url"
+msgstr "رابط خدمة أولاما الخاصة بك"
+
+#: includes/settings.php:178
+msgid ""
+"If your Ollama service is in the same host as this website, it would be hosted "
+"at http://127.0.0.1:11434"
+msgstr ""
+"إذا كانت خدمة أولاما الخاصة بك تقع على نفس الخادم مثل هذا الموقع الإلكتروني، "
+"فسيتم استضافتها على http://127.0.0.1:11434"
+
+#: includes/settings.php:186
+msgid "Ollama Model"
+msgstr "نموذج Ollama"
+
+#: includes/settings.php:204
+msgid "OpenRouter Settings (beta)"
+msgstr "إعدادات OpenRouter (تجريبي)"
+
+#: includes/settings.php:209
+msgid "Your Open Router Key"
+msgstr "مفتاح OpenRouter الخاص بك"
+
+#: includes/settings.php:220
+msgid "OpenRouter Models"
+msgstr "نماذج OpenRouter"
+
+#: includes/settings.php:238
+msgid "Writing Settings"
+msgstr "إعدادات الكتابة"
+
+#: includes/settings.php:244
+msgid "Output Language"
+msgstr "لغة الإخراج"
+
+#: includes/settings.php:251
+msgid "Writing Style"
+msgstr "أسلوب الكتابة"
+
+#: includes/settings.php:258
+msgid "Writing Tone"
+msgstr "نغمة الكتابة"
+
+#: includes/settings.php:265
+msgid "Maximum words"
+msgstr "أقصى عدد من الكلمات"
+
+#: includes/settings.php:279
+msgid "System Prompts and templates"
+msgstr "إشارات النظام والقوالب"
+
+#: includes/settings.php:286
+msgid "Main system prompt, sets up the \"ai personnality\" for content creation"
+msgstr ""
+"المطالبة الرئيسية للنظام، تقوم بإعداد \"شخصية الذكاء الاصطناعي\" لإنشاء المحتوى"
+
+#: includes/settings.php:293
+msgid "Main system prompt, sets up the \"ai personnality\" for content edition"
+msgstr ""
+"المطالبة الرئيسية للنظام، تقوم بإعداد \"شخصية الذكاء الاصطناعي\" لتحرير المحتوى"
+
+#: includes/settings.php:300
+msgid "Formatting for content creation (be very careful while changing)"
+msgstr "تنسيق إنشاء المحتوى (كن حذرًا جدًا عند التغيير)"
+
+#: includes/settings.php:307
+msgid "Formatting for content edition (be very careful while changing)"
+msgstr "تنسيق تحرير المحتوى (كن حذرًا جدًا عند التغيير)"
+
+#: includes/settings.php:315
+msgid "Instructions about style, tone, language, words.."
+msgstr "تعليمات حول الأسلوب، والنبرة، واللغة، والكلمات.."
+
+#: includes/settings.php:316 includes/settings.php:324 includes/settings.php:332
+#, php-format
+msgid "You can use those variables: %s"
+msgstr "يمكنك استخدام هذه المتغيرات: %s"
+
+#: includes/settings.php:323
+msgid "Create a new content prompt structure"
+msgstr "إنشاء هيكل توجيه محتوى جديد"
+
+#: includes/settings.php:331
+msgid "Edit a content prompt structure"
+msgstr "تحرير هيكل توجيه المحتوى"
+
+#: includes/settings.php:353
+msgid "Danger Zone : "
+msgstr "منطقة الخطر: "
+
+#: includes/settings.php:353
+msgid "Revert to default prompts"
+msgstr "العودة إلى الرسائل الافتراضية"

@@ -1,0 +1,27 @@
+{
+    "translation-revision-date": "",
+    "generator": "WP-CLI\/2.7.1",
+    "source": "aiify\/build\/aiify__premium_only.js",
+    "domain": "messages",
+    "locale_data": {
+        "messages": {
+            "": {
+                "domain": "messages",
+                "lang": "es",
+                "plural-forms": "nplurals=2; plural=(n > 1);"
+            },
+            "How would you like to edit this text?": [
+                "Como voc\u00ea gostaria de editar este texto?"
+            ],
+            "You can ask for specific edits like : Translate to german": [
+                "Voc\u00ea pode solicitar edi\u00e7\u00f5es espec\u00edficas como: Traduzir para o alem\u00e3o"
+            ],
+            "Cancel": [
+                "Cancelar"
+            ],
+            "Edit": [
+                "Editar"
+            ]
+        }
+    }
+}
