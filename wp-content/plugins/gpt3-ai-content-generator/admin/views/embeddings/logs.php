@@ -147,6 +147,9 @@ endif;
                     case 'text-embedding-3-large':
                         $costPerToken = 0.00013 / 1000;
                         break;
+                    case 'embedding-001':
+                        $costPerToken = 0.0002 / 1000;
+                        break;
                     default:
                         // Default to the cost of 'text-embedding-ada-002' if the model is not recognized
                         $costPerToken = 0.00010 / 1000;

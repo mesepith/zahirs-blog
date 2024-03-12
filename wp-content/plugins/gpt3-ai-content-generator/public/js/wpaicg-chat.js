@@ -198,6 +198,24 @@ function wpaicgChatInit() {
     var wpaicg_chat_widget_toggles = document.getElementsByClassName('wpaicg_toggle');
     var wpaicg_chat_widgets = document.getElementsByClassName('wpaicg_chat_widget');
 
+    var imageIcon = document.querySelector('.wpaicg-img-icon');
+    
+    if(imageIcon){
+        imageIcon.addEventListener('click', function() {
+            var imageInput = document.getElementById('imageUpload');
+            imageInput.click();
+        });
+    }
+
+    var imageInput = document.getElementById('imageUpload');
+    if(imageInput){
+        imageInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                console.log("Image selected: ", this.files[0].name);
+            }
+        });
+    }
+
     var wpaicgChatClearButtons = document.getElementsByClassName('wpaicg-chatbox-clear-btn');
     if (wpaicgChatClearButtons.length) {
         for (var i = 0; i < wpaicgChatClearButtons.length; i++) {
@@ -350,6 +368,10 @@ function wpaicgChatInit() {
                 wpaicgChatShortcode.style.left = 0;
                 wpaicgChatShortcode.style.zIndex = 999999999;
                 wpaicgChatShortcode.classList.add('wpaicg-fullscreened');
+                const demoContent = document.querySelector('.demo-page-fixed-content');
+                if (demoContent) {
+                    demoContent.style.position = 'static'; // Temporarily adjust position
+                }
             }
             wpaicgChatShortcodeSize();
 
@@ -380,6 +402,10 @@ function wpaicgChatInit() {
                 wpaicgWidgetContent.style.bottom = 0;
                 wpaicgWidgetContent.style.left = 0;
                 wpaicgWidgetContent.classList.add('wpaicg-fullscreened');
+                const demoContent = document.querySelector('.demo-page-fixed-content');
+                if (demoContent) {
+                    demoContent.style.position = 'static'; // Temporarily adjust position
+                }
             }
             wpaicgChatBoxSize();
         }
@@ -484,6 +510,9 @@ function wpaicgChatInit() {
             elevenlabs_voice = chat.getAttribute('data-elevenlabs_voice');
         }
         let wpaicg_voice_error = chat.getAttribute('data-voice-error');
+        let wpaicg_typewriter_effect = chat.getAttribute('data-typewriter-effect');
+        let wpaicg_typewriter_speed = chat.getAttribute('data-typewriter-speed');
+
         let url = chat.getAttribute('data-url');
         let post_id = chat.getAttribute('data-post-id');
         let wpaicg_ai_bg = chat.getAttribute('data-ai-bg-color');
@@ -506,6 +535,20 @@ function wpaicgChatInit() {
         let voice_speed = chat.getAttribute('data-voice_speed');
         let voice_pitch = chat.getAttribute('data-voice_pitch');
         var chat_pdf = chat.getAttribute('data-pdf');
+
+        // Handle image upload
+        var imageInput = document.getElementById('imageUpload');
+        var imageUrl = ''; // Variable to store the URL of the uploaded image for preview
+        if(imageInput){
+            if (imageInput.files && imageInput.files[0]) {
+                //console.log("Image binded with send message: ", imageInput.files[0].name);
+                // Append image file to FormData object
+                wpaicgData.append('image', imageInput.files[0], imageInput.files[0].name);
+                // Create a URL for the uploaded image file for preview
+                imageUrl = URL.createObjectURL(imageInput.files[0]);
+            }
+        }
+
         if (type === 'widget') {
             wpaicg_ai_thinking = chat.getElementsByClassName('wpaicg-bot-thinking')[0];
             wpaicg_messages_box = chat.getElementsByClassName('wpaicg-chatbox-messages')[0];
@@ -523,6 +566,11 @@ function wpaicgChatInit() {
         }
         wpaicg_ai_thinking.style.display = 'block';
         let wpaicg_question = wpaicgescapeHtml(wpaicg_box_typing.value);
+        if (!wpaicg_question.trim() && blob === undefined) {
+            console.log('Empty message. Not sending.');
+            wpaicg_ai_thinking.style.display = 'none';
+            return; // Exit the function if no message or blob is provided
+        }
         wpaicgMessage += '<li class="' + class_user_item + '" style="background-color:' + wpaicg_user_bg + ';font-size: ' + wpaicg_font_size + 'px;color: ' + wpaicg_font_color + '">';
         wpaicgMessage += '<strong class="wpaicg-chat-avatar">' + wpaicg_you + '</strong>';
         wpaicgData.append('_wpnonce', wpaicg_nonce);
@@ -543,13 +591,25 @@ function wpaicgChatInit() {
         } else if (wpaicg_question !== '') {
             wpaicgData.append('message', wpaicg_question);
             wpaicgMessage += wpaicg_question.replace(/\n/g,'<br>');
+
         }
        
         wpaicgData.append('bot_id',wpaicg_bot_id);
         wpaicgMessage += '</li>';
+        // If an image URL is available, add an <img> tag to display the image
+        if (imageUrl !== '') {
+            wpaicgMessage += '<li class="' + class_user_item + '" style="background-color:' + wpaicg_user_bg + ';font-size: ' + wpaicg_font_size + 'px;color: ' + wpaicg_font_color + '">';
+            wpaicgMessage += '<img src="' + imageUrl + '" style="max-width: 50%; height: auto;">';
+            wpaicgMessage += '</li>';
+        }
         wpaicg_messages_box.innerHTML += wpaicgMessage;
         wpaicg_messages_box.scrollTop = wpaicg_messages_box.scrollHeight;
 
+        // Reset the image input after sending the message if imageInput exists first
+        if (imageInput) {
+            imageInput.value = '';
+        }
+        
         let chat_type = chat.getAttribute('data-type');
         
         let stream_nav;
@@ -653,7 +713,7 @@ function wpaicgChatInit() {
                         clearChatHistory();
                     }
                     if (wpaicg_response_text === 'null' || wpaicg_response_text === null) {
-                        wpaicg_response_text = 'The model predicted a completion that begins with a stop sequence, resulting in no output. Consider adjusting your prompt or stop sequences.';
+                        wpaicg_response_text = 'Empty response from api. Check your server logs for more details.';
                     }
                     updateChatHistory(wpaicg_response_text, 'ai');
                     if (wpaicg_response_text !== '' && wpaicg_message !== '') {
@@ -687,7 +747,7 @@ function wpaicgChatInit() {
                                             wpaicg_message += '<audio style="margin-top:2px;width: 100%" controls="controls"><source type="audio/mpeg" src="' + blobUrl + '"></audio>';
                                             wpaicg_message += '</p></li>';
                                             wpaicg_ai_thinking.style.display = 'none';
-                                            wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text);
+                                            wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text, wpaicg_typewriter_effect, wpaicg_typewriter_speed);
                                         }
                                         else{
                                             var errorMessageDetail = 'Google: ' + result.msg;
@@ -706,7 +766,7 @@ function wpaicgChatInit() {
                                                 speechErrorRequest.send(speechLogMessage);
                                             }
                                             wpaicg_message += '</p></li>';
-                                            wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text);
+                                            wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text, wpaicg_typewriter_effect, wpaicg_typewriter_speed);
                                         }
                                     }
                                     catch (errorSpeech){
@@ -744,19 +804,16 @@ function wpaicgChatInit() {
                                         const blob = new Blob([audioData], { type: blobMimeType });
                                         const blobUrl = URL.createObjectURL(blob);
                             
-                                        const audio = new Audio(blobUrl);
-                                        audio.play().catch(e => console.error('Playback error:', e));
-                            
                                         // Update your message UI here
                                         wpaicg_message += '<audio style="margin-top:2px;width: 100%" controls="controls"><source type="audio/mpeg" src="' + blobUrl + '"></audio>';
-                                        wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text);
+                                        wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text, wpaicg_typewriter_effect, wpaicg_typewriter_speed);
                                     } else {
                                         // Handle HTTP errors
                                         wpaicg_ai_thinking.style.display = 'none';
                                         console.error('Error generating speech with OpenAI:', speechRequest.statusText);
                                         // Update your message UI to show the error
                                         wpaicg_message += '<span style="width: 100%;display: block;font-size: 11px;">Error generating speech with OpenAI</span>';
-                                        wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text);
+                                        wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text, wpaicg_typewriter_effect, wpaicg_typewriter_speed);
                                     }
                                 };
                             
@@ -766,7 +823,7 @@ function wpaicgChatInit() {
                                     console.error('Network error during speech generation with OpenAI');
                                     // Update your message UI to show the network error
                                     wpaicg_message += '<span style="width: 100%;display: block;font-size: 11px;">Network error during speech generation</span>';
-                                    wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text);
+                                    wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text, wpaicg_typewriter_effect, wpaicg_typewriter_speed);
                                 };
                             
                                 speechRequest.send(speechData);
@@ -818,12 +875,12 @@ function wpaicgChatInit() {
                                                 speechErrorRequest.send(speechLogMessage);
                                             }
                                             wpaicg_message += '</p></li>';
-                                            wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text);
+                                            wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text, wpaicg_typewriter_effect, wpaicg_typewriter_speed);
                                         } catch (errorBlob) {
                                             var blobUrl = URL.createObjectURL(blob);
                                             wpaicg_message += '<audio style="margin-top:2px;width: 100%" controls="controls"><source type="audio/mpeg" src="' + blobUrl + '"></audio>';
                                             wpaicg_message += '</p></li>';
-                                            wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text);
+                                            wpaicgWriteMessage(wpaicg_messages_box, wpaicg_message, wpaicg_randomnum, wpaicg_response_text, wpaicg_typewriter_effect, wpaicg_typewriter_speed);
                                         }
                                     }
                                     fr.readAsText(blob);
@@ -833,13 +890,46 @@ function wpaicgChatInit() {
                         }
                         else{
                             wpaicg_message += '</p></li>';
-                            wpaicgWriteMessage(wpaicg_messages_box,wpaicg_message,wpaicg_randomnum,wpaicg_response_text);
+                            wpaicgWriteMessage(wpaicg_messages_box,wpaicg_message,wpaicg_randomnum,wpaicg_response_text, wpaicg_typewriter_effect, wpaicg_typewriter_speed);
                         }
                     }
                 }
             }
         }
     }
+
+    function wpaicgFormatter(inputText) {
+
+        inputText = inputText !== '' ? inputText.trim() : '';
+
+        // Markdown Links
+        inputText = inputText.replace(/\[(.*?)\]\((https?:\/\/.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+        
+        // Make URLs clickable
+        inputText = inputText.replace(/(?<!<a href=")(https?:\/\/[^\s]+)(?!"<\/a>)/g, '<a href="$1" target="_blank">$1</a>');
+
+        // **Bold** 
+        inputText = inputText.replace(/\*\*(.*?)\*\*/g, '$1');
+
+        // *Italic* 
+        inputText = inputText.replace(/\*(.*?)\*/g, '$1');
+
+        // parse code blocks.
+        inputText = inputText.replace(/```([\s\S]*?)```/g,'<code>$1</code>');
+
+        // parse `code` code blocks.
+        inputText = inputText.replace(/`([\s\S]*?)`/g,'<code>$1</code>');
+
+        // make emails clickable
+        inputText = inputText.replace(/([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/g, '<a href="mailto:$1">$1</a>');
+        
+        // replace /n with <br>
+        inputText = inputText.replace(/(?:\r\n|\r|\n)/g, '<br>');
+
+        return inputText;
+        
+    }
+
     function handleStreaming(wpaicgData, wpaicg_messages_box, wpaicg_box_typing, wpaicg_ai_thinking, class_ai_item, chat, chatbot_identity, clientID, wpaicg_use_avatar, wpaicg_ai_avatar) {
         let wpaicg_ai_name = wpaicg_use_avatar ? '<img src="' + wpaicg_ai_avatar + '" height="40" width="40">' : chat.getAttribute('data-ai-name') + ':';
         let wpaicg_font_size = chat.getAttribute('data-fontsize');
@@ -868,6 +958,42 @@ function wpaicgChatInit() {
         + wpaicg_ai_name + '</strong><span class="wpaicg-chat-message" id="' 
         + chatids 
         + '"></span></p></li>';
+
+        function streamFormatter(text) {
+            // Regular expression to detect URLs
+            const urlRegex = /(\b(http|https):\/\/\S*\b)/g;
+
+            // Regular expression to detect URL in this format: https://www.
+            const urlRegex2 = /(\b(www\.\S*)\b)/g;
+            
+            // Regular expression to detect email addresses
+            const emailRegex = /(\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b)/g;
+
+            // Regular expression to detect markdown links
+            const markdownLinkRegex = /\[(.*?)\]\((https?:\/\/.*?)\)/g;
+
+            // Regular expression to detect code blocks
+            const codeBlockRegex = /```([\s\S]*?)```/g;
+
+            // Regular expression to detect single `code` blocks
+            const singleCodeBlockRegex = /`([\s\S]*?)`/g;
+        
+            // Return true if text contains a URL, email, markdown link, code block, single code block
+            return urlRegex.test(text) || emailRegex.test(text) || markdownLinkRegex.test(text) || codeBlockRegex.test(text) || singleCodeBlockRegex.test(text) || urlRegex2.test(text);
+        }
+
+        function flashMessage(chatids) {
+            let chatMessage = document.getElementById(chatids);
+            chatMessage.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+            setTimeout(() => {
+                chatMessage.style.backgroundColor = wpaicg_ai_bg;
+            }, 100);
+
+            // now check entire message and parse if there is any link
+            let chatMessageText = chatMessage.innerHTML;
+            chatMessage.innerHTML = wpaicgFormatter(chatMessageText);
+
+        }
 
         // Function to update chat history in local storage for a specific bot identity
         function updateChatHistory(message, sender) {
@@ -1028,6 +1154,11 @@ function wpaicgChatInit() {
                 eventSource.close();
                 toggleBlinkingCursor(false); // Ensure cursor is removed when done
                 updateChatHistory(completeAIResponse, 'ai');
+
+                if (streamFormatter(completeAIResponse)) {
+                    flashMessage(chatids); // Call flashMessage only if a URL or an email address is found
+                }
+
             } else {
                 var result = resultData;
                 if (result.error !== undefined) {
@@ -1052,7 +1183,14 @@ function wpaicgChatInit() {
 
         // Function to format content, replacing newlines appropriately
         function formatContent(text) {
-            return text.replace(/(?:\r\n|\r|\n)/g, '<br>');
+
+            // Replace newlines with <br> tags
+            text = text.replace(/(?:\r\n|\r|\n)/g, '<br>');
+
+            console.log(text);
+
+            // return the formatted text
+            return text;
         }
 
         function toggleBlinkingCursor(isVisible) {
@@ -1067,8 +1205,14 @@ function wpaicgChatInit() {
         }
     }
 
-
-    function wpaicgWriteMessage(wpaicg_messages_box,wpaicg_message,wpaicg_randomnum,wpaicg_response_text){
+    // Scroll function to adjust.
+    function scrollToAdjust(wpaicg_messages_box) {
+        requestAnimationFrame(() => {
+            wpaicg_messages_box.scrollTop = wpaicg_messages_box.scrollHeight;
+        });
+    }
+    
+    function wpaicgWriteMessage(wpaicg_messages_box,wpaicg_message,wpaicg_randomnum,wpaicg_response_text, wpaicg_typewriter_effect, wpaicg_typewriter_speed){
         wpaicg_messages_box.innerHTML += wpaicg_message;
         var wpaicg_current_message = document.getElementById('wpaicg-chat-message-' + wpaicg_randomnum);
         var parentMessage = wpaicg_current_message.parentElement;
@@ -1077,49 +1221,30 @@ function wpaicgChatInit() {
             audio[0].play();
         }
 
-        function wpaicgLinkify(inputText) {
-            var replacedText, replacePattern1, replacePattern2, replacePattern3;
+        // Apply formatting to the entire response text first
+        var formattedText = wpaicgFormatter(wpaicg_response_text);
 
-            //URLs starting with http://, https://, or ftp://
-            replacePattern1 = /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
-            replacedText = inputText.replace(replacePattern1, '<a href="$1" target="_blank">$1</a>');
-
-            //URLs starting with "www." (without // before it, or it'd re-link the ones done above).
-            replacePattern2 = /(^|[^\/])(www\.[\S]+(\b|$))/gim;
-            replacedText = replacedText.replace(replacePattern2, '$1<a href="http://$2" target="_blank">$2</a>');
-
-            //Change email addresses to mailto:: links.
-            replacePattern3 = /(([a-zA-Z0-9\-\_\.])+@[a-zA-Z\_]+?(\.[a-zA-Z]{2,6})+)/gim;
-            replacedText = replacedText.replace(replacePattern3, '<a href="mailto:$1">$1</a>');
-
-            return replacedText;
-        }
-        if(wpaicg_response_text !== ''){
-            wpaicg_response_text = wpaicg_response_text.trim();
-        }
-        wpaicg_response_text = wpaicg_response_text.replace(/\n/g, '≈');
-
-        var i = 0;
-        var wpaicg_speed = 1;
-        
-        function wpaicg_typeWriter() {
-            if (i < wpaicg_response_text.length) {
-                if (wpaicg_response_text.charAt(i) === '≈') {
-                    wpaicg_current_message.innerHTML += '<br>';
+        if (wpaicg_typewriter_effect) {
+            let index = 0; // Starting index of the substring
+            function typeWriter() {
+                if (index < formattedText.length) {
+                    wpaicg_current_message.innerHTML = formattedText.slice(0, index+1);
+                    index++;
+                    setTimeout(typeWriter, wpaicg_typewriter_speed);
+                    //scroll to the latest message if needed
+                    scrollToAdjust(wpaicg_messages_box);
+                } else {
+                    // Once complete, ensure scrolling if needed
+                    scrollToAdjust(wpaicg_messages_box);
                 }
-                else {
-                    wpaicg_current_message.innerHTML += wpaicg_response_text.charAt(i);
-                }
-                i++;
-                setTimeout(wpaicg_typeWriter, wpaicg_speed);
-                wpaicg_messages_box.scrollTop = wpaicg_messages_box.scrollHeight;
-            } else {
-                wpaicg_current_message.innerHTML = wpaicgLinkify(wpaicg_current_message.innerHTML);
-                wpaicg_current_message.innerHTML = wpaicg_current_message.innerHTML.replace(/```([\s\S]*?)```/g,'<code>$1</code>');
             }
-        }
+            typeWriter(); // Start the typewriter effect
 
-        wpaicg_typeWriter();
+        } else {
+            wpaicg_current_message.innerHTML = formattedText;
+            // Scroll to the latest message if needed
+            scrollToAdjust(wpaicg_messages_box);
+        }
     }
 
     function wpaicgMicEvent(mic) {

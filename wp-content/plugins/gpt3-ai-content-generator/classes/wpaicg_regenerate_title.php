@@ -54,68 +54,120 @@ if(!class_exists('\\WPAICG\\WPAICG_Regenerate_Title')) {
             wp_send_json($wpaicg_result);
         }
 
+        private function process_ai_response($complete) {
+            $result = ['status' => 'error', 'msg' => ''];
+        
+            if (isset($complete['status']) && $complete['status'] == 'error') {
+                $result['msg'] = isset($complete['msg']) ? $complete['msg'] : 'Something went wrong';
+            } else {
+                $responseData = trim($complete['data']);
+                $responseData = preg_replace('/\n$/', '', preg_replace('/^\n/', '', preg_replace('/[\r\n]+/', "\n", $responseData)));
+                $titleList = preg_split("/\r\n|\n|\r/", $responseData);
+                $titleList = preg_replace('/^\\d+\\.\\s/', '', $titleList);
+                $titleList = preg_replace('/\\.$/', '', $titleList);
+        
+                if ($titleList && is_array($titleList) && count($titleList)) {
+                    $newlist = array_map(function($item) {
+                        return str_replace('"', '', $item);
+                    }, $titleList);
+        
+                    $result = ['status' => 'success', 'data' => $newlist];
+                } else {
+                    $result['msg'] = esc_html__('No title generated', 'gpt3-ai-content-generator');
+                }
+            }
+        
+            return $result;
+        }
+
         public function wpaicg_regenerate_title()
         {
-            $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong','gpt3-ai-content-generator'));
-            if(!current_user_can('wpaicg_suggester')){
-                $wpaicg_result['status'] = 'error';
-                $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
+            // Initialize the default error response.
+            $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
+
+            // Check if the current user has the required capability.
+            if (!current_user_can('wpaicg_suggester')) {
+                $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
-            if ( ! wp_verify_nonce( $_POST['nonce'], 'wpaicg-ajax-nonce' ) ) {
-                $wpaicg_result['status'] = 'error';
-                $wpaicg_result['msg'] = esc_html__('Nonce verification failed','gpt3-ai-content-generator');
+
+            // Verify the nonce for security.
+            if (!wp_verify_nonce($_POST['nonce'], 'wpaicg-ajax-nonce')) {
+                $wpaicg_result['msg'] = esc_html__('Nonce verification failed', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
-            if(isset($_POST['title']) && !empty($_POST['title'])){
+
+            // Check if the title is set and not empty.
+            if (isset($_POST['title']) && !empty($_POST['title'])) {
+
                 $title = sanitize_text_field($_POST['title']);
+
+                // Get the AI engine.
+                try {
+                    $ai_engine = WPAICG_Util::get_instance()->initialize_ai_engine();
+                } catch (\Exception $e) {
+                    $wpaicg_result['msg'] = $e->getMessage();
+                    wp_send_json($wpaicg_result);
+                }
+
+                $temperature = floatval( $ai_engine->temperature );
+                $max_tokens = intval( $ai_engine->max_tokens );
+                $top_p = floatval( $ai_engine->top_p );
+                $best_of = intval( $ai_engine->best_of );
+                $frequency_penalty = floatval( $ai_engine->frequency_penalty );
+                $presence_penalty = floatval( $ai_engine->presence_penalty );
+                $wpai_language = sanitize_text_field( $ai_engine->wpai_language );
+                if ( empty($wpai_language) ) {
+                    $wpai_language = "en";
+                }
+                $wpaicg_language_file = plugin_dir_path( dirname( __FILE__ ) ) . 'admin/languages/' . $wpai_language . '.json';
+                if ( !file_exists( $wpaicg_language_file ) ) {
+                    $wpaicg_language_file = plugin_dir_path( dirname( __FILE__ ) ) . 'admin/languages/en.json';
+                }
+                $wpaicg_language_json = file_get_contents( $wpaicg_language_file );
+                $wpaicg_languages = json_decode( $wpaicg_language_json, true );
+                $prompt = isset($wpaicg_languages['regenerate_prompt']) && !empty($wpaicg_languages['regenerate_prompt']) ? $wpaicg_languages['regenerate_prompt'] : 'Suggest me 5 different title for: %s.';
+                $prompt = sprintf($prompt, $title);
+
                 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-                $open_ai = WPAICG_OpenAI::get_instance()->openai();
-                // if provider not openai then assing azure to $open_ai
-                if($wpaicg_provider != 'OpenAI'){
-                    $open_ai = WPAICG_AzureAI::get_instance()->azureai();
+            
+                if ($wpaicg_provider === 'OpenAI') {
+                    $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-16k');
+                } elseif ($wpaicg_provider === 'Azure') {
+                    $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
+                } elseif ($wpaicg_provider === 'Google') {
+                    $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
                 }
-                if(!$open_ai){
-                    $wpaicg_result['error'] = esc_html__('Missing API Setting','gpt3-ai-content-generator');
+
+                $legacy_models = array(
+                    "text-davinci-001", "davinci", "babbage", "text-babbage-001", "curie-instruct-beta",
+                    "text-davinci-003", "text-curie-001", "davinci-instruct-beta", "text-davinci-002",
+                    "ada", "text-ada-001", "curie","gpt-3.5-turbo-instruct"
+                );
+                
+                if (!in_array($wpaicg_ai_model, $legacy_models)) {
+                    $prompt = $wpaicg_languages['fixed_prompt_turbo'].' '.$prompt;
                 }
-                else{
-                    $temperature = floatval( $open_ai->temperature );
-                    $max_tokens = intval( $open_ai->max_tokens );
-                    $top_p = floatval( $open_ai->top_p );
-                    $best_of = intval( $open_ai->best_of );
-                    $frequency_penalty = floatval( $open_ai->frequency_penalty );
-                    $presence_penalty = floatval( $open_ai->presence_penalty );
-                    $wpai_language = sanitize_text_field( $open_ai->wpai_language );
-                    if ( empty($wpai_language) ) {
-                        $wpai_language = "en";
-                    }
-                    $wpaicg_language_file = plugin_dir_path( dirname( __FILE__ ) ) . 'admin/languages/' . $wpai_language . '.json';
-                    if ( !file_exists( $wpaicg_language_file ) ) {
-                        $wpaicg_language_file = plugin_dir_path( dirname( __FILE__ ) ) . 'admin/languages/en.json';
-                    }
-                    $wpaicg_language_json = file_get_contents( $wpaicg_language_file );
-                    $wpaicg_languages = json_decode( $wpaicg_language_json, true );
-                    $prompt = isset($wpaicg_languages['regenerate_prompt']) && !empty($wpaicg_languages['regenerate_prompt']) ? $wpaicg_languages['regenerate_prompt'] : 'Suggest me 5 different title for: %s.';
-                    $prompt = sprintf($prompt, $title);
-                    $wpaicg_ai_model = get_option('wpaicg_ai_model','gpt-3.5-turbo');
-                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-                    if ($wpaicg_provider === 'OpenAI') {
-                        $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo');
-                    } else if ($wpaicg_provider === 'Azure') {
-                        $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                    }
+                
+                if ($wpaicg_provider == 'Google') {
+                    $title = $prompt;
+                    $model = $wpaicg_ai_model;
+                    $temperature = $temperature;
+                    $top_p = $top_p;
+                    $max_tokens = $max_tokens;
+
+                    $complete = $ai_engine->send_google_request($title, $model, $temperature, $top_p, $max_tokens);
+
+                    if (!empty($complete['status']) && $complete['status'] === 'error') {
+                        wp_send_json(['msg' => $complete['msg'], 'status' => 'error']);
+                    } else {
+                        $wpaicg_result = $this->process_ai_response($complete);
+                    }                    
+
+                } else {
                     $wpaicg_generator = WPAICG_Generator::get_instance();
-                    $wpaicg_generator->openai($open_ai);
-                    
-                    $legacy_models = array(
-                        "text-davinci-001", "davinci", "babbage", "text-babbage-001", "curie-instruct-beta",
-                        "text-davinci-003", "text-curie-001", "davinci-instruct-beta", "text-davinci-002",
-                        "ada", "text-ada-001", "curie","gpt-3.5-turbo-instruct"
-                    );
-                    
-                    if (!in_array($wpaicg_ai_model, $legacy_models)) {
-                        $prompt = $wpaicg_languages['fixed_prompt_turbo'].' '.$prompt;
-                    }
+                    $wpaicg_generator->openai($ai_engine);
+
                     $complete = $wpaicg_generator->wpaicg_request( [
                         'model'             => $wpaicg_ai_model,
                         'prompt'            => $prompt,
@@ -128,29 +180,15 @@ if(!class_exists('\\WPAICG\\WPAICG_Regenerate_Title')) {
                         'stop' => '6.'
                     ] );
                     $wpaicg_result['prompt'] = $prompt;
-                    if($complete['status'] == 'error'){
-                        $wpaicg_result['msg'] = $complete['msg'];
-                    }
-                    else{
-                        $complete = $complete['data'];
-                        $complete = trim( $complete );
-                        $complete=preg_replace('/\n$/','',preg_replace('/^\n/','',preg_replace('/[\r\n]+/',"\n",$complete)));
-                        $mylist = preg_split( "/\r\n|\n|\r/", $complete );
-                        $mylist = preg_replace( '/^\\d+\\.\\s/', '', $mylist );
-                        $mylist = preg_replace( '/\\.$/', '', $mylist );
-                        if($mylist && is_array($mylist) && count($mylist)){
-                            $newlist = array();
-                            foreach($mylist as $item){
-                                $newlist[] = str_replace('"','',$item);
-                            }
-                            $wpaicg_result['data'] = $newlist;
-                            $wpaicg_result['status'] = 'success';
-                        }
-                        else{
-                            $wpaicg_result['msg'] = esc_html__('No title generated','gpt3-ai-content-generator');
-                        }
-                    }
                 }
+                
+                if($complete['status'] == 'error'){
+                    $wpaicg_result['msg'] = $complete['msg'];
+                }
+                else{
+                    $wpaicg_result = $this->process_ai_response($complete);
+                }
+
             }
             wp_send_json($wpaicg_result);
         }

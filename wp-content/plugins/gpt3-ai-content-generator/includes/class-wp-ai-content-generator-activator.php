@@ -79,7 +79,7 @@ class Wp_Ai_Content_Generator_Activator {
 			dbDelta( $sql );
             $sampleData = [
                 'name'						=> 'wpaicg_settings',
-                'temperature' 				=> '0.7',
+                'temperature' 				=> '1',
                 'max_tokens' 				=> '1500',
                 'top_p' 					=> '0.01',
                 'best_of' 					=> '1',

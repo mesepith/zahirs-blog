@@ -106,18 +106,31 @@ $totalPage         = ceil($total / $items_per_page);
             if($wpaicg_log->source > 0){
                 $source = get_the_title($wpaicg_log->source);
             }
-            if($wpaicg_ai_model === 'gpt-3.5-turbo' || $wpaicg_ai_model === 'gpt-3.5-turbo-16k') {
-                $wpaicg_estimated = 0.002 * $wpaicg_usage_token / 1000;
-            }
-            if($wpaicg_ai_model === 'gpt-4') {
-                $wpaicg_estimated = 0.06 * $wpaicg_usage_token / 1000;
-            }
-            if($wpaicg_ai_model === 'gpt-4-32k') {
-                $wpaicg_estimated = 0.12 * $wpaicg_usage_token / 1000;
-            }
-            else{
+            
+            // Define pricing per 1K tokens
+            $pricing = array(
+                'gpt-4' => 0.06,
+                'gpt-4-32k' => 0.12,
+                'gpt-4-1106-preview' => 0.01,
+                'gpt-4-vision-preview' => 0.01,
+                'gpt-3.5-turbo' => 0.002,
+                'gpt-3.5-turbo-instruct' => 0.002,
+                'gpt-3.5-turbo-16k' => 0.004,
+                'text-davinci-003' => 0.02,
+                'text-curie-001' => 0.002,
+                'text-babbage-001' => 0.0005,
+                'text-ada-001' => 0.0004,
+                'gemini-pro' => 0.000375
+            );
+
+            // Calculate estimated cost
+            if (array_key_exists($wpaicg_ai_model, $pricing)) {
+                $wpaicg_estimated = $pricing[$wpaicg_ai_model] * $wpaicg_usage_token / 1000;
+            } else {
+                // Default pricing if the model is not listed
                 $wpaicg_estimated = 0.02 * $wpaicg_usage_token / 1000;
             }
+
             ?>
             <tr>
                 <td><?php echo esc_html($wpaicg_log->prompt_id)?></td>
@@ -142,13 +155,13 @@ $totalPage         = ceil($total / $items_per_page);
                     // Check if NumberFormatter class exists
                     if (class_exists('NumberFormatter')) {
                         $formatter = new NumberFormatter('en_US', NumberFormatter::CURRENCY);
-                        $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, 4);
-                        $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, 4);
+                        $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, 6);
+                        $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, 6);
                         $formattedNumber = $formatter->format($wpaicg_estimated);
                     } else {
                         // Fallback method if NumberFormatter is not available
                         // Using number_format() function for formatting
-                        $formattedNumber = '$' . number_format($wpaicg_estimated, 4, '.', ',');
+                        $formattedNumber = '$' . number_format($wpaicg_estimated, 6, '.', ',');
                     }
 
                     // Output the formatted number, escaped for safety

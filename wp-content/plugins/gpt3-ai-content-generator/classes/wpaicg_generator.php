@@ -161,9 +161,12 @@ if(!class_exists('\\WPAICG\\WPAICG_Generator')) {
             $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
             $openai = WPAICG_OpenAI::get_instance()->openai();
 
-            // if provider not openai then assing azure to $open_ai
-            if($wpaicg_provider != 'OpenAI'){
-                $openai = WPAICG_AzureAI::get_instance()->azureai();
+            // Get the AI engine.
+            try {
+                $openai = WPAICG_Util::get_instance()->initialize_ai_engine();
+            } catch (\Exception $e) {
+                $wpaicg_result['msg'] = $e->getMessage();
+                wp_send_json($wpaicg_result);
             }
 
             if ( ! wp_verify_nonce( $_POST['nonce'], 'wpaicg-ajax-nonce' ) ) {
@@ -197,18 +200,33 @@ if(!class_exists('\\WPAICG\\WPAICG_Generator')) {
             
             $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 
-            if ($wpaicg_provider === 'Azure') {
-                $this->wpaicg_engine = get_option('wpaicg_azure_deployment', '');
-            } else {
+            if ($wpaicg_provider === 'OpenAI') {
                 $this->wpaicg_engine = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-instruct');
+            } elseif ($wpaicg_provider === 'Azure') {
+                $this->wpaicg_engine = get_option('wpaicg_azure_deployment', '');
+            } elseif ($wpaicg_provider === 'Google') {
+                $this->wpaicg_engine = get_option('wpaicg_google_default_model', 'gemini-pro');
             }
 
             $this->wpaicg_allowed_html_content_post = wp_kses_allowed_html( 'post' );
             if($cronjob){
                 $this->wpaicg_preview_title = $wpaicg_preview_title;
                 $this->wpaicg_number_of_heading = $open_ai->wpai_number_of_heading;
+
                 $this->wpaicg_image_source = get_option('wpaicg_image_source','dalle3');
                 $this->wpaicg_featured_image_source = get_option('wpaicg_featured_image_source','dalle3');
+
+                // if the provider is Google and wpaicg_image_source or wpaicg_featured_image_source is set to dall e sources then we set them empty.
+                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+                // Define the array of DALL-E sources
+                $dalle_sources = ['dalle', 'dalle2', 'dalle3', 'dalle3hd'];
+                if ($wpaicg_provider === 'Google' && in_array($this->wpaicg_image_source, $dalle_sources)) {
+                    $this->wpaicg_image_source = '';
+                }
+                if ($wpaicg_provider === 'Google' && in_array($this->wpaicg_featured_image_source, $dalle_sources)) {
+                    $this->wpaicg_featured_image_source = '';
+                }
+
                 $this->wpaicg_language = sanitize_text_field( $open_ai->wpai_language );
                 $this->wpaicg_add_intro = intval( $open_ai->wpai_add_intro );
                 $this->wpaicg_add_conclusion = intval( $open_ai->wpai_add_conclusion );
@@ -257,6 +275,17 @@ if(!class_exists('\\WPAICG\\WPAICG_Generator')) {
                 $this->wpaicg_number_of_heading = sanitize_text_field( $_REQUEST["wpai_number_of_heading"] );
                 $this->wpaicg_image_source = sanitize_text_field($_REQUEST['wpaicg_image_source']);
                 $this->wpaicg_featured_image_source = sanitize_text_field($_REQUEST['wpaicg_featured_image_source']);
+
+                // if the provider is Google and wpaicg_image_source or wpaicg_featured_image_source is set to dall e sources then we set them empty.
+                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+                // Define the array of DALL-E sources
+                $dalle_sources = ['dalle', 'dalle2', 'dalle3', 'dalle3hd'];
+                if ($wpaicg_provider === 'Google' && in_array($this->wpaicg_image_source, $dalle_sources)) {
+                    $this->wpaicg_image_source = '';
+                }
+                if ($wpaicg_provider === 'Google' && in_array($this->wpaicg_featured_image_source, $dalle_sources)) {
+                    $this->wpaicg_featured_image_source = '';
+                }
                 $this->wpaicg_language = sanitize_text_field( $_REQUEST["wpai_language"] );
                 $this->wpaicg_add_intro = intval( sanitize_text_field($_REQUEST["wpai_add_intro"] ));
                 $this->wpaicg_add_conclusion = intval( sanitize_text_field($_REQUEST["wpai_add_conclusion"] ));
@@ -1495,6 +1524,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Generator')) {
                 );
                 unset($opts['prompt']);
                 unset($opts['best_of']);
+                // if  $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI'); is set to Google then set opts provider to google
+                if (get_option('wpaicg_provider', 'OpenAI') === 'Google') {
+                    $opts['provider'] = 'google';
+                }
                 $complete = $this->openai->chat($opts);
             }
             else{

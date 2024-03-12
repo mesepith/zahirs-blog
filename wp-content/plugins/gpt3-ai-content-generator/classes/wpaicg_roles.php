@@ -177,17 +177,22 @@ if(!class_exists('\\WPAICG\\WPAICG_Roles')) {
         public function register_roles_admin()
         {
             $user_role = get_role('administrator');
-            foreach ($this->wpaicg_roles as $key => $wpaicg_role) {
-                if(isset($wpaicg_role['hide']) && !empty($wpaicg_role['hide'])){
-                    $user_role->add_cap('wpaicg_'.$wpaicg_role['hide']);
-                }
-                if (isset($wpaicg_role['roles']) && count($wpaicg_role['roles'])) {
-                    foreach ($wpaicg_role['roles'] as $key_role => $role_name) {
-                        $user_role->add_cap('wpaicg_' . $key . '_' . $key_role);
+            if ($user_role) { // Check if the $user_role object is not null
+                foreach ($this->wpaicg_roles as $key => $wpaicg_role) {
+                    if(isset($wpaicg_role['hide']) && !empty($wpaicg_role['hide'])){
+                        $user_role->add_cap('wpaicg_'.$wpaicg_role['hide']);
                     }
-                } else {
-                    $user_role->add_cap('wpaicg_' . $key);
+                    if (isset($wpaicg_role['roles']) && count($wpaicg_role['roles'])) {
+                        foreach ($wpaicg_role['roles'] as $key_role => $role_name) {
+                            $user_role->add_cap('wpaicg_' . $key . '_' . $key_role);
+                        }
+                    } else {
+                        $user_role->add_cap('wpaicg_' . $key);
+                    }
                 }
+            } else {
+                // Log an error or handle the case where the role doesn't exist
+                error_log('The specified user role does not exist.');
             }
         }
 

@@ -322,6 +322,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                             margin-top:2px;
                             margin-bottom: 2px;
                         }
+                        /* inherit for hyperlink */
+                        .wpaicg-chatbox-footer a{
+                            color: inherit;
+                        }
                         .wpaicg_chat_widget_content textarea.wpaicg-chatbox-typing:focus{
                             outline: none;
                         }
@@ -339,6 +343,14 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                             cursor: pointer;
                         }
                         .wpaicg-mic-icon svg{
+                            width: 16px;
+                            height: 16px;
+                            fill: currentColor;
+                        }
+                        .wpaicg-img-icon{
+                            cursor: pointer;
+                        }
+                        .wpaicg-img-icon svg{
                             width: 16px;
                             height: 16px;
                             fill: currentColor;
@@ -486,6 +498,14 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                     cursor: pointer;
                 }
                 .wpaicg-mic-icon svg{
+                    width: 16px;
+                    height: 16px;
+                    fill: currentColor;
+                }
+                .wpaicg-img-icon{
+                    cursor: pointer;
+                }
+                .wpaicg-img-icon svg{
                     width: 16px;
                     height: 16px;
                     fill: currentColor;

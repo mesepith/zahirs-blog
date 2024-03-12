@@ -15,6 +15,31 @@ if(!class_exists('\\WPAICG\\WPAICG_Util')) {
             return self::$instance;
         }
 
+        public function initialize_ai_engine() {
+            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+            $ai_engine = WPAICG_OpenAI::get_instance()->openai();
+    
+            switch ($wpaicg_provider) {
+                case 'OpenAI':
+                    $ai_engine = WPAICG_OpenAI::get_instance()->openai();
+                    break;
+                case 'Azure':
+                    $ai_engine = WPAICG_AzureAI::get_instance()->azureai();
+                    break;
+                case 'Google':
+                    $ai_engine = WPAICG_Google::get_instance();
+                    break;
+                default:
+                    $ai_engine = WPAICG_OpenAI::get_instance()->openai();
+            }
+    
+            if (!$ai_engine) {
+                throw new \Exception(esc_html__('AI Engine Initialization Failed: Provider Setting Not Found', 'gpt3-ai-content-generator'));
+            }
+    
+            return $ai_engine;
+        }
+
         public function seo_plugin_activated()
         {
             $activated = false;

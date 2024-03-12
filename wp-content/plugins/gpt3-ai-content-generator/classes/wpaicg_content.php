@@ -459,19 +459,30 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                         $wpaicg_generator_post_id = get_post_meta( $wpaicg_bulk->ID, '_wpaicg_generator_post', true );
                         $wpaicg_cost = 0;
                         $wpaicg_ai_model = get_post_meta($wpaicg_bulk->ID,'wpaicg_ai_model',true);
-                        if(!empty($wpaicg_generator_token)) {
-                            if ($wpaicg_ai_model == 'gpt-3.5-turbo' || $wpaicg_ai_model == 'gpt-3.5-turbo-16k') {
-                                $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * 0.002 / 1000, 5));
-                            }
-                            elseif ($wpaicg_ai_model == 'gpt-4') {
-                                $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * 0.06 / 1000, 5));
-                            }
-                            elseif ($wpaicg_ai_model == 'gpt-4-32k') {
-                                $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * 0.12 / 1000, 5));
+                        // Define pricing per 1K tokens
+                        $pricing = array(
+                            'gpt-4' => 0.06,
+                            'gpt-4-32k' => 0.12,
+                            'gpt-4-1106-preview' => 0.01,
+                            'gpt-4-vision-preview' => 0.01,
+                            'gpt-3.5-turbo' => 0.002,
+                            'gpt-3.5-turbo-instruct' => 0.002,
+                            'gpt-3.5-turbo-16k' => 0.004,
+                            'text-davinci-003' => 0.02,
+                            'text-curie-001' => 0.002,
+                            'text-babbage-001' => 0.0005,
+                            'text-ada-001' => 0.0004,
+                            'gemini-pro' => 0.000375
+                        );
+                        if (!empty($wpaicg_generator_token)) {
+                            if (array_key_exists($wpaicg_ai_model, $pricing)) {
+                                $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * $pricing[$wpaicg_ai_model] / 1000, 5));
                             } else {
+                                // Default cost calculation if the model is not listed
                                 $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * $this->wpaicg_token_price, 5));
                             }
                         }
+
                         $wpaicg_result['data'][] = array(
                             'id'       => $wpaicg_bulk->ID,
                             'title'    => $wpaicg_bulk->post_title,
@@ -639,9 +650,13 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                         $wpaicg_generator = WPAICG_Generator::get_instance();
                         $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                         $openai = WPAICG_OpenAI::get_instance()->openai();
-                        // if provider not openai then assing azure to $open_ai
-                        if($wpaicg_provider != 'OpenAI'){
-                            $openai = WPAICG_AzureAI::get_instance()->azureai();
+
+                        // Get the AI engine.
+                        try {
+                            $openai = WPAICG_Util::get_instance()->initialize_ai_engine();
+                        } catch (\Exception $e) {
+                            $wpaicg_result['msg'] = $e->getMessage();
+                            wp_send_json($wpaicg_result);
                         }
                         $wpaicg_generator_result = array();
                         if(!$openai){
@@ -806,7 +821,9 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                                         $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-instruct');
                                     } else if ($wpaicg_provider === 'Azure') {
                                         $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                                    }
+                                    } else if ($wpaicg_provider === 'Google') {
+                                        $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
+                                    } 
 
                                     add_post_meta($wpaicg_post_id,'wpaicg_ai_model',$wpaicg_ai_model);
                                     add_post_meta($wpaicg_single->ID,'wpaicg_ai_model',$wpaicg_ai_model);
@@ -1317,6 +1334,12 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                             }
                         } elseif ($wpaicg_provider === 'Azure') {
                             $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
+                        } elseif ($wpaicg_provider === 'Google') {
+                            if (isset($_REQUEST['model']) && !empty($_REQUEST['model'])) {
+                                $wpaicg_ai_model = sanitize_text_field($_REQUEST['model']);
+                            } else {
+                                $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
+                            }
                         }
                         
                         $source_log = 'writer';

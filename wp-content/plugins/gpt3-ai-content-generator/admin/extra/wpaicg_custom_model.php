@@ -75,7 +75,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 </div>
                 <div class="wpaicg_custom_template_add_topic">
                     <div class="mb-5">
-                        <input class="wpaicg_template_topic" type="text" style="width: 100%" placeholder="<?php echo esc_html__('Topic: e.g. Mobile Phones','gpt3-ai-content-generator')?>">
+                        <input class="wpaicg_template_topic" type="text" style="width: 100%" placeholder="<?php echo esc_html__('Topic: e.g. Artificial Intelligence','gpt3-ai-content-generator')?>">
                     </div>
                 </div>
                 <div class="wpaicg_custom_template_add_title" style="display: none">

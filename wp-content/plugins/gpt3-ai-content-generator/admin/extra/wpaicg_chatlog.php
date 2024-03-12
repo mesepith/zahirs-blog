@@ -34,7 +34,8 @@ $pricing = array(
     'text-davinci-003' => 0.02,
     'text-curie-001' => 0.002,
     'text-babbage-001' => 0.0005,
-    'text-ada-001' => 0.0004
+    'text-ada-001' => 0.0004,
+    'gemini-pro' => 0.000375
 );
 
 // Retrieve custom models from WordPress option
@@ -518,7 +519,7 @@ if ($file_url) {
                         $breakdown .= "<td>" . esc_html($provider) . "</td>";
                         $breakdown .= "<td>" . esc_html($model) . "</td>";
                         $breakdown .= "<td>" . esc_html($tokens) . "</td>";
-                        $breakdown .= "<td>$" . esc_html(round($cost, 4)) . "</td>";
+                        $breakdown .= "<td>$" . esc_html(number_format($cost, 6)) . "</td>";
                         $breakdown .= "</tr>";
 
                         $displayed_records++; // Increment the counter for displayed records
@@ -567,7 +568,7 @@ if ($file_url) {
                 }
 
             }
-            $estimated = round($estimated_total, 4); // Calculate the total estimated cost for the log entry
+            $estimated = number_format($estimated_total, 6); // Calculate the total estimated cost for the log entry
             ?>
             <tr>
                 <td><?php echo esc_html($wpaicg_log->id)?></td>

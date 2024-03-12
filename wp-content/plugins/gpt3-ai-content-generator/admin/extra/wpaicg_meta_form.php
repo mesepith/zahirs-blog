@@ -8,7 +8,7 @@ if ( !defined( 'ABSPATH' ) ) {
     <div class="wpaicg_grid_form_2">
         <div class="mb-5">
             <input type="text" id="wpai_preview_title" placeholder="<?php 
-echo  esc_html__( 'Title: e.g. Mobile Phones', 'gpt3-ai-content-generator' ) ;
+echo  esc_html__( 'Title: e.g. Artificial Intelligence', 'gpt3-ai-content-generator' ) ;
 ?>" class="wpaicg-input" name="_wporg_preview_title" value="<?php 
 echo  esc_html( $_wporg_preview_title ) ;
 ?>">
@@ -1332,7 +1332,7 @@ $wpaicg_toc = get_option( 'wpaicg_toc', false );
                     <label class="wpaicg-form-label" for="wpaicg_toc"><?php 
 echo  esc_html__( 'Add Table of Contents?', 'gpt3-ai-content-generator' ) ;
 ?></label>
-                    <input<?php 
+                    <input <?php 
 echo  ( $wpaicg_toc ? ' checked' : '' ) ;
 ?> type="checkbox" value="1" name="wpaicg_toc" id="wpaicg_toc">
                 </div>
@@ -1441,7 +1441,7 @@ $_wpaicg_seo_meta_desc = get_option( '_wpaicg_seo_meta_desc', false );
                     <label class="wpaicg-form-label" for="wpaicg_seo_meta_desc"><?php 
 echo  esc_html__( 'Meta Description', 'gpt3-ai-content-generator' ) ;
 ?></label>
-                    <input<?php 
+                    <input <?php 
 echo  ( $_wpaicg_seo_meta_desc ? ' checked' : '' ) ;
 ?> type="checkbox" name="wpaicg_seo_meta_desc" id="wpaicg_seo_meta_desc" class="wpai-content-title-input" value="1" />
                 </div>
@@ -1470,7 +1470,7 @@ if ( empty($wpaicg_content_custom_prompt) ) {
 }
 ?>
                 <div class="mb-5">
-                    <label><input<?php 
+                    <label><input <?php 
 echo  ( $wpaicg_content_custom_prompt_enable ? ' checked' : '' ) ;
 ?> type="checkbox" class="wpaicg_meta_custom_prompt_enable" name="wpaicg_custom_prompt_enable">&nbsp;Enable</label>
                 </div>

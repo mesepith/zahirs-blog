@@ -31,8 +31,9 @@ if($checkRole){
             'logs' => esc_html__('Logs','gpt3-ai-content-generator'),
             'settings' => esc_html__('Settings','gpt3-ai-content-generator')
         );
-        // Add 'assistants' tab if the feature is enabled
-        if ($assistants_enabled) {
+        $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+        // Add 'assistants' tab if the feature is enabled and provider is OpenAI
+        if ($assistants_enabled && $wpaicg_provider == 'OpenAI') {
             $menus['assistants'] = esc_html__('Assistants','gpt3-ai-content-generator');
         }
         if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()){

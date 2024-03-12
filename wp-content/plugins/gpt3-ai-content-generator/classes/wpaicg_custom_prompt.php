@@ -38,9 +38,13 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Custom_Prompt' ) ) {
                 $wpaicg_generator = WPAICG_Generator::get_instance();
                 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                 $openai = WPAICG_OpenAI::get_instance()->openai();
-                // if provider not openai then assing azure to $open_ai
-                if($wpaicg_provider != 'OpenAI'){
-                    $openai = WPAICG_AzureAI::get_instance()->azureai();
+
+                // Get the AI engine.
+                try {
+                    $openai = WPAICG_Util::get_instance()->initialize_ai_engine();
+                } catch (\Exception $e) {
+                    $wpaicg_result['msg'] = $e->getMessage();
+                    wp_send_json($wpaicg_result);
                 }
                 if(!$openai){
                     $wpaicg_result['msg'] = esc_html__('Missing API Setting','gpt3-ai-content-generator');
@@ -142,10 +146,14 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Custom_Prompt' ) ) {
                     ) );
                     $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                     $openai = WPAICG_OpenAI::get_instance()->openai();
-                    // if provider not openai then assing azure to $open_ai
-                    if($wpaicg_provider != 'OpenAI'){
-                        $openai = WPAICG_AzureAI::get_instance()->azureai();
+                    // Get the AI engine.
+                    try {
+                        $openai = WPAICG_Util::get_instance()->initialize_ai_engine();
+                    } catch (\Exception $e) {
+                        $wpaicg_result['msg'] = $e->getMessage();
+                        wp_send_json($wpaicg_result);
                     }
+
                     if(!$openai){
                         $wpaicg_content_class->wpaicg_bulk_error_log($wpaicg_single->ID, 'Missing API Setting');
                     }

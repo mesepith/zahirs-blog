@@ -58,20 +58,32 @@ $wpaicg_single_logs = new WP_Query($args);
             $wpaicg_source_log = get_post_meta($wpaicg_single_log->ID,'wpaicg_source_log',true);
             $post_categories = wp_get_post_categories( $wpaicg_post_id ,array('fields' => 'names'));
             $wpaicg_provider = get_post_meta($wpaicg_single_log->ID,'wpaicg_provider',true);
+            // Define pricing per 1K tokens
+            $pricing = array(
+                'gpt-4' => 0.06,
+                'gpt-4-32k' => 0.12,
+                'gpt-4-1106-preview' => 0.01,
+                'gpt-4-vision-preview' => 0.01,
+                'gpt-3.5-turbo' => 0.002,
+                'gpt-3.5-turbo-instruct' => 0.002,
+                'gpt-3.5-turbo-16k' => 0.004,
+                'text-davinci-003' => 0.02,
+                'text-curie-001' => 0.002,
+                'text-babbage-001' => 0.0005,
+                'text-ada-001' => 0.0004,
+                'gemini-pro' => 0.000375
+            );
             $wpaicg_estimated = 0;
-            if(!empty($wpaicg_usage_token)){
-                if($wpaicg_ai_model === 'gpt-3.5-turbo' || $wpaicg_ai_model === 'gpt-3.5-turbo-16k') {
-                    $wpaicg_estimated = 0.002 * $wpaicg_usage_token / 1000;
-                }
-                if($wpaicg_ai_model === 'gpt-4') {
-                    $wpaicg_estimated = 0.06 * $wpaicg_usage_token / 1000;
-                }
-                if($wpaicg_ai_model === 'gpt-4-32k') {
-                    $wpaicg_estimated = 0.12 * $wpaicg_usage_token / 1000;
-                }
-                else{
+            // Calculate estimated cost
+            if (!empty($wpaicg_usage_token)) {
+                if (array_key_exists($wpaicg_ai_model, $pricing)) {
+                    $wpaicg_estimated = $pricing[$wpaicg_ai_model] * $wpaicg_usage_token / 1000;
+                } else {
+                    // Default pricing if the model is not listed
                     $wpaicg_estimated = 0.02 * $wpaicg_usage_token / 1000;
                 }
+            } else {
+                $wpaicg_estimated = 0; // Ensure estimated cost is 0 if there are no usage tokens
             }
             if($wpaicg_source_log == 'speech' && $wpaicg_duration > 0){
                 $wpaicg_estimated +=  $wpaicg_duration*0.0001;
@@ -86,7 +98,17 @@ $wpaicg_single_logs = new WP_Query($args);
                 </td>
                 <td><?php echo esc_html(gmdate('d.m.Y H:i',strtotime($wpaicg_single_log->post_date)))?></td>
                 <td><?php echo esc_html(WPAICG\WPAICG_Content::get_instance()->wpaicg_seconds_to_time((int)$wpaicg_duration))?></td>
-                <td><?php echo esc_html(round($wpaicg_usage_token))?></td>
+                <td>
+                    <?php
+                    // Check if $wpaicg_usage_token is set, not empty, and is numeric
+                    if (isset($wpaicg_usage_token) && !empty($wpaicg_usage_token) && is_numeric($wpaicg_usage_token)) {
+                        echo esc_html(round((float)$wpaicg_usage_token));
+                    } else {
+                        // If $wpaicg_usage_token does not meet the criteria, display a default value or handle as needed
+                        echo esc_html('0');
+                    }
+                    ?>
+                </td>
                 <td><?php echo esc_html(number_format($wpaicg_estimated,5))?>$</td>
                 <td><?php echo esc_html($wpaicg_provider)?></td>
                 <td><?php echo esc_html($wpaicg_ai_model)?></td>

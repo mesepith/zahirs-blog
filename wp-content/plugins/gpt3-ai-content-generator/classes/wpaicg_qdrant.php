@@ -109,6 +109,12 @@ if (!class_exists('\\WPAICG\\WPAICG_Qdrant')) {
             }
 
             $collectionName = sanitize_text_field($_POST['collection_name']);
+            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+            $dimension = 1536;
+
+            if ($wpaicg_provider === 'Google') {
+                $dimension = 768;
+            } 
             $apiKey = sanitize_text_field($_POST['api_key']); 
             $endpoint = rtrim(sanitize_text_field($_POST['endpoint']), '/') . '/collections/' . $collectionName; 
 
@@ -121,7 +127,7 @@ if (!class_exists('\\WPAICG\\WPAICG_Qdrant')) {
                 'body' => json_encode([
                     'vectors' => [
                         'distance' => 'Cosine',
-                        'size' => 1536,
+                        'size' => $dimension
                     ],
                 ])
             ]);

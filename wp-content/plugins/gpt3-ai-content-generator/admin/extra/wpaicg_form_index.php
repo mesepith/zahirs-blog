@@ -3,9 +3,31 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 global $wpdb;
 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 $azure_deployment_name = get_option('wpaicg_azure_deployment', '');
+
+$wpaicg_google_api_key = get_option('wpaicg_google_model_api_key', ''); // Get Google API Key
+$wpaicg_google_model_list = get_option('wpaicg_google_model_list', ['gemini-pro']);
+$wpaicg_google_default_model = get_option('wpaicg_google_default_model', 'gemini-pro');
+
 $wpaicg_categories = array();
 $wpaicg_items = array();
 $wpaicg_icons = array();
+
+// Retrieve collections and default collection from the options table
+$qdrant_collections_serialized = get_option('wpaicg_qdrant_collections');
+$qdrant_default_collection = get_option('wpaicg_qdrant_default_collection');
+
+// Unserialize the collections string to an array
+$qdrant_collections = maybe_unserialize($qdrant_collections_serialized);
+
+// Ensure $qdrant_collections is an array before using it
+if (!is_array($qdrant_collections)) {
+    $qdrant_collections = [];
+}
+
+// Retrieve Pinecone indexes from the options table
+$pineconeindexes = get_option('wpaicg_pinecone_indexes','');
+$pineconeindexes = empty($pineconeindexes) ? array() : json_decode($pineconeindexes,true);
+
 
 // Define the model categories and their members.
 $gpt4_models = ['gpt-4', 'gpt-4-32k','gpt-4-1106-preview','gpt-4-vision-preview'];
@@ -47,7 +69,7 @@ if(file_exists(WPAICG_PLUGIN_DIR.'admin/data/gptforms.json')){
 }
 
 $sql = "SELECT p.ID as id,p.post_title as title,p.post_author as author, p.post_content as description";
-$wpaicg_meta_keys = array('fields','editor','prompt','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','bgcolor','header','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
+$wpaicg_meta_keys = array('fields','editor','prompt','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
 
 foreach ($wpaicg_meta_keys as $wpaicg_meta_key) {
     $sql .= $wpdb->prepare(
@@ -220,6 +242,20 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
         display: block!important;
         margin-bottom: 10px!important;
     }
+
+    .wpaicg-export-template{
+        width: 32%;
+        display: inline-block;
+        margin-bottom: 10px!important;
+    }
+    .wpaicg-delete-template{
+        width: 32%;
+        display: inline-block;
+        margin-bottom: 10px!important;
+        background: #9d0000!important;
+        border-color: #9b0000!important;
+        color: #fff!important;
+    }
     .wpaicg-template-icons{}
     .wpaicg-template-icons span{
         padding: 10px;
@@ -332,6 +368,7 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
         display:none
     }
 </style>
+<div id="exportMessage" style="display: none;" class="notice notice-success"></div>
 <div class="wpaicg-template-form-field-default" style="display: none">
     <div class="wpaicg-template-form-field">
         <div class="wpaicg-grid">
@@ -392,6 +429,7 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
         <li class="wpaicg-active" data-target="properties"><?php echo esc_html__('Properties','gpt3-ai-content-generator')?></li>
         <li data-target="ai-engine"><?php echo esc_html__('AI Engine','gpt3-ai-content-generator')?></li>
         <li data-target="fields"><?php echo esc_html__('Fields','gpt3-ai-content-generator')?></li>
+        <li data-target="embeddings"><?php echo esc_html__('Embeddings','gpt3-ai-content-generator')?></li>
         <li data-target="style"><?php echo esc_html__('Style','gpt3-ai-content-generator')?></li>
         <li data-target="frontend"><?php echo esc_html__('Frontend','gpt3-ai-content-generator')?></li>
     </ul>
@@ -449,6 +487,15 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
                                 <?php endforeach; ?>
                             </optgroup>
                         </select>
+                        <?php elseif ($wpaicg_provider == 'Google'): ?>
+                        <!-- Display dropdown for Google AI -->
+                        <select name="engine" class="wpaicg-w-100 wpaicg-create-template-engine" required>
+                            <optgroup label="Google Models">
+                                <?php foreach ($wpaicg_google_model_list as $model): ?>
+                                    <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        </select>
                     <?php else: ?>
                         <!-- Display readonly text field for AzureAI -->
                         <input type="text" 
@@ -494,6 +541,63 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
             <div class="wpaicg-mb-10">
                 <div class="mb-5 wpaicg-d-flex wpaicg-align-items-center"><strong class=""><?php echo esc_html__('Fields','gpt3-ai-content-generator')?></strong><button type="button" class="wpaicg-create-form-field button button-primary button-small wpaicg-align-items-center" style="display: inline-flex;margin-left: 5px;"><span class="dashicons dashicons-plus"></span></button></div>
                 <div class="wpaicg-template-fields"></div>
+            </div>
+        </div>
+        <div class="wpaicg-modal-tab wpaicg-modal-tab-embeddings" style="display: none">
+            <!--Activate Embeddings -->
+            <div class="wpaicg-grid wpaicg-mb-10">
+                <div class="wpaicg-grid-1">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Use Embeddings','gpt3-ai-content-generator')?></strong>
+                    <select name="embeddings" class="wpaicg-w-100 wpaicg-create-template-embeddings">
+                        <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
+                        <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
+                    </select>
+                </div>
+                <!-- Vector DB Section -->
+                <div class="wpaicg-grid-1 wpaicg-vectordb-container">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Vector DB','gpt3-ai-content-generator')?></strong>
+                    <select name="vectordb" class="wpaicg-w-100 wpaicg-create-template-vectordb">
+                        <option value=""><?php echo esc_html__('None','gpt3-ai-content-generator')?></option>
+                        <option value="qdrant"><?php echo esc_html__('Qdrant','gpt3-ai-content-generator')?></option>
+                        <option value="pinecone"><?php echo esc_html__('Pinecone','gpt3-ai-content-generator')?></option>
+                    </select>
+                </div>
+                <!-- Placeholder for Collections Dropdown -->
+                <div class="wpaicg-grid-1 wpaicg-collections-dropdown" style="display: none">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Collections', 'gpt3-ai-content-generator'); ?></strong>
+                    <select name="collections" class="wpaicg-w-100 wpaicg-create-template-collections">
+                        <!-- Options will be dynamically added here -->
+                    </select>
+                </div>
+                <!-- Placeholder for Pinecone Indexes Dropdown -->
+                <div class="wpaicg-grid-1 wpaicg-pineconeindexes-dropdown" style="display: none">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Indexes', 'gpt3-ai-content-generator'); ?></strong>
+                    <select name="pineconeindexes" class="wpaicg-w-100 wpaicg-create-template-pineconeindexes">
+                        <!-- Options will be dynamically added here -->
+                    </select>
+                </div>
+                <!-- Placeholder for Number of Results dropdown from 1 to 3-->
+                <div class="wpaicg-grid-1 wpaicg-embeddings-limit" style="display: none">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Limit', 'gpt3-ai-content-generator'); ?></strong>
+                    <select name="embeddings_limit" class="wpaicg-w-100 wpaicg-create-template-embeddings_limit">
+                        <option value="1"><?php echo esc_html__('1', 'gpt3-ai-content-generator'); ?></option>
+                        <option value="2"><?php echo esc_html__('2', 'gpt3-ai-content-generator'); ?></option>
+                        <option value="3"><?php echo esc_html__('3', 'gpt3-ai-content-generator'); ?></option>
+                    </select>
+                </div>
+                <!-- Placeholder for Suffix Text -->
+                <div class="wpaicg-grid-1 wpaicg-context-suffix" style="display: none">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Context Label','gpt3-ai-content-generator')?></strong>
+                    <input value="<?php echo esc_html__('Context:','gpt3-ai-content-generator')?>" type="text" name="suffix_text" class="regular-text wpaicg-w-100 wpaicg-create-template-suffix_text">
+                </div>
+                <!-- Placeholder for Context label position: before prompt or after prompt -->
+                <div class="wpaicg-grid-1 wpaicg-context-suffix-position" style="display: none">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Context Position','gpt3-ai-content-generator')?></strong>
+                    <select name="suffix_position" class="wpaicg-w-100 wpaicg-create-template-suffix_position">
+                        <option value="after"><?php echo esc_html__('After Prompt','gpt3-ai-content-generator')?></option>
+                        <option value="before"><?php echo esc_html__('Before Prompt','gpt3-ai-content-generator')?></option>
+                    </select>
+                </div>
             </div>
         </div>
         <div class="wpaicg-modal-tab wpaicg-modal-tab-style" style="display: none">
@@ -641,6 +745,13 @@ endif;
     <div class="wpaicg-grid">
         <div class="wpaicg-grid-1">
             <button class="button button-primary wpaicg-create-template" type="button"><?php echo esc_html__('Design Your Form','gpt3-ai-content-generator')?></button>
+            <!-- add Export and Import buttons next to each ohter -->
+            <button class="button button-primary wpaicg-export-template" type="button" id="exportButton"><?php echo esc_html__('Export','gpt3-ai-content-generator')?></button>
+            <button class="button button-primary wpaicg-export-template" type="button" id="importButton"><?php echo esc_html__('Import','gpt3-ai-content-generator')?></button>
+            <button class="button button-primary wpaicg-delete-template" type="button" id="deleteButton"><?php echo esc_html__('Delete','gpt3-ai-content-generator')?></button>
+            <!-- Hidden File Input for Import -->
+            <input type="file" id="importFileInput" style="display: none;" accept=".json">
+            <p></p>
             <strong><?php echo esc_html__('Author','gpt3-ai-content-generator')?></strong>
             <ul class="wpaicg-list wpaicg-mb-10 wpaicg-authors">
                 <?php
@@ -687,8 +798,10 @@ endif;
                         $wpaicg_engine = isset($wpaicg_item['engine']) && !empty($wpaicg_item['engine']) ? $wpaicg_item['engine'] : $this->wpaicg_engine;
                         if ($wpaicg_provider == 'Azure') {
                             $wpaicg_engine = get_option('wpaicg_azure_deployment', '');
-                        } 
-                        
+                        } elseif ($wpaicg_provider == 'Google') {
+                            $wpaicg_engine = get_option('wpaicg_google_default_model', 'gemini-pro');
+                        }
+
                         $wpaicg_max_tokens = isset($wpaicg_item['max_tokens']) && !empty($wpaicg_item['max_tokens']) ? $wpaicg_item['max_tokens'] : $this->wpaicg_max_tokens;
                         $wpaicg_temperature = isset($wpaicg_item['temperature']) && !empty($wpaicg_item['temperature']) ? $wpaicg_item['temperature'] : $this->wpaicg_temperature;
                         $wpaicg_top_p = isset($wpaicg_item['top_p']) && !empty($wpaicg_item['top_p']) ? $wpaicg_item['top_p'] : $this->wpaicg_top_p;
@@ -752,12 +865,19 @@ endif;
                             data-response="<?php echo esc_html(@$wpaicg_item['response']);?>"
                             data-editor="<?php echo isset($wpaicg_item['editor']) && $wpaicg_item['editor'] == 'div' ? 'div' : 'textarea'?>"
                             data-header="<?php echo isset($wpaicg_item['header']) ? esc_html($wpaicg_item['header']) : '';?>"
+                            data-embeddings="<?php echo isset($wpaicg_item['embeddings']) ? esc_html($wpaicg_item['embeddings']) : 'no';?>"
+                            data-vectordb="<?php echo isset($wpaicg_item['vectordb']) ? esc_html($wpaicg_item['vectordb']) : '';?>"
+                            data-suffix_position="<?php echo isset($wpaicg_item['suffix_position']) ? esc_html($wpaicg_item['suffix_position']) : 'after';?>"
+                            data-collections="<?php echo isset($wpaicg_item['collections']) ? esc_html($wpaicg_item['collections']) : '';?>"
+                            data-pineconeindexes="<?php echo isset($wpaicg_item['pineconeindexes']) ? esc_html($wpaicg_item['pineconeindexes']) : '';?>"
                             data-bgcolor="<?php echo isset($wpaicg_item['bgcolor']) ? esc_html($wpaicg_item['bgcolor']) : '';?>"
                             data-dans="<?php echo isset($wpaicg_item['dans']) ? esc_html($wpaicg_item['dans']) : '';?>"
                             data-ddraft="<?php echo isset($wpaicg_item['ddraft']) ? esc_html($wpaicg_item['ddraft']) : '';?>"
                             data-dclear="<?php echo isset($wpaicg_item['dclear']) ? esc_html($wpaicg_item['dclear']) : '';?>"
                             data-dnotice="<?php echo isset($wpaicg_item['dnotice']) ? esc_html($wpaicg_item['dnotice']) : '';?>"
                             data-generate_text="<?php echo isset($wpaicg_item['generate_text']) && !empty($wpaicg_item['generate_text']) ? esc_html($wpaicg_item['generate_text']) : esc_html__('Generate','gpt3-ai-content-generator');?>"
+                            data-suffix_text = "<?php echo isset($wpaicg_item['suffix_text']) && !empty($wpaicg_item['suffix_text']) ? esc_html($wpaicg_item['suffix_text']) : esc_html__('Context:','gpt3-ai-content-generator');?>"
+                            data-embeddings_limit="<?php echo isset($wpaicg_item['embeddings_limit']) ? esc_html($wpaicg_item['embeddings_limit']) : '1';?>"
                             data-noanswer_text="<?php echo isset($wpaicg_item['noanswer_text']) && !empty($wpaicg_item['noanswer_text']) ? esc_html($wpaicg_item['noanswer_text']) : esc_html__('Number of Answers','gpt3-ai-content-generator');?>"
                             data-draft_text="<?php echo isset($wpaicg_item['draft_text']) && !empty($wpaicg_item['draft_text']) ? esc_html($wpaicg_item['draft_text']) : esc_html__('Save Draft','gpt3-ai-content-generator');?>"
                             data-clear_text="<?php echo isset($wpaicg_item['clear_text']) && !empty($wpaicg_item['clear_text']) ? esc_html($wpaicg_item['clear_text']) : esc_html__('Clear','gpt3-ai-content-generator');?>"
@@ -859,6 +979,15 @@ endif;
                                     <?php endforeach; ?>
                                 </optgroup>
                             </select>
+                            <?php elseif ($wpaicg_provider == 'Google'): ?>
+                            <!-- Display dropdown for Google AI -->
+                            <select name="engine" class="wpaicg-w-100 wpaicg-create-template-engine" required>
+                                <optgroup label="Google Models">
+                                    <?php foreach ($wpaicg_google_model_list as $model): ?>
+                                        <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            </select>
                         <?php else: ?>
                             <!-- Display readonly text field for AzureAI -->
                             <input type="text" 
@@ -879,6 +1008,7 @@ endif;
                     <div class="mb-5 wpaicg-template-stop"><strong><?php echo esc_html__('Stop','gpt3-ai-content-generator')?>:<small><?php echo esc_html__('separate by commas','gpt3-ai-content-generator')?></small></strong><input name="stop" type="text"></div>
                     <div class="mb-5 wpaicg-template-estimated"><strong><?php echo esc_html__('Estimated','gpt3-ai-content-generator')?>: </strong><span></span></div>
                     <div class="mb-5 wpaicg-template-post_title"><input type="hidden" name="post_title"></div>
+                    <div class="mb-5 wpaicg-template-id"><input type="hidden" name="id"></div>
                     <div class="mb-5 wpaicg-template-sample"><?php echo esc_html__('Sample Response','gpt3-ai-content-generator')?><div class="wpaicg-template-response"></div></div>
                     <div style="padding: 5px;background: #ffc74a;border-radius: 4px;color: #000;" class="wpaicg-template-shortcode"></div>
                 </div>
@@ -889,6 +1019,10 @@ endif;
 
 
 <script>
+    var qdrantCollections = <?php echo json_encode($qdrant_collections); ?>;
+    var qdrantDefaultCollection = "<?php echo esc_js($qdrant_default_collection); ?>";
+    var pineconeIndexes = <?php echo json_encode($pineconeindexes); ?>;
+
     jQuery(document).ready(function ($){
         let prompt_id;
         let prompt_name;
@@ -910,6 +1044,99 @@ endif;
         var wpaicgTemplageFieldDefault = $('.wpaicg-template-form-field-default');
         var wpaicgCreateField = $('.wpaicg-template-form-field-default');
         var wpaicgFieldInputs = ['label','id','type','min','max','options','rows','cols'];
+
+        // Function to handle export ai forms
+        function exportSettings() {
+            $.ajax({
+                url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'wpaicg_export_ai_forms',
+                    nonce: '<?php echo wp_create_nonce('wpaicg_export_ai_forms'); ?>'
+                },
+                success: function(response) {
+                    var messageDiv = $('#exportMessage');
+                    if (response.success) {
+                        // Assuming the response contains a URL to the exported file
+                        var downloadLink = '<a href="' + response.data.url + '" download><?php echo esc_html__('Download Exported Forms', 'gpt3-ai-content-generator'); ?></a>';
+                        messageDiv.html('<?php echo esc_html__('Export successful.', 'gpt3-ai-content-generator'); ?> ' + downloadLink);
+                    } else {
+                        messageDiv.html('<?php echo esc_html__('Export failed:', 'gpt3-ai-content-generator'); ?>' + response.data);
+                    }
+                    messageDiv.show();
+                },
+                error: function(xhr, status, error) {
+                    $('#exportMessage').html('<?php echo esc_html__('An error occurred:', 'gpt3-ai-content-generator'); ?>' + error).show();
+                }
+            });
+        }
+
+        // Attach the exportSettings function to the exportButton's click event
+        $('#exportButton').on('click', function() {
+            exportSettings();
+        });
+
+        // Trigger file input when the Import button is clicked
+        $('#importButton').on('click', function(e) {
+            e.preventDefault();
+            $('#importFileInput').click();
+        });
+
+        // Handle file selection
+        $('#importFileInput').on('change', function() {
+            var file = this.files[0]; // Get the file
+
+            var formData = new FormData();
+            formData.append('action', 'wpaicg_import_ai_forms');
+            formData.append('nonce', '<?php echo wp_create_nonce('wpaicg_import_ai_forms_nonce'); ?>');
+            formData.append('file', file);
+
+            $.ajax({
+                url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                type: 'POST',
+                processData: false, // Important for FormData
+                contentType: false, // Important for FormData
+                dataType: 'json',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        alert('Import successful.');
+                        location.reload(); // Reload to reflect changes
+                    } else {
+                        alert('Import failed: ' + response.data);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('An error occurred: ' + error);
+                }
+            });
+        });
+
+        $('#deleteButton').on('click', function() {
+            if (confirm('<?php echo esc_js(__('This action will delete all your custom forms. Are you sure?', 'gpt3-ai-content-generator')); ?>')) {
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    dataType: 'json',
+                    data: {
+                        action: 'wpaicg_delete_all_forms',
+                        nonce: '<?php echo wp_create_nonce('wpaicg_delete_all_forms_nonce'); ?>'
+                    },
+                    success: function(response) {
+                        // Directly display the message from the backend
+                        alert(response.data);
+                        if (response.success) {
+                            location.reload(); // Optionally reload the page to reflect the changes
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        alert('<?php echo esc_js(__('An error occurred:', 'gpt3-ai-content-generator')); ?>' + error);
+                    }
+                });
+            }
+        });
+
         $(document).on('click','.wpaicg-template-icons span', function (e){
             var icon = $(e.currentTarget);
             icon.parent().find('span').removeClass('icon_selected');
@@ -927,6 +1154,98 @@ endif;
                 });
             })
         }
+
+        // if embeddings is yes then display the vector db section
+        $(document).on('change', '.wpaicg-create-template-embeddings', function(e) {
+            var embeddings = $(e.currentTarget).val();
+            // wpaicg-vectordb-container
+            var vectorDBSection = $('.wpaicg-vectordb-container');
+            var suffixTextContainer = $('.wpaicg-context-suffix');
+            var suffixPositionContainer = $('.wpaicg-context-suffix-position');
+            var embeddingsLimitContainer = $('.wpaicg-embeddings-limit');
+
+            if (embeddings === 'yes') {
+                vectorDBSection.show(); // Show the Vector DB section
+                $('.wpaicg-create-template-vectordb').trigger('change');
+            } else {
+                vectorDBSection.hide(); // Hide the Vector DB section
+                $('.wpaicg-collections-dropdown').hide();
+                $('.wpaicg-collections-dropdown').next('p').remove();
+                $('.wpaicg-pineconeindexes-dropdown').hide();
+                $('.wpaicg-pineconeindexes-dropdown').next('p').remove();
+                suffixTextContainer.hide(); // Hide the context suffix
+                suffixPositionContainer.hide(); // Hide the context suffix position
+                embeddingsLimitContainer.hide(); // Hide the embeddings limit
+            }
+        });
+
+        // Trigger the change event on page load to set the initial visibility of the Vector DB section
+        $('.wpaicg-create-template-embeddings').trigger('change');
+
+        // Change event for vectordb selection to show/hide collections dropdown
+        $(document).on('change', '.wpaicg-create-template-vectordb', function() {
+            var vectordb = $(this).val();
+            var collectionsDropdownContainer = $('.wpaicg-collections-dropdown');
+            var collectionsDropdown = $('.wpaicg-create-template-collections');
+            var pineconeIndexesContainer = $('.wpaicg-pineconeindexes-dropdown');
+            var indexDropdown = $('.wpaicg-create-template-pineconeindexes');
+            var suffixTextContainer = $('.wpaicg-context-suffix');
+            var suffixPositionContainer = $('.wpaicg-context-suffix-position');
+            var embeddingsLimitContainer = $('.wpaicg-embeddings-limit');
+
+            // Define a message for no collections or indexes
+            var noCollectionsMessage = '<p class="wpaicg-no-items-message"><?php echo esc_html__('No collections available', 'gpt3-ai-content-generator'); ?></p>';
+            var noIndexesMessage = '<p class="wpaicg-no-items-message"><?php echo esc_html__('No indexes available', 'gpt3-ai-content-generator'); ?></p>';
+
+            // Remove any existing no collections/indexes message
+            $('.wpaicg-no-items-message').remove();
+            if (vectordb === 'qdrant' && qdrantCollections.length > 0) {
+                collectionsDropdown.empty(); // Clear existing options
+
+                // Populate the collections dropdown
+                $.each(qdrantCollections, function(index, collection) {
+                    var selectedAttribute = collection === qdrantDefaultCollection ? ' selected' : '';
+                    collectionsDropdown.append('<option value="' + collection + '"' + selectedAttribute + '>' + collection + '</option>');
+                });
+
+                collectionsDropdownContainer.show(); // Show the Collections dropdown
+                pineconeIndexesContainer.hide(); // Hide the Pinecone Indexes dropdown
+                // show the context suffix
+                suffixTextContainer.show();
+                suffixPositionContainer.show();
+                embeddingsLimitContainer.show(); // Show the embeddings limit
+            } else if (vectordb === 'pinecone' && pineconeIndexes.length > 0) {
+                indexDropdown.empty(); // Clear existing options
+                // Populate the Pinecone Indexes dropdown
+                $.each(pineconeIndexes, function(index, item) {
+                    indexDropdown.append('<option value="' + item.url + '">' + item.name + '</option>');
+                });
+
+                pineconeIndexesContainer.show(); // Show the Pinecone Indexes dropdown
+                collectionsDropdownContainer.hide(); // Hide the Collections dropdown
+                // show the context suffix
+                suffixTextContainer.show();
+                suffixPositionContainer.show();
+                embeddingsLimitContainer.show(); // Show the embeddings limit
+            } else {
+                collectionsDropdownContainer.hide(); // Hide the Collections dropdown
+                pineconeIndexesContainer.hide(); // Hide the Pinecone Indexes dropdown
+                suffixTextContainer.hide(); // Hide the context suffix
+                suffixPositionContainer.hide(); // Hide the context suffix position
+                embeddingsLimitContainer.hide(); // Hide the embeddings limit
+                // Display message if no collections or indexes are available
+                if (vectordb === 'qdrant') {
+                    collectionsDropdownContainer.after(noCollectionsMessage);
+                } else if (vectordb === 'pinecone') {
+                    pineconeIndexesContainer.after(noIndexesMessage);
+                }
+            }
+        });
+
+        // Initially trigger vectordb change to apply logic based on default selected value
+        $('.wpaicg-create-template-vectordb').trigger('change');
+
+
         $(document).on('click','.wpaicg-create-form-field', function(e){
             $('.wpaicg-create-template-form .wpaicg-template-fields').append(wpaicgCreateField.html());
             wpaicgSortField();
@@ -983,7 +1302,7 @@ endif;
             $('.wpaicg_modal_title').html('<?php echo esc_html__('Edit your Template','gpt3-ai-content-generator')?>');
             $('.wpaicg_modal_content').html('<form action="" method="post" class="wpaicg-create-template-form">'+wpaicgTemplateContent.html()+'</form>');
             var form = $('.wpaicg-create-template-form');
-            var wpaicg_template_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
+            var wpaicg_template_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','embeddings_limit','suffix_position','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
             for(var i = 0; i < wpaicg_template_keys.length;i++){
                 var wpaicg_template_key = wpaicg_template_keys[i];
                 var wpaicg_template_key_value = item.attr('data-'+wpaicg_template_key);
@@ -1022,6 +1341,68 @@ endif;
                 })
             }
             form.find('.wpaicg-create-template-id').val(id);
+            // Retrieve the saved collection for the item being edited
+            var savedCollection = item.attr('data-collections');
+            // Retrieve the saved pinecone index for the item being edited
+            var savedPineconeIndex = item.attr('data-pineconeindexes');
+            // if embeddings is yes then display the vector db section
+            if (form.find('.wpaicg-create-template-embeddings').val() === 'yes') {
+                form.find('.wpaicg-vectordb-container').show();
+                if (form.find('.wpaicg-create-template-vectordb').val() === 'qdrant') {
+                    // Populate the collections dropdown
+                    form.find('.wpaicg-create-template-collections').empty(); // Clear existing options
+
+                    $.each(qdrantCollections, function(index, collection) {
+                        // Set the selected attribute based on whether this collection matches the saved state
+                        var isSelected = (collection === savedCollection) ? ' selected' : '';
+                        form.find('.wpaicg-create-template-collections').append('<option value="' + collection + '"' + isSelected + '>' + collection + '</option>');
+                    });
+                    form.find('.wpaicg-collections-dropdown').show(); // Show the Collections dropdown
+                    // hide the pinecone indexes dropdown
+                    form.find('.wpaicg-pineconeindexes-dropdown').hide();
+                    // display the context suffix
+                    form.find('.wpaicg-context-suffix').show();
+                    // display the context suffix position
+                    form.find('.wpaicg-context-suffix-position').show();
+                    // display wpaicg-embeddings-limit
+                    form.find('.wpaicg-embeddings-limit').show();
+
+                } else if (form.find('.wpaicg-create-template-vectordb').val() === 'pinecone') {
+                    // Populate the Pinecone Indexes dropdown
+                    form.find('.wpaicg-create-template-pineconeindexes').empty(); // Clear existing options
+
+                    $.each(pineconeIndexes, function(index, item) {
+                        // set the selected attribute based on whether this index matches the saved state
+                        var isSelected = (item.url === savedPineconeIndex) ? ' selected' : '';
+                        form.find('.wpaicg-create-template-pineconeindexes').append('<option value="' + item.url + '"' + isSelected + '>' + item.name + '</option>');
+                    });
+                    form.find('.wpaicg-pineconeindexes-dropdown').show(); // Show the Pinecone Indexes dropdown
+                    // hide the collections dropdown
+                    form.find('.wpaicg-collections-dropdown').hide();
+                    // display the context suffix
+                    form.find('.wpaicg-context-suffix').show();
+                    // display the context suffix position
+                    form.find('.wpaicg-context-suffix-position').show();
+                    // display wpaicg-embeddings-limit
+                    form.find('.wpaicg-embeddings-limit').show();
+                }
+                else {
+                    form.find('.wpaicg-collections-dropdown').hide(); // Hide the Collections dropdown
+                    form.find('.wpaicg-pineconeindexes-dropdown').hide(); // Hide the Pinecone Indexes dropdown
+                    form.find('.wpaicg-context-suffix').hide(); // Hide the context suffix
+                    form.find('.wpaicg-context-suffix-position').hide(); // Hide the context suffix position
+                    form.find('.wpaicg-embeddings-limit').hide(); // Hide the embeddings limit
+                }
+
+            } else {
+                form.find('.wpaicg-vectordb-container').hide();
+                form.find('.wpaicg-collections-dropdown').hide(); // Hide the Collections dropdown
+                form.find('.wpaicg-pineconeindexes-dropdown').hide(); // Hide the Pinecone Indexes dropdown
+                form.find('.wpaicg-context-suffix').hide(); // Hide the context suffix
+                form.find('.wpaicg-context-suffix-position').hide(); // Hide the context suffix position
+                form.find('.wpaicg-embeddings-limit').hide(); // Hide the embeddings limit
+            }
+
             $('.wpaicg-create-template-form .wpaicg-create-template-color').wpColorPicker();
             $('.wpaicg-create-template-form .wpaicg-create-template-bgcolor').wpColorPicker();
             //$('.wpaicg_modal').css('height','60%');
@@ -1036,7 +1417,7 @@ endif;
             $('.wpaicg_modal_title').html('<?php echo esc_html__('Customize your Template','gpt3-ai-content-generator')?>');
             $('.wpaicg_modal_content').html('<form action="" method="post" class="wpaicg-create-template-form">'+wpaicgTemplateContent.html()+'</form>');
             var form = $('.wpaicg-create-template-form');
-            var wpaicg_template_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
+            var wpaicg_template_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
             for(var i = 0; i < wpaicg_template_keys.length;i++){
                 var wpaicg_template_key = wpaicg_template_keys[i];
                 var wpaicg_template_key_value = item.attr('data-'+wpaicg_template_key);
@@ -1205,7 +1586,7 @@ endif;
         var wpaicgTemplateItem = $('.wpaicg-template-item');
         var wpaicgTemplateSearch = $('.wpaicg-template-search');
         var wpaicgTemplateItems = $('.wpaicg-template-items');
-        var wpaicgTemplateSettings = ['engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','post_title','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','copy_text'];
+        var wpaicgTemplateSettings = ['engine','max_tokens','temperature','top_p','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','best_of','frequency_penalty','presence_penalty','stop','post_title','id','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','copy_text'];
         var wpaicgTemplateDefaultContent = $('.wpaicg-template-modal-content');
         var wpaicgTemplateEditor = false;
         var eventGenerator = false;
@@ -1384,10 +1765,11 @@ endif;
                 post_content = $('.wpaicg-template-response-element').html();
             }
             var post_title = $('.wpaicg-template-form .wpaicg-template-post_title input').val();
+            var id = $('.wpaicg-template-form .wpaicg-create-template-id').val();
             if(post_content !== ''){
                 $.ajax({
                     url: '<?php echo admin_url('admin-ajax.php')?>',
-                    data: {title: post_title, content: post_content, action: 'wpaicg_save_draft_post_extra',save_source: 'promptbase','nonce': '<?php echo wp_create_nonce('wpaicg-ajax-nonce')?>'},
+                    data: {title: post_title, id, content: post_content, action: 'wpaicg_save_draft_post_extra',save_source: 'promptbase','nonce': '<?php echo wp_create_nonce('wpaicg-ajax-nonce')?>'},
                     dataType: 'json',
                     type: 'POST',
                     beforeSend: function (){
@@ -1565,7 +1947,7 @@ endif;
                 wpaicgFieldsForm = wpaicgFieldsForm.replace(/\\/g,'');
                 wpaicgFieldsForm = JSON.parse(wpaicgFieldsForm);
                 $.each(wpaicgFieldsForm, function(idx, form_field){
-                    var form_field_html = '<div class="mb-5"><lable>'+form_field['label']+'</label><br>';
+                    var form_field_html = '<div class="mb-5"><label>'+form_field['label']+'</label><br>';
                     var form_field_type = 'text';
                     if(form_field['type'] !== undefined){
                         form_field_type = form_field['type'];
@@ -1633,6 +2015,7 @@ endif;
                         || item_name === 'clear_text'
                         || item_name === 'stop_text'
                         || item_name === 'copy_text'
+                        || item_name === 'suffix_text'
                     ){
                         $('.wpaicg-template-text-'+item_name).html(item_value);
                     }
@@ -1868,76 +2251,100 @@ endif;
                             else{
                                 currentContent = $('.wpaicg-template-response-element').html();
                             }
-                            var resultData = JSON.parse(e.data);
+                            // if e.data is [DONE] then close the event source
+                            if (e.data === "[DONE]") {
+                                stopOpenAIGenerator();
+                            } else 
+                            {
+                                var resultData = JSON.parse(e.data);
 
-                            // Check if the response contains the finish_reason property and if it's set to "stop"
-                            var hasFinishReason = resultData.choices && 
-                                resultData.choices[0] && 
-                                (resultData.choices[0].finish_reason === "stop" || 
-                                resultData.choices[0].finish_reason === "length")||
-                                (resultData.choices[0].finish_details && 
-                                resultData.choices[0].finish_details.type === "stop");
+                                // Check if the response contains the finish_reason property and if it's set to "stop"
+                                var hasFinishReason = resultData.choices && 
+                                    resultData.choices[0] && 
+                                    (resultData.choices[0].finish_reason === "stop" || 
+                                    resultData.choices[0].finish_reason === "length")||
+                                    (resultData.choices[0].finish_details && 
+                                    resultData.choices[0].finish_details.type === "stop");
 
-                            if (hasFinishReason) {
-                                count_line += 1;
-                                if(response_type === 'textarea') {
-                                    if (basicEditor) {
-                                        $('#editor-' + wpaicgEditorNumber).val(currentContent + '<br /><br />');
-                                    } else {
-                                        editor.setContent(currentContent + '<br /><br />');
-                                    }
-                                }
-                                else{
-                                    $('.wpaicg-template-response-element').append('<br />');
-                                }
-                                wpaicg_response_events = 0;
-                            }
-                            else if (e.data === "[LIMITED]") {
-                                wpaicg_limited_token = true;
-                                count_line += 1;
-                                if(response_type === 'textarea') {
-                                    if (basicEditor) {
-                                        $('#editor-' + wpaicgEditorNumber).val(currentContent + '<br /><br />');
-                                    } else {
-                                        editor.setContent(currentContent + '<br /><br />');
-                                    }
-                                }
-                                else{
-                                    $('.wpaicg-template-response-element').append('<br />');
-                                }
-                                wpaicg_response_events = 0;
-                            } else {
-                                var result = JSON.parse(e.data);
-                                if (result.error !== undefined) {
-                                    var content_generated = result.error.message;
-                                } else {
-                                    var content_generated = result.choices[0].delta !== undefined ? (result.choices[0].delta.content !== undefined ? result.choices[0].delta.content : '') : result.choices[0].text;
-                                }
-                                prompt_response += content_generated;
-                                
-                                // Preserve leading/trailing spaces when appending
-                                if(content_generated.trim() === '' && content_generated.includes(' ')) {
-                                    content_generated = '&nbsp;';
-                                }
-
-                                if((content_generated === '\n' || content_generated === ' \n' || content_generated === '.\n' || content_generated === '\n\n' || content_generated === '"\n') && wpaicg_response_events > 0 && currentContent !== ''){
-                                    if(!wpaicg_newline_before) {
-                                        wpaicg_newline_before = true;
-                                        if (response_type === 'textarea') {
-                                            if (basicEditor) {
-                                                $('#editor-' + wpaicgEditorNumber).val(currentContent + '<br /><br />');
-                                            } else {
-                                                editor.setContent(currentContent + '<br /><br />');
-                                            }
+                                if (hasFinishReason) {
+                                    count_line += 1;
+                                    if(response_type === 'textarea') {
+                                        if (basicEditor) {
+                                            $('#editor-' + wpaicgEditorNumber).val(currentContent + '<br /><br />');
                                         } else {
-                                            $('.wpaicg-template-response-element').append('<br />');
+                                            editor.setContent(currentContent + '<br /><br />');
                                         }
                                     }
+                                    else{
+                                        $('.wpaicg-template-response-element').append('<br />');
+                                    }
+                                    wpaicg_response_events = 0;
                                 }
-                                else if(content_generated.indexOf("\n") > -1 && wpaicg_response_events > 0 && currentContent !== ''){
-                                    if (!wpaicg_newline_before) {
-                                        wpaicg_newline_before = true;
-                                        content_generated = content_generated.replace(/\n/g,'<br>');
+                                else if (e.data === "[LIMITED]") {
+                                    wpaicg_limited_token = true;
+                                    count_line += 1;
+                                    if(response_type === 'textarea') {
+                                        if (basicEditor) {
+                                            $('#editor-' + wpaicgEditorNumber).val(currentContent + '<br /><br />');
+                                        } else {
+                                            editor.setContent(currentContent + '<br /><br />');
+                                        }
+                                    }
+                                    else{
+                                        $('.wpaicg-template-response-element').append('<br />');
+                                    }
+                                    wpaicg_response_events = 0;
+                                } else {
+                                    var result = JSON.parse(e.data);
+
+                                    if (result.error !== undefined) {
+                                        var content_generated = result.error.message;
+                                    } else {
+                                        var content_generated = result.choices[0].delta !== undefined ? (result.choices[0].delta.content !== undefined ? result.choices[0].delta.content : '') : result.choices[0].text;
+                                    }
+                                    prompt_response += content_generated;
+                                    
+                                    // Preserve leading/trailing spaces when appending
+                                    if(content_generated.trim() === '' && content_generated.includes(' ')) {
+                                        content_generated = '&nbsp;';
+                                    }
+
+                                    if((content_generated === '\n' || content_generated === ' \n' || content_generated === '.\n' || content_generated === '\n\n' || content_generated === '"\n') && wpaicg_response_events > 0 && currentContent !== ''){
+                                        if(!wpaicg_newline_before) {
+                                            wpaicg_newline_before = true;
+                                            if (response_type === 'textarea') {
+                                                if (basicEditor) {
+                                                    $('#editor-' + wpaicgEditorNumber).val(currentContent + '<br /><br />');
+                                                } else {
+                                                    editor.setContent(currentContent + '<br /><br />');
+                                                }
+                                            } else {
+                                                $('.wpaicg-template-response-element').append('<br />');
+                                            }
+                                        }
+                                    }
+                                    else if(content_generated.indexOf("\n") > -1 && wpaicg_response_events > 0 && currentContent !== ''){
+                                        if (!wpaicg_newline_before) {
+                                            wpaicg_newline_before = true;
+                                            content_generated = content_generated.replace(/\n/g,'<br>');
+                                            if(response_type === 'textarea') {
+                                                if (basicEditor) {
+                                                    $('#editor-' + wpaicgEditorNumber).val(currentContent + content_generated);
+                                                } else {
+                                                    editor.setContent(currentContent + content_generated);
+                                                }
+                                            }
+                                            else{
+                                                $('.wpaicg-template-response-element').append(content_generated);
+                                            }
+                                        }
+                                    }
+                                    else if(content_generated === '\n' && wpaicg_response_events === 0 && currentContent === '' ){
+
+                                    }
+                                    else {
+                                        wpaicg_newline_before = false;
+                                        wpaicg_response_events += 1;
                                         if(response_type === 'textarea') {
                                             if (basicEditor) {
                                                 $('#editor-' + wpaicgEditorNumber).val(currentContent + content_generated);
@@ -1950,44 +2357,28 @@ endif;
                                         }
                                     }
                                 }
-                                else if(content_generated === '\n' && wpaicg_response_events === 0 && currentContent === '' ){
+                                if (count_line === wpaicg_limitLines) {
+                                    if(!wpaicg_limited_token) {
+                                        let endTime = new Date();
+                                        let timeDiff = endTime - startTime;
+                                        timeDiff = timeDiff / 1000;
+                                        data += '&action=wpaicg_form_log&prompt_id=' + prompt_id + '&prompt_name=' + prompt_name + '&prompt_response=' + prompt_response + '&duration=' + timeDiff + '&_wpnonce=' + wp_nonce + '&eventID=';
+                                        $.ajax({
+                                            url: '<?php echo admin_url('admin-ajax.php')?>',
+                                            data: data,
+                                            dataType: 'JSON',
+                                            type: 'POST',
+                                            success: function (res) {
 
-                                }
-                                else {
-                                    wpaicg_newline_before = false;
-                                    wpaicg_response_events += 1;
-                                    if(response_type === 'textarea') {
-                                        if (basicEditor) {
-                                            $('#editor-' + wpaicgEditorNumber).val(currentContent + content_generated);
-                                        } else {
-                                            editor.setContent(currentContent + content_generated);
-                                        }
+                                            }
+                                        })
                                     }
-                                    else{
-                                        $('.wpaicg-template-response-element').append(content_generated);
-                                    }
+                                    $('.wpaicg-template-form .wpaicg-template-stop-generate').hide();
+                                    stopOpenAIGenerator();
+                                    wpaicgRmLoading(btn);
                                 }
                             }
-                            if (count_line === wpaicg_limitLines) {
-                                if(!wpaicg_limited_token) {
-                                    let endTime = new Date();
-                                    let timeDiff = endTime - startTime;
-                                    timeDiff = timeDiff / 1000;
-                                    data += '&action=wpaicg_form_log&prompt_id=' + prompt_id + '&prompt_name=' + prompt_name + '&prompt_response=' + prompt_response + '&duration=' + timeDiff + '&_wpnonce=' + wp_nonce + '&eventID=';
-                                    $.ajax({
-                                        url: '<?php echo admin_url('admin-ajax.php')?>',
-                                        data: data,
-                                        dataType: 'JSON',
-                                        type: 'POST',
-                                        success: function (res) {
-
-                                        }
-                                    })
-                                }
-                                $('.wpaicg-template-form .wpaicg-template-stop-generate').hide();
-                                stopOpenAIGenerator();
-                                wpaicgRmLoading(btn);
-                            }
+ 
                         }
                     }
                 }

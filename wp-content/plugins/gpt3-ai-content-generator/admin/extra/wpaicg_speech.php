@@ -13,14 +13,14 @@ $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 <p><?php echo esc_html__('Simply press the record button and speak your prompt, just like you would in a conversation.','gpt3-ai-content-generator')?></p>
 <strong><?php echo esc_html__('Example','gpt3-ai-content-generator')?></strong>
 <p style="font-style: italic">"<?php echo esc_html__('Write a blog post about the latest mobile phones and their features. Include an introduction that highlights the importance of mobile phones in today\'s world. In the body of the post, discuss the latest mobile phone trends, such as foldable screens, 5G connectivity, and high refresh rate displays. Also, mention the most popular mobile phone brands and their latest releases. Don\'t forget to discuss the benefits and drawbacks of each phone and how they compare to one another. In the conclusion, summarize the key points of the post.','gpt3-ai-content-generator')?>"</p>
-<button class="button button-primary button-hero btn-start-record" style="display: inline-flex" <?php echo ($wpaicg_provider == 'Azure') ? 'disabled' : ''; ?>><span class="dashicons dashicons-microphone"></span><?php echo esc_html__('Speak','gpt3-ai-content-generator')?></button>
-<button class="button button-primary button-hero btn-pause-record" style="display: none" <?php echo ($wpaicg_provider == 'Azure') ? 'disabled' : ''; ?>><span class="dashicons dashicons-controls-pause"></span><?php echo esc_html__('Pause','gpt3-ai-content-generator')?></button>
-<button class="button button-link-delete button-hero btn-stop-record" style="display: none" <?php echo ($wpaicg_provider == 'Azure') ? 'disabled' : ''; ?>><span class="dashicons dashicons-saved"></span><?php echo esc_html__('Stop','gpt3-ai-content-generator')?></button>
-<button class="button button-link-delete button-hero btn-abort-record" style="display: none" <?php echo ($wpaicg_provider == 'Azure') ? 'disabled' : ''; ?>><span class="dashicons dashicons-no"></span><?php echo esc_html__('Cancel','gpt3-ai-content-generator')?></button>
-
-<?php if ($wpaicg_provider == 'Azure'): ?>
+<button class="button button-primary button-hero btn-start-record" style="display: inline-flex" <?php echo ($wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google') ? 'disabled' : ''; ?>><span class="dashicons dashicons-microphone"></span><?php echo esc_html__('Speak','gpt3-ai-content-generator')?></button>
+<button class="button button-primary button-hero btn-pause-record" style="display: none" <?php echo ($wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google') ? 'disabled' : ''; ?>><span class="dashicons dashicons-controls-pause"></span><?php echo esc_html__('Pause','gpt3-ai-content-generator')?></button>
+<button class="button button-link-delete button-hero btn-stop-record" style="display: none" <?php echo ($wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google') ? 'disabled' : ''; ?>><span class="dashicons dashicons-saved"></span><?php echo esc_html__('Stop','gpt3-ai-content-generator')?></button>
+<button class="button button-link-delete button-hero btn-abort-record" style="display: none" <?php echo ($wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google') ? 'disabled' : ''; ?>><span class="dashicons dashicons-no"></span><?php echo esc_html__('Cancel','gpt3-ai-content-generator')?></button>
+<!-- Azure or Google -->
+<?php if ($wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google'): ?>
     <p style="color:red;">
-        <?php echo esc_html__('Please note that the "Speech to Post" module is only available with OpenAI. Microsoft has not yet made the Whisper model available on Azure. If you want to use this feature, please go to Settings - AI Engine and change your provider to OpenAI.','gpt3-ai-content-generator')?>
+        <?php echo esc_html__('Please note that the "Speech to Post" module is only available with OpenAI. If you want to use this feature, please go to Settings - AI Engine and change your provider to OpenAI.','gpt3-ai-content-generator')?>
     </p>
 <?php endif; ?>
 

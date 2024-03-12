@@ -1,15 +1,5 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
-$wpaicg_max_execution = ini_get('max_execution_time');
-if($wpaicg_max_execution < 1000){
-    ?>
-    <div class="wpaicg-alert">
-        <p style="color: #f00">
-            <?php echo esc_html__('It appears that your PHP INI max execution time is less than 1000 seconds. Please increase it to ensure that the plugin functions properly.','gpt3-ai-content-generator')?>
-        </p>
-    </div>
-    <?php
-}
 ?>
 <?php
 if (isset($_POST['wpaicg_delete_running']) && check_admin_referer('wpaicg_delete_running_action', 'wpaicg_delete_running_nonce')) {

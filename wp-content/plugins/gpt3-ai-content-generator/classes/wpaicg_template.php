@@ -304,27 +304,16 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
                     $temperature = (float)$template['temperature'];
                     $top_p = (float)$template['top_p'];
                     $max_tokens = (float)$template['max_tokens'];
-                    $response = $googleAI->send_google_request($title, $model, $temperature, $top_p, $max_tokens);
-                
-                    // Process the response as needed
-                    if (isset($response['error'])) {
-                        // Handle error
-                        $result['status'] = 'error';
-                        $result['msg'] = $response['error'];
-                    } else {
-                        // Handle successful response
-                        if (isset($response['candidates'][0]['content']['parts'][0]['text'])) {
-                            $generatedText = $response['candidates'][0]['content']['parts'][0]['text'];
+                    $result = $googleAI->send_google_request($title, $model, $temperature, $top_p, $max_tokens,'template');
 
-                            // Process the text as needed
-                            $result['data'] = $generatedText;
-                            $result['msg'] = 'success';
-                            $result['status'] = 'success';
-                        } else {
-                            $result['status'] = 'error';
-                            $result['msg'] = 'No valid content found in the response';
-                        }
+                    if (!empty($result['status']) && $result['status'] === 'error') {
+                        wp_send_json(['msg' => $result['msg'], 'status' => 'error']);
+                    } else {
+                        $result['data'] = $result['data'];
+                        $result['msg'] = 'success';
+                        $result['status'] = 'success';
                     }
+                    
                 }
                 if ($result['status'] == 'error') {
                     $wpaicg_result['msg'] = $result['msg'];

@@ -73,17 +73,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                 $wpaicg_result['msg'] = esc_html__('Nonce verification failed','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-            $open_ai = WPAICG_OpenAI::get_instance()->openai();
-            // if provider not openai then assing azure to $open_ai
-            if($wpaicg_provider != 'OpenAI'){
-                $open_ai = WPAICG_AzureAI::get_instance()->azureai();
-            }
-            if(!$open_ai){
-                $wpaicg_result['msg'] = esc_html__('Missing API Setting','gpt3-ai-content-generator');
-                wp_send_json($wpaicg_result);
-                exit;
-            }
+
             if(
                 isset($_REQUEST['title'])
                 && !empty($_REQUEST['title'])
@@ -93,7 +83,14 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                 && !empty($_REQUEST['step'])
             ) {
                 if ($_REQUEST['step'] != 'shorten_url' && $_REQUEST['step'] != 'enforce_focus_keyword_in_url') {
-
+                    // Get the AI engine.
+                    try {
+                        $open_ai = WPAICG_Util::get_instance()->initialize_ai_engine();
+                    } catch (\Exception $e) {
+                        $wpaicg_result['msg'] = $e->getMessage();
+                        wp_send_json($wpaicg_result);
+                        exit;
+                    }
                     $temperature = floatval($open_ai->temperature);
                     $max_tokens = intval($open_ai->max_tokens);
                     $top_p = floatval($open_ai->top_p);
@@ -133,17 +130,6 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                             $wpaicg_woo_custom_prompt_focus_keyword = $wpaicg_languages['woo_focus_keyword'];
                         }
                     }
-                    $wpaicg_ai_model = get_option('wpaicg_ai_model','gpt-3.5-turbo-16k');
-                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-
-                    if($wpaicg_provider != 'OpenAI'){
-                        $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                    } else {
-                        $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-16k');
-                    }
-
-                    $wpaicg_generator = WPAICG_Generator::get_instance();
-                    $wpaicg_generator->openai($open_ai);
 
                     // Get sleep time, default to 1 seconds if not set
                     $sleepTime = get_option('wpaicg_sleep_time', 1);
@@ -215,13 +201,6 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                         return str_replace('%', '%%', $string);
                     }
                     
-                    function replace_placeholders($prompt, $replacements) {
-                        foreach ($replacements as $placeholder => $value) {
-                            $prompt = str_replace($placeholder, $value, $prompt);
-                        }
-                        return $prompt;
-                    }
-                    
                     // Variables that might contain '%' and need to be escaped
                     $title = escape_percentage($title);
                     $short_description = escape_percentage($short_description);
@@ -252,6 +231,28 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                         '[current_purchase_note]' => $current_purchase_note,
                         '[current_focus_keywords]' => $current_seo_keywords,
                     ];
+
+                    function escape_percentage_except_placeholders($prompt) {
+                        // Temporarily replace %s with a placeholder unlikely to be used
+                        $temp_placeholder = '{{PRODUCT_TITLE_PLACEHOLDER}}';
+                        $prompt = str_replace('%s', $temp_placeholder, $prompt);
+                        
+                        // Escape all remaining % symbols
+                        $prompt = str_replace('%', '%%', $prompt);
+                        
+                        // Revert our temporary placeholder back to %s
+                        $prompt = str_replace($temp_placeholder, '%s', $prompt);
+                        
+                        return $prompt;
+                    }
+                    
+                    // Apply this function to your custom prompts
+                    $wpaicg_woo_custom_prompt_title = escape_percentage_except_placeholders($wpaicg_woo_custom_prompt_title);
+                    $wpaicg_woo_custom_prompt_short = escape_percentage_except_placeholders($wpaicg_woo_custom_prompt_short);
+                    $wpaicg_woo_custom_prompt_description = escape_percentage_except_placeholders($wpaicg_woo_custom_prompt_description);
+                    $wpaicg_woo_custom_prompt_meta = escape_percentage_except_placeholders($wpaicg_woo_custom_prompt_meta);
+                    $wpaicg_woo_custom_prompt_keywords = escape_percentage_except_placeholders($wpaicg_woo_custom_prompt_keywords);
+                    $wpaicg_woo_custom_prompt_focus_keyword = escape_percentage_except_placeholders($wpaicg_woo_custom_prompt_focus_keyword);
                     
                     // Mapping step to corresponding prompt
                     $step_mapping = [
@@ -262,29 +263,69 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                         'tags' => $wpaicg_woo_custom_prompt_keywords,
                         'focus_keyword' => $wpaicg_woo_custom_prompt_focus_keyword
                     ];
+
+                    function replace_placeholders($prompt, $replacements) {
+                        foreach ($replacements as $placeholder => $value) {
+                            $prompt = str_replace($placeholder, $value, $prompt);
+                        }
+                        return $prompt;
+                    }
                     
                     if (array_key_exists($step, $step_mapping)) {
                         $prompt = sprintf($step_mapping[$step], $title);
                         $prompt = replace_placeholders($prompt, $common_replacements);
+                        $prompt = escape_percentage($prompt);
                         $prompt = sprintf($prompt, $title);
                     }
+
+                    $wpaicg_ai_model = get_option('wpaicg_ai_model','gpt-3.5-turbo-16k');
+                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+
+                    if ($wpaicg_provider === 'OpenAI') {
+                        $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-16k');
+                    } elseif ($wpaicg_provider === 'Azure') {
+                        $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
+                    } elseif ($wpaicg_provider === 'Google') {
+                        $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
+                    }
                     
-                    if($wpaicg_ai_model == 'gpt-3.5-turbo' || $wpaicg_ai_model == 'gpt-3.5-turbo-16k' || $wpaicg_ai_model == 'gpt-4-1106-preview' || $wpaicg_ai_model == 'gpt-4' || $wpaicg_ai_model == 'gpt-4-32k' || $wpaicg_ai_model == 'gpt-3.5-turbo-instruct' || $wpaicg_ai_model == 'gpt-4-vision-preview'){
+                    if($wpaicg_ai_model == 'gpt-3.5-turbo' || $wpaicg_ai_model == 'gpt-3.5-turbo-16k' || $wpaicg_ai_model == 'gpt-4-1106-preview' || $wpaicg_ai_model == 'gpt-4' || $wpaicg_ai_model == 'gpt-4-32k' || $wpaicg_ai_model == 'gpt-3.5-turbo-instruct' || $wpaicg_ai_model == 'gpt-4-vision-preview' || $wpaicg_ai_model == 'gemini-pro'){
                         $prompt = $wpaicg_languages['fixed_prompt_turbo'].' '.$prompt;
                     }
 
-                    $opts = array(
-                        'model' => $wpaicg_ai_model,
-                        'prompt' => $prompt,
-                        'temperature' => $temperature,
-                        'max_tokens' => $max_tokens,
-                        'frequency_penalty' => $frequency_penalty,
-                        'presence_penalty' => $presence_penalty,
-                        'top_p' => $top_p,
-                        'best_of' => $best_of,
-                    );
-                    $wpaicg_result['prompt'] = $prompt;
-                    $complete = $wpaicg_generator->wpaicg_request($opts);
+                    if ($wpaicg_provider == 'Google') {
+                        $title = $prompt;
+                        $model = $wpaicg_ai_model;
+    
+                        $complete = $open_ai->send_google_request($title, $model, $temperature, $top_p, $max_tokens);
+    
+                        if (!empty($complete['status']) && $complete['status'] === 'error') {
+                            wp_send_json(['msg' => $complete['msg'], 'status' => 'error']);
+                        } else {
+                            $wpaicg_result = $complete;
+                        }    
+    
+                    } else {
+
+                        $opts = array(
+                            'model' => $wpaicg_ai_model,
+                            'prompt' => $prompt,
+                            'temperature' => $temperature,
+                            'max_tokens' => $max_tokens,
+                            'frequency_penalty' => $frequency_penalty,
+                            'presence_penalty' => $presence_penalty,
+                            'top_p' => $top_p,
+                            'best_of' => $best_of,
+                        );
+
+                        $wpaicg_result['prompt'] = $prompt;
+
+                        $wpaicg_generator = WPAICG_Generator::get_instance();
+                        $wpaicg_generator->openai($open_ai);
+
+                        $complete = $wpaicg_generator->wpaicg_request($opts);
+                    }
+
                     if($complete['status'] == 'error'){
                         $wpaicg_result['msg'] = $complete['msg'];
                     }
@@ -312,8 +353,17 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                                         $product_tag = term_exists($tag,'product_tag');
                                         if(!$product_tag){
                                             $product_tag = wp_insert_term($tag,'product_tag');
+                                            // Check if wp_insert_term returned an error.
+                                            if (is_wp_error($product_tag)) {
+                                                error_log('Error inserting term: ' . $product_tag->get_error_message());
+                                                continue; // Skip this iteration if there was an error.
+                                            }
                                         }
                                         $term = get_term($product_tag['term_id'],'product_tag');
+                                        if (is_wp_error($term)) {
+                                            error_log('Error getting term: ' . $term->get_error_message());
+                                            continue; // Skip this iteration if there was an error.
+                                        }
                                         $wpaicg_result['data'][$term->slug] = $tag;
                                         $terms_id[] = (int)$term->term_id;
                                     }
@@ -536,12 +586,18 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                                 });
 
                                 var woo_content_message = '<?php echo esc_html__('This will generate content for [numbers] products. Do you want to continue?','gpt3-ai-content-generator')?>';
-
-                                var ai_model = '<?php echo get_option('wpaicg_ai_model', 'gpt-3.5-turbo-16k'); ?>'; // Fetch AI engine
+                                var wpaicg_provider = '<?php echo get_option('wpaicg_provider', 'OpenAI'); ?>'; // Fetch AI engine
+                                var ai_model = '<?php echo get_option('wpaicg_ai_model', 'gpt-3.5-turbo-16k'); ?>'; // Fetch AI model
+                                if (wpaicg_provider === 'Google') {
+                                    ai_model = '<?php echo get_option('wpaicg_google_default_model', 'gemini-pro'); ?>';
+                                } else if (wpaicg_provider === 'Azure') {
+                                    ai_model = '<?php echo get_option('wpaicg_azure_deployment', ''); ?>';
+                                }
                                 var sleep_time = '<?php echo get_option('wpaicg_sleep_time', 1); ?>'; // Fetch sleep time
-                                var settings_message = '<?php echo esc_html__('Your current model is %1$s and your rate limit buffer is %2$s seconds. You can change them from Settings > AI Engine tab.', 'gpt3-ai-content-generator'); ?>';
-                                settings_message = settings_message.replace('%1$s', '<strong>' + ai_model + '</strong>');
-                                settings_message = settings_message.replace('%2$s', '<strong>' + sleep_time + '</strong>');
+                                var settings_message = '<?php echo esc_html__('You are using %1$s with %2$s and your rate limit buffer is %3$s seconds. You can change them from Settings > AI Engine tab.', 'gpt3-ai-content-generator'); ?>';
+                                settings_message = settings_message.replace('%1$s', '<strong>' + wpaicg_provider + '</strong>');
+                                settings_message = settings_message.replace('%2$s', '<strong>' + ai_model + '</strong>');
+                                settings_message = settings_message.replace('%3$s', '<strong>' + sleep_time + '</strong>');
 
                                 var html = '<form action="" method="post" id="wpaicg-woo-content-form">';
                                 html += '<input type="hidden" name="action" value="wpaicg_woo_content_generator">';
@@ -941,12 +997,15 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
         public function wpaicg_product_generator()
         {
             global $wpdb;
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-            $open_ai = WPAICG_OpenAI::get_instance()->openai();
-            // if provider not openai then assing azure to $open_ai
-            if($wpaicg_provider != 'OpenAI'){
-                $open_ai = WPAICG_AzureAI::get_instance()->azureai();
+
+            // Get the AI engine.
+            try {
+                $open_ai = WPAICG_Util::get_instance()->initialize_ai_engine();
+            } catch (\Exception $e) {
+                $wpaicg_result['msg'] = $e->getMessage();
+                wp_send_json($wpaicg_result);
             }
+
             $wpaicg_result = array('status' => 'error','msg' => esc_html__('Something went wrong','gpt3-ai-content-generator'),'data' => '');
             if(!current_user_can('wpaicg_woocommerce_product_writer')){
                 $wpaicg_result['status'] = 'error';
@@ -958,11 +1017,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                 $wpaicg_result['msg'] = esc_html__('Nonce verification failed','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
-            if(!$open_ai){
-                $wpaicg_result['msg'] = esc_html__('Missing API Setting','gpt3-ai-content-generator');
-                wp_send_json($wpaicg_result);
-                exit;
-            }
+
             ini_set( 'max_execution_time', 1000 );
             $temperature = floatval( $open_ai->temperature );
             $max_tokens = intval( $open_ai->max_tokens );
@@ -1090,10 +1145,12 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                 $wpaicg_ai_model = get_option('wpaicg_ai_model','gpt-3.5-turbo-16k');
                 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 
-                if($wpaicg_provider != 'OpenAI'){
-                    $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                } else {
+                if ($wpaicg_provider === 'OpenAI') {
                     $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-16k');
+                } elseif ($wpaicg_provider === 'Azure') {
+                    $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
+                } elseif ($wpaicg_provider === 'Google') {
+                    $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
                 }
 
                 $legacy_models = array(
@@ -1106,24 +1163,38 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                     $myprompt = $wpaicg_languages['fixed_prompt_turbo'].' '.$myprompt;
                 }
                 
-                $wpaicg_generator = WPAICG_Generator::get_instance();
-                $wpaicg_generator->openai($open_ai);
                 // Get sleep time, default to 1 seconds if not set
                 $sleepTime = get_option('wpaicg_sleep_time', 1);
 
                 // Apply the sleep
                 sleep($sleepTime);
 
-                $complete = $wpaicg_generator->wpaicg_request([
-                    'model' => $wpaicg_ai_model,
-                    'prompt' => $myprompt,
-                    'temperature' => $temperature,
-                    'max_tokens' => $max_tokens,
-                    'frequency_penalty' => $frequency_penalty,
-                    'presence_penalty' => $presence_penalty,
-                    'top_p' => $top_p,
-                    'best_of' => $best_of,
-                ]);
+                if ($wpaicg_provider == 'Google') {
+
+                    $complete = $open_ai->send_google_request($myprompt, $wpaicg_ai_model, $temperature, $top_p, $max_tokens);
+
+                    if (!empty($complete['status']) && $complete['status'] === 'error') {
+                        wp_send_json(['msg' => $complete['msg'], 'status' => 'error']);
+                    } else {
+                        $wpaicg_result = $complete;
+                    }    
+
+                } else {
+
+                    $wpaicg_generator = WPAICG_Generator::get_instance();
+                    $wpaicg_generator->openai($open_ai);
+
+                    $complete = $wpaicg_generator->wpaicg_request([
+                        'model' => $wpaicg_ai_model,
+                        'prompt' => $myprompt,
+                        'temperature' => $temperature,
+                        'max_tokens' => $max_tokens,
+                        'frequency_penalty' => $frequency_penalty,
+                        'presence_penalty' => $presence_penalty,
+                        'top_p' => $top_p,
+                        'best_of' => $best_of,
+                    ]);
+                }
                 if($complete['status'] == 'error'){
                     $wpaicg_result['msg'] = $complete['msg'];
                 }

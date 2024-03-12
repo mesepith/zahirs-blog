@@ -3,11 +3,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 
-if($wpaicg_provider == 'Azure') {
+if($wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google'){
     ?>
     <div>
         <p></p>
-        <p>Fine-tuning is not available in Azure. Please go to Settings - AI Engine and switch to OpenAI to use this feature.</p>
+        <p>Fine-tuning is not available in Azure or Google. Please go to Settings - AI Engine and switch to OpenAI to use this feature.</p>
     </div>
     <?php
 } else {

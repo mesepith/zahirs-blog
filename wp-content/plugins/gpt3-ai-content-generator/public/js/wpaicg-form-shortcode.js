@@ -429,7 +429,6 @@ var wpaicgPlayGround = {
         var wpaicg_limitLines = parseFloat(wpaicgMaxLines.value);
         var currentContent = '';
         window['eventGenerator'+eventID].onmessage = function (e) {
-
             currentContent = wpaicg_PlayGround.getContent(wpaicgFormData.response,formID);
 
             if (e.data === "[LIMITED]") {
@@ -437,8 +436,26 @@ var wpaicgPlayGround = {
                 count_line += 1;
                 wpaicg_PlayGround.setContent(wpaicgFormData.response,formID,currentContent + wpaicg_break_newline);
                 wpaicg_response_events = 0;
-            } else {
+            } else if (e.data.includes("GoogleError")) {
+                var error_message = e.data.match(/GoogleError: (.*)/);
+                if (error_message) {
+                    alert('Error: ' + error_message[1]);
+                } else {
+                    alert('Unknown error occurred');
+                }
+                count_line += 1;
+                wpaicg_PlayGround.setContent(wpaicgFormData.response,formID,currentContent + wpaicg_break_newline);
+                wpaicg_response_events = 0;
+            } 
+            // else if data is DONE then close the event
+            else if (e.data === "[DONE]") {
+                count_line += 1;
+                wpaicg_PlayGround.setContent(wpaicgFormData.response,formID,currentContent + wpaicg_break_newline);
+                wpaicg_response_events = 0;
+            }
+            else {
                 var result = JSON.parse(e.data);
+                console.log(result);
 
                 // Check if the response contains the finish_reason property and if it's set to "stop"
                 var hasFinishReason = result.choices && 

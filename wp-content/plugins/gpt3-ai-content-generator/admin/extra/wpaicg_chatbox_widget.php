@@ -57,6 +57,7 @@ $wpaicg_save_logs = isset($wpaicg_chat_widget['save_logs']) && !empty($wpaicg_ch
 $wpaicg_log_notice = isset($wpaicg_chat_widget['log_notice']) && !empty($wpaicg_chat_widget['log_notice']) ? $wpaicg_chat_widget['log_notice'] : false;
 $wpaicg_log_notice_message = isset($wpaicg_chat_widget['log_notice_message']) && !empty($wpaicg_chat_widget['log_notice_message']) ? $wpaicg_chat_widget['log_notice_message'] : esc_html__('Please note that your conversations will be recorded.','gpt3-ai-content-generator');
 $wpaicg_audio_enable = isset($wpaicg_chat_widget['audio_enable']) ? $wpaicg_chat_widget['audio_enable'] : false;
+$wpaicg_image_enable = isset($wpaicg_chat_widget['image_enable']) ? $wpaicg_chat_widget['image_enable'] : false;
 $wpaicg_pdf_enable = isset($wpaicg_chat_widget['embedding_pdf']) ? $wpaicg_chat_widget['embedding_pdf'] : false;
 $wpaicg_pdf_pages = isset($wpaicg_chat_widget['pdf_pages']) ? $wpaicg_chat_widget['pdf_pages'] : 120;
 $wpaicg_mic_color = isset($wpaicg_chat_widget['mic_color']) ? $wpaicg_chat_widget['mic_color'] : '#222';
@@ -83,6 +84,9 @@ $wpaicg_elevenlabs_model = isset($wpaicg_chat_widget['elevenlabs_model']) ? $wpa
 $wpaicg_elevenlabs_api = get_option('wpaicg_elevenlabs_api', '');
 $wpaicg_google_api_key = get_option('wpaicg_google_api_key', '');
 $wpaicg_elevenlabs_hide_error = get_option('wpaicg_elevenlabs_hide_error', false);
+
+$wpaicg_typewriter_effect = get_option('wpaicg_typewriter_effect', false);
+$wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
 
 $wpaicg_chat_voice_service = isset($wpaicg_chat_widget['voice_service']) && !empty($wpaicg_chat_widget['voice_service']) ? $wpaicg_chat_widget['voice_service'] : 'en-US';
 $wpaicg_voice_language = isset($wpaicg_chat_widget['voice_language']) && !empty($wpaicg_chat_widget['voice_language']) ? $wpaicg_chat_widget['voice_language'] : 'en-US';
@@ -148,7 +152,7 @@ $wpaicg_openai_voice_speed = isset($wpaicg_chat_widget['openai_voice_speed']) &&
     }
     .wpaicg-chat-message{
         color: #fff;
-        text-align: justify;
+        display: flow-root;
     }
     .wpaicg-jumping-dots span {
         position: relative;
@@ -238,9 +242,7 @@ $wpaicg_openai_voice_speed = isset($wpaicg_chat_widget['openai_voice_speed']) &&
     .wpaicg_chat_widget_content .wpaicg-chat-user-message,
     .wpaicg_chat_widget_content .wpaicg-chat-user-message *,
     .wpaicg_chat_widget_content .wpaicg-chat-user-message .wpaicg-chat-message,
-    .wpaicg_chat_widget_content .wpaicg-chat-ai-message .wpaicg-chat-message,
-    .wpaicg_chat_widget_content .wpaicg-chat-ai-message a,
-    .wpaicg_chat_widget_content .wpaicg-chat-user-message a
+    .wpaicg_chat_widget_content .wpaicg-chat-ai-message .wpaicg-chat-message
     {
         font-size: <?php echo esc_html($wpaicg_chat_fontsize)?>px;
         color: <?php echo esc_html($wpaicg_chat_fontcolor)?>;
@@ -267,6 +269,9 @@ $wpaicg_openai_voice_speed = isset($wpaicg_chat_widget['openai_voice_speed']) &&
         right: 47px;
     }
     .wpaicg-chatbox .wpaicg-mic-icon{
+        color: <?php echo esc_html($wpaicg_mic_color)?>;
+    }
+    .wpaicg-chatbox .wpaicg-img-icon{
         color: <?php echo esc_html($wpaicg_mic_color)?>;
     }
     .wpaicg-chatbox .wpaicg-pdf-icon{
@@ -390,7 +395,7 @@ $wpaicg_openai_voice_speed = isset($wpaicg_chat_widget['openai_voice_speed']) &&
     }
     .wpaicg-chatbox .wpaicg-chatbox-footer{
         margin: 0px;
-        padding: 0 20px;
+        padding: 0 5px;
     }
     .wpaicg-chat-widget-has-footer .wpaicg-chatbox-type{
         border-bottom-left-radius: 0;
@@ -418,6 +423,8 @@ $wpaicg_openai_voice_speed = isset($wpaicg_chat_widget['openai_voice_speed']) &&
      data-voice="<?php echo esc_html($wpaicg_elevenlabs_voice)?>"
      data-elevenlabs-model="<?php echo esc_html($wpaicg_elevenlabs_model)?>"
      data-voice-error="<?php echo esc_html($wpaicg_elevenlabs_hide_error)?>"
+     data-typewriter-effect = "<?php echo esc_html($wpaicg_typewriter_effect)?>"
+     data-typewriter-speed="<?php echo esc_html(get_option('wpaicg_typewriter_speed', 1)); ?>"
      data-text_height="<?php echo esc_html($wpaicg_text_height)?>"
      data-text_rounded="<?php echo esc_html($wpaicg_text_rounded)?>"
      data-chat_rounded="<?php echo esc_html($wpaicg_chat_rounded)?>"
@@ -518,6 +525,12 @@ $wpaicg_openai_voice_speed = isset($wpaicg_chat_widget['openai_voice_speed']) &&
             <?php
             endif;
             ?>
+            <span class="wpaicg-img-icon" data-type="widget" style="<?php echo $wpaicg_image_enable ? '' : 'display:none'?>">
+                <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512"><path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6h96 32H424c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z"/></svg>
+                <input type="file" id="imageUpload" class="wpaicg-img-file" accept="image/png, image/jpeg, image/webp, image/gif" style="display: none;" />
+                <!-- add nonce -->
+                <input type="hidden" id="wpaicg-img-nonce" value="<?php echo esc_html(wp_create_nonce( 'wpaicg-img-nonce' ))?>" />
+            </span>
             <?php
             if($wpaicg_pdf_enable && \WPAICG\wpaicg_util_core()->wpaicg_is_pro()):
                 ?>
@@ -540,7 +553,7 @@ $wpaicg_openai_voice_speed = isset($wpaicg_chat_widget['openai_voice_speed']) &&
         ?>
         <div class="wpaicg-chatbox-footer">
             <?php
-            echo esc_html(str_replace("\\",'',$wpaicg_chat_widget['footer_text']));
+            echo wp_kses_post(str_replace("\\",'',$wpaicg_chat_widget['footer_text']));
             ?>
         </div>
     <?php

@@ -3,6 +3,19 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 // Retrieve the vector db provider option
 $wpaicg_vector_db_provider = get_option('wpaicg_vector_db_provider', '');
+$wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+// Retrieve the embedding model based on the provider
+switch ($wpaicg_provider) {
+    case 'OpenAI':
+        $embedding_model = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
+        break;
+    case 'Azure':
+        $embedding_model = get_option('wpaicg_azure_embeddings', '');
+        break;
+    case 'Google':
+        $embedding_model = get_option('wpaicg_google_embeddings', 'embedding-001');
+        break;
+}
 
 // Initialize variable for collection/index name
 $collection_index_name = '';
@@ -26,15 +39,18 @@ if (!empty($wpaicg_vector_db_provider)) {
             $collection_index_name = sprintf(esc_html__('index: %s', 'gpt3-ai-content-generator'), '<strong>' . esc_html($index_name) . '</strong>');
         }
     }
-
-    // Display the notice with provider and collection/index name if available
-    ?>
-    <div style="padding: 10px; background-color: #f9f9f9; border-left: 4px solid #0073aa; margin-bottom: 20px;">
-        <p><?php echo sprintf(esc_html__('You are inserting data into vector database: %s', 'gpt3-ai-content-generator'), '<strong>' . esc_html($wpaicg_vector_db_provider) . '</strong>') . (!empty($collection_index_name) ? ', ' . $collection_index_name : ''); ?></p>
-    </div>
-    <?php
 }
+
+// Display the notice with provider, embedding model, and collection/index name if available
 ?>
+<div style="padding: 10px; background-color: #f9f9f9; border-left: 4px solid #0073aa; margin-bottom: 20px;">
+    <p>
+        <?php 
+        echo sprintf(esc_html__('You are using %s as your provider with the embedding model: %s', 'gpt3-ai-content-generator'), '<strong>' . esc_html($wpaicg_provider) . '</strong>', '<strong>' . esc_html($embedding_model) . '</strong>.');
+        echo sprintf(esc_html__(' You are inserting data into vector database: %s', 'gpt3-ai-content-generator'), '<strong>' . esc_html($wpaicg_vector_db_provider) . '</strong>') . (!empty($collection_index_name) ? ', ' . $collection_index_name : ''); 
+        ?>
+    </p>
+</div>
 <style>
     .wpaicg-faq-list:has(.wpaicg-faq-item){
         padding: 10px;

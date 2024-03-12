@@ -298,22 +298,41 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
         
             foreach ($ids as $id) {
                 $wpaicg_index = get_post_meta($id, 'wpaicg_index', true);
-        
+
+    
                 // Check if the index belongs to Pinecone or Qdrant
-                if (strpos($wpaicg_index, 'pinecone.io') !== false) {
+                if (empty($wpaicg_index) || strpos($wpaicg_index, 'pinecone.io') !== false) {
+                    // Determine index host
+                    $index_host = '';
+                    if (!empty($wpaicg_index) && strpos($wpaicg_index, 'pinecone.io') !== false) {
+                        $index_host = $wpaicg_index;
+                    } else {
+                        $index_host = $wpaicg_pinecone_environment;
+                    }
+
+                    $index_host_url = 'https://' . $index_host . '/vectors/delete';
+
                     // Pinecone deletion logic
                     try {
                         $headers = array(
                             'Content-Type' => 'application/json',
                             'Api-Key' => $wpaicg_pinecone_api
                         );
-                        $pinecone_ids = 'ids=' . $id;
-                        $response = wp_remote_request('https://' . $wpaicg_pinecone_environment . '/vectors/delete?' . $pinecone_ids, array(
-                            'method' => 'DELETE',
-                            'headers' => $headers
+                        $body = json_encode([
+                            'deleteAll' => 'false',
+                            'ids' => [$id]
+                        ]);
+                        $response = wp_remote_post($index_host_url, array(
+                            'headers' => $headers,
+                            'body' => $body
                         ));
+
+                        if (is_wp_error($response)) {
+
+                            error_log(print_r($response, true));
+                        }
                     } catch (\Exception $exception) {
-                        // Handle exception
+                        error_log(print_r($exception->getMessage(), true));
                     }
                 } else {
                     // Qdrant deletion logic
@@ -321,7 +340,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                     $endpoint = $wpaicg_qdrant_endpoint . '/' . urlencode($collection_name) . '/points/delete?wait=true';
                     $id = intval($id);
                     $points = json_encode(['points' => [$id]]);
-                    error_log(print_r($points, true));
         
                     $response = wp_remote_request($endpoint, [
                         'method' => 'POST',
@@ -335,6 +353,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
         
                 // Delete post after vector deletion
                 wp_delete_post($id);
+                
             }
         }
         
@@ -423,11 +442,23 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             if (isset($_POST['id']) && !empty($_POST['id'])) {
                 $id = sanitize_text_field($_POST['id']);
                 $wpaicg_index = get_post_meta($id, 'wpaicg_index', true);
-        
+                
                 // Determine the vector DB provider from the post meta
-                if (strpos($wpaicg_index, 'pinecone.io') !== false) {
-                    $wpaicg_pinecone_api = get_option('wpaicg_pinecone_api', '');
+                if (empty($wpaicg_index) || strpos($wpaicg_index, 'pinecone.io') !== false) {
+                    // Determine index host
+                    $index_host = '';
                     $wpaicg_pinecone_environment = get_option('wpaicg_pinecone_environment', '');
+                    if (!empty($wpaicg_index) && strpos($wpaicg_index, 'pinecone.io') !== false) {
+                        $index_host = $wpaicg_index;
+                    } else {
+                        $index_host = $wpaicg_pinecone_environment;
+                    }
+
+                    $index_host_url = 'https://' . $index_host . '/vectors/delete';
+
+                    $wpaicg_pinecone_api = get_option('wpaicg_pinecone_api', '');
+                    
+
                     if (empty($wpaicg_pinecone_api) || empty($wpaicg_pinecone_environment)) {
                         $wpaicg_result['msg'] = esc_html__('Missing Pinecone API Settings', 'gpt3-ai-content-generator');
                     } else {
@@ -435,9 +466,13 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                             'Content-Type' => 'application/json',
                             'Api-Key' => $wpaicg_pinecone_api
                         ];
-                        $response = wp_remote_request('https://' . $wpaicg_pinecone_environment . '/vectors/delete?ids=' . $id, [
-                            'method' => 'DELETE',
-                            'headers' => $headers
+                        $body = json_encode([
+                            'deleteAll' => 'false',
+                            'ids' => [$id]
+                        ]);
+                        $response = wp_remote_post($index_host_url, [
+                            'headers' => $headers,
+                            'body' => $body
                         ]);
                     }
                 } else {
@@ -447,7 +482,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                     $wpaicg_qdrant_endpoint = rtrim(get_option('wpaicg_qdrant_endpoint', ''), '/') . '/collections/' . $collection_name . '/points/delete?wait=true';
                     $id = intval($id); // Cast $id to integer
                     $points = json_encode(['points' => [$id]]);
-                    error_log(print_r($points, true));
                     $response = wp_remote_request($wpaicg_qdrant_endpoint, [
                         'method' => 'POST',
                         'headers' => ['api-key' => $wpaicg_qdrant_api_key, 'Content-Type' => 'application/json'],
@@ -788,7 +822,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                         if ($wpaicg_vector_db_provider === 'qdrant') {
                             $wpaicg_emb_index = get_option('wpaicg_qdrant_default_collection', '');
                         }
-                        $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
+                        $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : ($wpaicg_provider === 'Google' ? get_option('wpaicg_google_embeddings', 'embedding-001') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002'));
+
                         
                         update_post_meta($embeddings_id, 'wpaicg_provider', $wpaicg_provider);
                         update_post_meta($embeddings_id, 'wpaicg_index', $wpaicg_emb_index);
@@ -811,8 +846,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                         if ($wpaicg_vector_db_provider === 'qdrant') {
                             $wpaicg_emb_index = get_option('wpaicg_qdrant_default_collection', '');
                         }
-                        $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
-                        
+
+                        $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : ($wpaicg_provider === 'Google' ? get_option('wpaicg_google_embeddings', 'embedding-001') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002'));
+
                         update_post_meta($wpaicg_result['id'], 'wpaicg_provider', $wpaicg_provider);
                         update_post_meta($wpaicg_result['id'], 'wpaicg_index', $wpaicg_emb_index);
                         update_post_meta($wpaicg_result['id'], 'wpaicg_model', $wpaicg_emb_model);
@@ -841,8 +877,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                     if ($wpaicg_vector_db_provider === 'qdrant') {
                         $wpaicg_emb_index = get_option('wpaicg_qdrant_default_collection', '');
                     }
-                    $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
-                    
+                    $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : ($wpaicg_provider === 'Google' ? get_option('wpaicg_google_embeddings', 'embedding-001') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002'));                    
                     update_post_meta($embeddings_id, 'wpaicg_provider', $wpaicg_provider);
                     update_post_meta($embeddings_id, 'wpaicg_index', $wpaicg_emb_index);
                     update_post_meta($embeddings_id, 'wpaicg_model', $wpaicg_emb_model);
@@ -909,154 +944,213 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong','gpt3-ai-content-generator'));
             $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
             $openai = WPAICG_OpenAI::get_instance()->openai();
-            // if provider not openai then assing azure to $open_ai
-            if($wpaicg_provider != 'OpenAI'){
-                $openai = WPAICG_AzureAI::get_instance()->azureai();
+            // Get the AI engine.
+            try {
+                $openai = WPAICG_Util::get_instance()->initialize_ai_engine();
+            } catch (\Exception $e) {
+                $wpaicg_result['msg'] = $e->getMessage();
+                wp_send_json($wpaicg_result);
             }
+
             $content = preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $content);
+            
             if($openai){
-                $wpaicg_pinecone_api = get_option('wpaicg_pinecone_api','');
-                $wpaicg_pinecone_environment = get_option('wpaicg_pinecone_environment','');
-                if(empty($wpaicg_pinecone_api) || empty($wpaicg_pinecone_environment)){
-                    $wpaicg_result['msg'] = esc_html__('Missing Pinecone API Settings','gpt3-ai-content-generator');
+
+
+                // Determine the model based on the provider
+                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+                // Retrieve the embedding model based on the provider
+                switch ($wpaicg_provider) {
+                    case 'OpenAI':
+                        $wpaicg_model = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
+                        break;
+                    case 'Azure':
+                        $wpaicg_model = get_option('wpaicg_azure_embeddings', '');
+                        break;
+                    case 'Google':
+                        $wpaicg_model = get_option('wpaicg_google_embeddings', 'embedding-001');
+                        break;
+                }
+
+                // Prepare the API call parameters
+                $apiParams = [
+                    'input' => $content,
+                    'model' => $wpaicg_model
+                ];
+
+                // Add dimensions parameter if the model is 'text-embedding-3-large' or text-embedding-3-small
+                if ($wpaicg_model === 'text-embedding-3-large') {
+                    $apiParams['dimensions'] = 1536;
+                }
+
+                // Make the API call
+                $response = $openai->embeddings($apiParams);
+                $response = json_decode($response,true);
+                if(isset($response['error']) && !empty($response['error'])) {
+                    $wpaicg_result['msg'] = $response['error']['message'];
+                    if(empty($wpaicg_result['msg']) && isset($response['error']['code']) && $response['error']['code'] == 'invalid_api_key'){
+                        $wpaicg_result['msg'] = 'Incorrect API key provided. You can find your API key at https://platform.openai.com/account/api-keys.';
+                    }
                 }
                 else{
-                    $headers = array(
-                        'Content-Type' => 'application/json',
-                        'Api-Key' => $wpaicg_pinecone_api
-                    );
-                    /*Check Pinecone API*/
-                    $response = wp_remote_get('https://api.pinecone.io/indexes',array(
-                        'headers' => $headers
-                    ));
-                    if(is_wp_error($response)){
-                        $wpaicg_result['msg'] = $response->get_error_message();
-                        return $wpaicg_result;
-                    }
-
-                    $response_code = $response['response']['code'];
-                    if($response_code !== 200){
-                        $wpaicg_result['msg'] = $response['response']['message'];
-                        return $wpaicg_result;
-                    }
-
-                    // Determine the model based on the provider
-                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-                    // Determine the model to use based on the provider
-                    if ($wpaicg_provider === 'Azure') {
-                        // Azure: Use the Azure embeddings model, defaulting to 'text-embedding-ada-002'
-                        $wpaicg_model = get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
-                    } else {
-                        // OpenAI: Use the OpenAI embeddings model, defaulting to 'text-embedding-3-small'
-                        $wpaicg_model = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
-                    }
-
-                    // Prepare the API call parameters
-                    $apiParams = [
-                        'input' => $content,
-                        'model' => $wpaicg_model
-                    ];
-
-                    // Add dimensions parameter if the model is 'text-embedding-3-large' or text-embedding-3-small
-                    if ($wpaicg_model === 'text-embedding-3-large') {
-                        $apiParams['dimensions'] = 1536;
-                    }
-
-                    // Make the API call
-                    $response = $openai->embeddings($apiParams);
-
-                    $response = json_decode($response,true);
-                    if(isset($response['error']) && !empty($response['error'])) {
-                        $wpaicg_result['msg'] = $response['error']['message'];
-                        if(empty($wpaicg_result['msg']) && isset($response['error']['code']) && $response['error']['code'] == 'invalid_api_key'){
-                            $wpaicg_result['msg'] = 'Incorrect API key provided. You can find your API key at https://platform.openai.com/account/api-keys.';
-                        }
+                    $embedding = $response['data'][0]['embedding'];
+                    if(empty($embedding)){
+                        $wpaicg_result['msg'] = esc_html__('No data returned','gpt3-ai-content-generator');
                     }
                     else{
-                        $embedding = $response['data'][0]['embedding'];
-                        if(empty($embedding)){
-                            $wpaicg_result['msg'] = esc_html__('No data returned','gpt3-ai-content-generator');
-                        }
-                        else{
+                        
+                        if(!$embeddings_id) {
+                            $embedding_title = empty($title) ? mb_substr($content,0,50,'utf-8') : $title;
+                            $embedding_data = array(
+                                'post_type' => 'wpaicg_embeddings',
+                                'post_title' => $embedding_title,
+                                'post_content' => $content,
+                                'post_status' => 'publish'
+                            );
+                            if (!empty($post_type)) {
+                                $embedding_data['post_type'] = $post_type;
+                            }
+                            $wpaicg_vector_db_provider = get_option('wpaicg_vector_db_provider', 'pinecone');
+                            $wpaicg_emb_index = get_option('wpaicg_pinecone_environment', '');
+                            if ($wpaicg_vector_db_provider === 'qdrant') {
+                                $wpaicg_emb_index = get_option('wpaicg_qdrant_default_collection', '');
+                            }
+
+                            $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? 
+                            get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : 
+                            ($wpaicg_provider === 'Google' ? 
+                            get_option('wpaicg_google_embeddings', 'embedding-001') : 
+                            get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002'));
                             
-                            if(!$embeddings_id) {
-                                $embedding_title = empty($title) ? mb_substr($content,0,50,'utf-8') : $title;
-                                $embedding_data = array(
-                                    'post_type' => 'wpaicg_embeddings',
-                                    'post_title' => $embedding_title,
-                                    'post_content' => $content,
-                                    'post_status' => 'publish'
+                            $embeddings_id = wp_insert_post($embedding_data,true);
+                            if(is_wp_error($embeddings_id)) {
+                                $wpaicg_result['msg'] = $embeddings_id->get_error_message();
+                                $wpaicg_result['status'] = 'error';
+                                return $wpaicg_result;
+                            }
+                            if(isset($_REQUEST['type']) && !empty($_REQUEST['type'])){
+                                add_post_meta($embeddings_id,'wpaicg_embedding_type',sanitize_text_field($_REQUEST['type']));
+                            }
+                            add_post_meta($embeddings_id, 'wpaicg_provider', $wpaicg_provider);
+                            add_post_meta($embeddings_id, 'wpaicg_index', $wpaicg_emb_index);
+                            add_post_meta($embeddings_id, 'wpaicg_model', $wpaicg_emb_model);
+                        }
+                        if(is_wp_error($embeddings_id)){
+                            $wpaicg_result['msg'] = $embeddings_id->get_error_message();
+                        }
+                        else {
+                            update_post_meta($embeddings_id,'wpaicg_start',time());
+                            $usage_tokens = $response['usage']['total_tokens'];
+                            add_post_meta($embeddings_id, 'wpaicg_embedding_token', $usage_tokens);
+                            $vectors = array(
+                                array(
+                                    'id' => (string)$embeddings_id,
+                                    'values' => $embedding
+                                )
+                            );
+                            $wpaicg_vector_db_provider = get_option('wpaicg_vector_db_provider', 'pinecone');
+                            if ($wpaicg_vector_db_provider === 'pinecone') {
+                                $wpaicg_pinecone_api = get_option('wpaicg_pinecone_api','');
+                                $wpaicg_pinecone_environment = get_option('wpaicg_pinecone_environment','');
+                                $headers = array(
+                                    'Content-Type' => 'application/json',
+                                    'Api-Key' => $wpaicg_pinecone_api
                                 );
-                                if (!empty($post_type)) {
-                                    $embedding_data['post_type'] = $post_type;
-                                }
-                                $wpaicg_vector_db_provider = get_option('wpaicg_vector_db_provider', 'pinecone');
-                                $wpaicg_emb_index = get_option('wpaicg_pinecone_environment', '');
-                                if ($wpaicg_vector_db_provider === 'qdrant') {
-                                    $wpaicg_emb_index = get_option('wpaicg_qdrant_default_collection', '');
-                                }
-                                $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
-                                
-                                $embeddings_id = wp_insert_post($embedding_data,true);
-                                if(is_wp_error($embeddings_id)) {
-                                    $wpaicg_result['msg'] = $embeddings_id->get_error_message();
-                                    $wpaicg_result['status'] = 'error';
+                                /*Check Pinecone API*/
+                                $response = wp_remote_get('https://api.pinecone.io/indexes',array(
+                                    'headers' => $headers
+                                ));
+                                if(is_wp_error($response)){
+                                    $wpaicg_result['msg'] = $response->get_error_message();
                                     return $wpaicg_result;
                                 }
-                                if(isset($_REQUEST['type']) && !empty($_REQUEST['type'])){
-                                    add_post_meta($embeddings_id,'wpaicg_embedding_type',sanitize_text_field($_REQUEST['type']));
+                
+                                $response_code = $response['response']['code'];
+                                if($response_code !== 200){
+                                    $wpaicg_result['msg'] = $response['response']['message'];
+                                    return $wpaicg_result;
                                 }
-                                add_post_meta($embeddings_id, 'wpaicg_provider', $wpaicg_provider);
-                                add_post_meta($embeddings_id, 'wpaicg_index', $wpaicg_emb_index);
-                                add_post_meta($embeddings_id, 'wpaicg_model', $wpaicg_emb_model);
-                            }
-                            if(is_wp_error($embeddings_id)){
-                                $wpaicg_result['msg'] = $embeddings_id->get_error_message();
-                            }
-                            else {
-                                update_post_meta($embeddings_id,'wpaicg_start',time());
-                                $usage_tokens = $response['usage']['total_tokens'];
-                                add_post_meta($embeddings_id, 'wpaicg_embedding_token', $usage_tokens);
-                                $vectors = array(
-                                    array(
-                                        'id' => (string)$embeddings_id,
-                                        'values' => $embedding
-                                    )
+                                $pinecone_url = 'https://' . $wpaicg_pinecone_environment . '/vectors/upsert';
+                                $response = wp_remote_post($pinecone_url, array(
+                                    'headers' => $headers,
+                                    'body' => json_encode(array('vectors' => $vectors))
+                                ));
+                                if(is_wp_error($response)){
+                                    $wpaicg_result['msg'] = $response->get_error_message();
+                                    wp_delete_post($embeddings_id);
+                                    $wpdb->delete($wpdb->postmeta, array(
+                                        'meta_value' => $embeddings_id,
+                                        'meta_key' => 'wpaicg_parent'
+                                    ));
+                                }
+                                else{
+                                    $body = json_decode($response['body'],true); 
+                                    if($body){
+                                        if(isset($body['code']) && isset($body['message'])){
+                                            $wpaicg_result['msg'] = strip_tags($body['message']);
+                                            wp_delete_post($embeddings_id);
+                                            $wpdb->delete($wpdb->postmeta, array(
+                                                'meta_value' => $embeddings_id,
+                                                'meta_key' => 'wpaicg_parent'
+                                            ));
+                                        }
+                                        else{
+                                            $wpaicg_result['status'] = 'success';
+                                            $wpaicg_result['id'] = $embeddings_id;
+                                            update_post_meta($embeddings_id,'wpaicg_completed',time());
+                                        }
+                                    }
+                                    else{
+                                        $wpaicg_result['msg'] = esc_html__('No data returned','gpt3-ai-content-generator');
+                                        wp_delete_post($embeddings_id);
+                                        $wpdb->delete($wpdb->postmeta, array(
+                                            'meta_value' => $embeddings_id,
+                                            'meta_key' => 'wpaicg_parent'
+                                        ));
+                                    }
+                                }
+                            } else {
+
+                                $qdrant_endpoint = rtrim(get_option('wpaicg_qdrant_endpoint', ''), '/') . '/collections';
+                                $qdrant_default_collection = get_option('wpaicg_qdrant_default_collection', '');
+                                $qdrant_url = $qdrant_endpoint . '/' . $qdrant_default_collection . '/points?wait=true';
+                                $qdrant_api_key = get_option('wpaicg_qdrant_api_key', '');
+
+                                $group_id = 'default';
+
+                                // Format for Qdrant
+                                $formatted_vector = array(
+                                    'id' => $embeddings_id,
+                                    'vector' => $embedding,
+                                    'payload' => array('group_id' => $group_id)
                                 );
-                                $wpaicg_vector_db_provider = get_option('wpaicg_vector_db_provider', 'pinecone');
-                                if ($wpaicg_vector_db_provider === 'pinecone') {
-                                    $pinecone_url = 'https://' . $wpaicg_pinecone_environment . '/vectors/upsert';
-                                    $response = wp_remote_post($pinecone_url, array(
-                                        'headers' => $headers,
-                                        'body' => json_encode(array('vectors' => $vectors))
+
+                                $vectors = array('points' => array($formatted_vector));
+                            
+                                // Prepare the request for Qdrant
+                                $response = wp_remote_request($qdrant_url, array(
+                                    'method'    => 'PUT',
+                                    'headers' => ['api-key' => $qdrant_api_key, 'Content-Type' => 'application/json'],
+                                    'body'      => json_encode($vectors)
+                                ));
+                                if(is_wp_error($response)){
+                                    $wpaicg_result['msg'] = $response->get_error_message();
+                                    wp_delete_post($embeddings_id);
+                                    $wpdb->delete($wpdb->postmeta, array(
+                                        'meta_value' => $embeddings_id,
+                                        'meta_key' => 'wpaicg_parent'
                                     ));
-                                    if(is_wp_error($response)){
-                                        $wpaicg_result['msg'] = $response->get_error_message();
-                                        wp_delete_post($embeddings_id);
-                                        $wpdb->delete($wpdb->postmeta, array(
-                                            'meta_value' => $embeddings_id,
-                                            'meta_key' => 'wpaicg_parent'
-                                        ));
-                                    }
-                                    else{
-                                        $body = json_decode($response['body'],true); 
-                                        if($body){
-                                            if(isset($body['code']) && isset($body['message'])){
-                                                $wpaicg_result['msg'] = strip_tags($body['message']);
-                                                wp_delete_post($embeddings_id);
-                                                $wpdb->delete($wpdb->postmeta, array(
-                                                    'meta_value' => $embeddings_id,
-                                                    'meta_key' => 'wpaicg_parent'
-                                                ));
-                                            }
-                                            else{
-                                                $wpaicg_result['status'] = 'success';
-                                                $wpaicg_result['id'] = $embeddings_id;
-                                                update_post_meta($embeddings_id,'wpaicg_completed',time());
-                                            }
+                                }
+                                else{
+                                    $body = json_decode($response['body'],true); 
+                                    if($body){
+                                        if ($body['status'] === 'ok') {
+                                            $wpaicg_result['status'] = 'success';
+                                            $wpaicg_result['id'] = $embeddings_id;
+                                            update_post_meta($embeddings_id,'wpaicg_completed',time());
                                         }
                                         else{
-                                            $wpaicg_result['msg'] = esc_html__('No data returned','gpt3-ai-content-generator');
+                                            $wpaicg_result['msg'] = $body['status']['error'];
                                             wp_delete_post($embeddings_id);
                                             $wpdb->delete($wpdb->postmeta, array(
                                                 'meta_value' => $embeddings_id,
@@ -1064,67 +1158,17 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                                             ));
                                         }
                                     }
-                                } else {
-
-                                    $qdrant_endpoint = rtrim(get_option('wpaicg_qdrant_endpoint', ''), '/') . '/collections';
-                                    $qdrant_default_collection = get_option('wpaicg_qdrant_default_collection', '');
-                                    $qdrant_url = $qdrant_endpoint . '/' . $qdrant_default_collection . '/points?wait=true';
-                                    $qdrant_api_key = get_option('wpaicg_qdrant_api_key', '');
-
-                                    $group_id = 'default';
-
-                                    // Format for Qdrant
-                                    $formatted_vector = array(
-                                        'id' => $embeddings_id,
-                                        'vector' => $embedding,
-                                        'payload' => array('group_id' => $group_id)
-                                    );
-
-                                    $vectors = array('points' => array($formatted_vector));
-                                
-                                    // Prepare the request for Qdrant
-                                    $response = wp_remote_request($qdrant_url, array(
-                                        'method'    => 'PUT',
-                                        'headers' => ['api-key' => $qdrant_api_key, 'Content-Type' => 'application/json'],
-                                        'body'      => json_encode($vectors)
-                                    ));
-                                    if(is_wp_error($response)){
-                                        $wpaicg_result['msg'] = $response->get_error_message();
+                                    else{
+                                        $wpaicg_result['msg'] = esc_html__('No data returned','gpt3-ai-content-generator');
                                         wp_delete_post($embeddings_id);
                                         $wpdb->delete($wpdb->postmeta, array(
                                             'meta_value' => $embeddings_id,
                                             'meta_key' => 'wpaicg_parent'
                                         ));
-                                    }
-                                    else{
-                                        $body = json_decode($response['body'],true); 
-                                        if($body){
-                                            if ($body['status'] === 'ok') {
-                                                $wpaicg_result['status'] = 'success';
-                                                $wpaicg_result['id'] = $embeddings_id;
-                                                update_post_meta($embeddings_id,'wpaicg_completed',time());
-                                            }
-                                            else{
-                                                $wpaicg_result['msg'] = $body['status']['error'];
-                                                wp_delete_post($embeddings_id);
-                                                $wpdb->delete($wpdb->postmeta, array(
-                                                    'meta_value' => $embeddings_id,
-                                                    'meta_key' => 'wpaicg_parent'
-                                                ));
-                                            }
-                                        }
-                                        else{
-                                            $wpaicg_result['msg'] = esc_html__('No data returned','gpt3-ai-content-generator');
-                                            wp_delete_post($embeddings_id);
-                                            $wpdb->delete($wpdb->postmeta, array(
-                                                'meta_value' => $embeddings_id,
-                                                'meta_key' => 'wpaicg_parent'
-                                            ));
-                                        }
                                     }
                                 }
-
                             }
+
                         }
                     }
                 }

@@ -296,7 +296,7 @@ echo  esc_html( __( "Title", "gpt3-ai-content-generator" ) ) ;
 ?></label></td>
     </tr>
     <tr>
-        <td><input type="text" id="wpai_preview_title" rows="20" cols="20" placeholder="e.g. Mobile Phones" class="wpcgai_input" name="_wporg_preview_title" value="<?php 
+        <td><input type="text" id="wpai_preview_title" rows="20" cols="20" placeholder="e.g. Artificial Intelligence" class="wpcgai_input" name="_wporg_preview_title" value="<?php 
 echo  esc_html( $_wporg_preview_title ) ;
 ?>"></td>
     </tr>

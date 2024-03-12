@@ -108,19 +108,33 @@ $wpaicg_nonce = wp_create_nonce('wpaicg_nonce_action');
                 <td class="wpaicg-bulk-item-word"><?php echo esc_html($wpaicg_generator_length)?></td>
                 <td class="wpaicg-bulk-item-cost">
                     <?php
+                    // Define pricing per 1K tokens
+                    $pricing = array(
+                        'gpt-4' => 0.06,
+                        'gpt-4-32k' => 0.12,
+                        'gpt-4-1106-preview' => 0.01,
+                        'gpt-4-vision-preview' => 0.01,
+                        'gpt-3.5-turbo' => 0.002,
+                        'gpt-3.5-turbo-instruct' => 0.002,
+                        'gpt-3.5-turbo-16k' => 0.004,
+                        'text-davinci-003' => 0.02,
+                        'text-curie-001' => 0.002,
+                        'text-babbage-001' => 0.0005,
+                        'text-ada-001' => 0.0004,
+                        'gemini-pro' => 0.000375
+                    );
                     if(!empty($wpaicg_generator_token)) {
-                        if ($wpaicg_ai_model == 'gpt-3.5-turbo' || $wpaicg_ai_model == 'gpt-3.5-turbo-16k') {
-                            echo '$'.esc_html(number_format($wpaicg_generator_token*0.002/1000,5));
+
+                        // Check if the model is in the pricing array
+                        if (array_key_exists($wpaicg_ai_model, $pricing)) {
+                            // Calculate cost based on the token count and model's price per 1K tokens
+                            $cost_per_1k_tokens = $pricing[$wpaicg_ai_model];
+                            echo '$'.esc_html(number_format($wpaicg_generator_token * $cost_per_1k_tokens / 1000, 5));
+                        } else {
+                            // Fallback price calculation if the model isn't listed in the pricing array
+                            echo '$'.esc_html(number_format($wpaicg_generator_token * $this->wpaicg_token_price, 5));
                         }
-                        elseif ($wpaicg_ai_model == 'gpt-4') {
-                            echo '$'.esc_html(number_format($wpaicg_generator_token*0.06/1000,5));
-                        }
-                        elseif ($wpaicg_ai_model == 'gpt-4-32k') {
-                            echo '$'.esc_html(number_format($wpaicg_generator_token*0.12/1000,5));
-                        }
-                        else{
-                            echo '$'.esc_html(number_format($wpaicg_generator_token*$this->wpaicg_token_price,5));
-                        }
+
                     }
                     ?>
                 </td>

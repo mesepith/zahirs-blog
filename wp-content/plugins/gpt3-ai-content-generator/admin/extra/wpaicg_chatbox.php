@@ -70,6 +70,7 @@ $default_setting = array(
     'border_text_field' => '#ccc',
     'footer_text' => '',
     'audio_enable' => false,
+    'image_enable' => false,
     'mic_color' => '#222',
     'stop_color' => '#f00',
     'fullscreen' => false,
@@ -111,6 +112,7 @@ $wpaicg_log_notice = isset($wpaicg_settings['log_notice']) && !empty($wpaicg_set
 $wpaicg_log_notice_message = isset($wpaicg_settings['log_notice_message']) && !empty($wpaicg_settings['log_notice_message']) ? $wpaicg_settings['log_notice_message'] : esc_html__('Please note that your conversations will be recorded.','gpt3-ai-content-generator');
 $wpaicg_include_footer = (isset($wpaicg_settings['footer_text']) && !empty($wpaicg_settings['footer_text'])) ? 5 : 0;
 $wpaicg_audio_enable = $wpaicg_settings['audio_enable'];
+$wpaicg_image_enable = $wpaicg_settings['image_enable'];
 $wpaicg_pdf_enable = $wpaicg_settings['embedding_pdf'];
 $wpaicg_mic_color = (isset($wpaicg_settings['mic_color']) && !empty($wpaicg_settings['mic_color'])) ? $wpaicg_settings['mic_color'] : '#222';
 $wpaicg_stop_color = (isset($wpaicg_settings['stop_color']) && !empty($wpaicg_settings['stop_color'])) ? $wpaicg_settings['stop_color'] : '#f00';
@@ -125,6 +127,8 @@ $wpaicg_chat_to_speech = isset($wpaicg_settings['chat_to_speech']) ? $wpaicg_set
 $wpaicg_elevenlabs_voice = isset($wpaicg_settings['elevenlabs_voice']) ? $wpaicg_settings['elevenlabs_voice'] : '';
 $wpaicg_elevenlabs_model = isset($wpaicg_settings['elevenlabs_model']) ? $wpaicg_settings['elevenlabs_model'] : '';
 $wpaicg_elevenlabs_hide_error = get_option('wpaicg_elevenlabs_hide_error', false);
+$wpaicg_typewriter_effect = get_option('wpaicg_typewriter_effect', false);
+$wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
 $wpaicg_elevenlabs_api = get_option('wpaicg_elevenlabs_api', '');
 $wpaicg_text_height = isset($wpaicg_settings['text_height']) && !empty($wpaicg_settings['text_height']) ? $wpaicg_settings['text_height'] : 40;
 $wpaicg_text_rounded = isset($wpaicg_settings['text_rounded']) && !empty($wpaicg_settings['text_height']) ? $wpaicg_settings['text_rounded'] : 8;
@@ -143,7 +147,50 @@ $wpaicg_google_api_key = get_option('wpaicg_google_api_key', '');
 
 ?>
 <style>
-        .blinking-cursor {
+    .circle-progress-container {
+        position: relative;
+        width: 24px;
+        height: 24px;
+        margin: 0 auto; /* Center the spinner */
+    }
+
+    .circle-progress {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        background-color: #f3f3f3;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .circle-progress-bar {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        clip: rect(0px, 24px, 24px, 12px);
+        background-color: #4caf50;
+        transform: rotate(0deg);
+        transform-origin: center;
+        position: absolute;
+        top: 0;
+        right: 0;
+    }
+
+    .circle-progress-value {
+        width: 100%;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        line-height: 1;
+        font-size: 8px;
+    }
+</style>
+
+
+<style>
+    .blinking-cursor {
     font-weight: 100;
     color: #fff; /* or the color you want */
     animation: blink 1s step-end infinite;
@@ -168,11 +215,14 @@ $wpaicg_google_api_key = get_option('wpaicg_google_api_key', '');
     .wpaicg-chat-shortcode-footer{
         height: 18px;
         font-size: 11px;
-        padding: 0 20px;
+        padding: 0 5px;
         color: <?php echo esc_html($wpaicg_settings['send_color'])?>;
         background: rgb(0 0 0 / 19%);
         margin-top:2px;
         margin-bottom: 2px;
+    }
+    .wpaicg-chat-shortcode-footer a {
+        color: inherit; /* This makes the hyperlink inherit the color from its parent */
     }
     .wpaicg-chat-shortcode-content ul li{
         display: flex;
@@ -215,15 +265,11 @@ $wpaicg_google_api_key = get_option('wpaicg_google_api_key', '');
     .wpaicg-chat-shortcode-type{
         background: rgb(0 0 0 / 19%);
     }
-    .wpaicg-chat-message{
-        text-align: justify;
-    }
+
     .wpaicg-chat-shortcode .wpaicg-ai-message .wpaicg-chat-message,
-    .wpaicg-chat-shortcode .wpaicg-user-message .wpaicg-chat-message,
-    .wpaicg-chat-shortcode .wpaicg-ai-message .wpaicg-chat-message,
-    .wpaicg-chat-shortcode .wpaicg-user-message .wpaicg-chat-message a,
-    .wpaicg-chat-shortcode .wpaicg-ai-message .wpaicg-chat-message a{
+    .wpaicg-chat-shortcode .wpaicg-user-message .wpaicg-chat-message {
         color: inherit;
+        display: flow-root;
     }
     .wpaicg-chat-shortcode .wpaicg-bot-thinking{
         width: calc(100% - 12px);
@@ -321,6 +367,9 @@ $wpaicg_google_api_key = get_option('wpaicg_google_api_key', '');
         }
     }
     .wpaicg-chat-shortcode .wpaicg-mic-icon{
+        color: <?php echo esc_html($wpaicg_mic_color)?>;
+    }
+    .wpaicg-chat-shortcode .wpaicg-img-icon{
         color: <?php echo esc_html($wpaicg_mic_color)?>;
     }
     .wpaicg-chat-shortcode .wpaicg-pdf-icon{
@@ -484,6 +533,8 @@ if($wpaicg_chat_fullscreen || $wpaicg_chat_download_btn || $wpaicg_chat_clear_bt
      data-voice="<?php echo esc_html($wpaicg_elevenlabs_voice)?>"
      data-elevenlabs-model="<?php echo esc_html($wpaicg_elevenlabs_model)?>"
      data-voice-error="<?php echo esc_html($wpaicg_elevenlabs_hide_error)?>"
+     data-typewriter-effect = "<?php echo esc_html($wpaicg_typewriter_effect)?>"
+     data-typewriter-speed="<?php echo esc_html(get_option('wpaicg_typewriter_speed', 1)); ?>"
      data-text_height="<?php echo esc_html($wpaicg_text_height)?>"
      data-text_rounded="<?php echo esc_html($wpaicg_text_rounded)?>"
      data-chat_rounded="<?php echo esc_html($wpaicg_chat_rounded)?>"
@@ -578,6 +629,13 @@ if($wpaicg_chat_fullscreen || $wpaicg_chat_download_btn || $wpaicg_chat_clear_bt
             <span class="wpaicg-mic-icon" data-type="shortcode" style="<?php echo $wpaicg_audio_enable ? '' : 'display:none'?>">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M176 0C123 0 80 43 80 96V256c0 53 43 96 96 96s96-43 96-96V96c0-53-43-96-96-96zM48 216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 89.1 66.2 162.7 152 174.4V464H104c-13.3 0-24 10.7-24 24s10.7 24 24 24h72 72c13.3 0 24-10.7 24-24s-10.7-24-24-24H200V430.4c85.8-11.7 152-85.3 152-174.4V216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 70.7-57.3 128-128 128s-128-57.3-128-128V216z"/></svg>
             </span>
+            <span class="wpaicg-img-icon" data-type="shortcode" style="<?php echo $wpaicg_image_enable ? '' : 'display:none'?>">
+                <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512"><path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6h96 32H424c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z"/></svg>
+                <input type="file" id="imageUpload" class="wpaicg-img-file" accept="image/png, image/jpeg, image/webp, image/gif" style="display: none;" />
+                <!-- add nonce -->
+                <input type="hidden" id="wpaicg-img-nonce" value="<?php echo esc_html(wp_create_nonce( 'wpaicg-img-nonce' ))?>" />
+            </span>
+
             <?php
             if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()):
                 ?>
@@ -600,7 +658,7 @@ if($wpaicg_chat_fullscreen || $wpaicg_chat_download_btn || $wpaicg_chat_clear_bt
         ?>
         <div class="wpaicg-chat-shortcode-footer">
             <?php
-            echo esc_html(str_replace("\\",'',$wpaicg_settings['footer_text']));
+            echo wp_kses_post(str_replace("\\",'',$wpaicg_settings['footer_text']));
             ?>
         </div>
     <?php

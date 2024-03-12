@@ -6,12 +6,7 @@ if($checkRole){
     echo '<script>window.location.href="'.$checkRole.'"</script>';
     exit;
 }
-$wpaicg_pinecone_api = get_option('wpaicg_pinecone_api','');
-$wpaicg_pinecone_environment = get_option('wpaicg_pinecone_environment','');
-if(empty($wpaicg_pinecone_api) && empty($wpaicg_pinecone_environment) && $wpaicg_action != 'settings'){
-    echo '<script>window.location.href = "'.admin_url('admin.php?page=wpaicg_embeddings&action=settings').'"</script>';
-    exit;
-}
+
 ?>
 <style>
 .wpaicg_notice_text_rw {

@@ -165,7 +165,6 @@ class Wp_Ai_Content_Generator {
 		$this->loader->add_action( 'admin_footer', $plugin_admin, 'wpaicg_load_db_vaule_js' );
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'wpaicg_help_menu' );
 
-
 	}
 
 	/**

@@ -6,6 +6,7 @@ $wpaicg_embeddings_settings_updated = false;
 
 // Retrieving the saved Embeddings Model option
 $wpaicg_openai_embeddings = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
+$wpaicg_google_embeddings = get_option('wpaicg_google_embeddings', 'embedding-001');
 // Retrieving the provider option
 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 
@@ -51,13 +52,15 @@ if(isset($_POST['wpaicg_save_builder_settings'])){
     if(isset($_POST['wpaicg_qdrant_endpoint'])) {
 
         $qdrantEndpoint = sanitize_text_field($_POST['wpaicg_qdrant_endpoint']);
-        // Check if ':6333' is already part of the endpoint
-        if(strpos($qdrantEndpoint, ':6333') === false) {
-            // Append ':6333' if not present
+        $usePort = isset($_POST['wpaicg_qdrant_use_port']) && $_POST['wpaicg_qdrant_use_port'] === 'yes';
+        // Remove any existing port from the endpoint
+        $qdrantEndpoint = preg_replace('/:\d+$/', '', $qdrantEndpoint);
+        // Append ':6333' if "Use Port" is checked
+        if ($usePort) {
             $qdrantEndpoint .= ':6333';
         }
         update_option('wpaicg_qdrant_endpoint', $qdrantEndpoint);
-        
+        update_option('wpaicg_qdrant_use_port', $usePort ? 'yes' : 'no');
     }
 
     // Save the currently selected Qdrant collection as the default
@@ -67,8 +70,12 @@ if(isset($_POST['wpaicg_save_builder_settings'])){
     // Saving the Embeddings Model option
     $wpaicg_openai_embeddings_value = isset($_POST['wpaicg_openai_embeddings']) ? sanitize_text_field($_POST['wpaicg_openai_embeddings']) : 'text-embedding-ada-002';
     update_option('wpaicg_openai_embeddings', $wpaicg_openai_embeddings_value);
+    // Saving the Google Embeddings Model option
+    $wpaicg_google_embeddings_value = isset($_POST['wpaicg_google_embeddings']) ? sanitize_text_field($_POST['wpaicg_google_embeddings']) : 'embedding-001';
+    update_option('wpaicg_google_embeddings', $wpaicg_google_embeddings_value);
     // Update the variable to reflect the new setting immediately
     $wpaicg_openai_embeddings = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
+    $wpaicg_google_embeddings = get_option('wpaicg_google_embeddings', 'embedding-001');
     
     $wpaicg_embeddings_settings_updated = true;
 }
@@ -143,7 +150,7 @@ if($wpaicg_embeddings_settings_updated){
 ?>
 <style>
     /* Modal Style */
-    #wpaicg_modal_overlay {
+    #wpaicg_emb_modal_overlay {
         display: none;
         position: fixed;
         top: 0;
@@ -154,7 +161,7 @@ if($wpaicg_embeddings_settings_updated){
         z-index: 1000;
     }
 
-    .wpaicg_modal {
+    .wpaicg_emb_modal {
         background: #fff;
         border: 1px solid #ddd;
         border-radius: 4px;
@@ -171,33 +178,55 @@ if($wpaicg_embeddings_settings_updated){
         box-sizing: border-box;
     }
 
-    .wpaicg_modal h2 {
+    .wpaicg_emb_modal h2 {
         font-size: 20px;
         margin-top: 0;
     }
 
-    .wpaicg_modal_content p {
+    .wpaicg_emb_modal_content p {
         font-size: 14px;
         line-height: 1.5;
         color: #333;
     }
 
-    .wpaicg_assign_footer {
+    .wpaicg_assign_footer_emb {
         text-align: right;
         margin-top: 20px;
     }
 
-    .wpaicg_assign_footer button {
+    .wpaicg_assign_footer_emb button {
         margin-left: 10px;
     }
 
     /* Responsive adjustments */
     @media screen and (max-width: 600px) {
-        .wpaicg_modal {
+        .wpaicg_emb_modal {
             width: 80%;
         }
     }
 
+</style>
+<style>
+    .wpaicg_modal {
+        width: 600px;
+        left: calc(50% - 300px);
+        height: 40%;
+    }
+    .wpaicg_modal_content{
+        height: calc(100% - 103px);
+        overflow-y: auto;
+    }
+    .wpaicg_assign_footer{
+        position: absolute;
+        bottom: 0;
+        display: flex;
+        justify-content: space-between;
+        width: calc(100% - 20px);
+        align-items: center;
+        border-top: 1px solid #ccc;
+        left: 0;
+        padding: 3px 10px;
+    }
 </style>
 <form action="" method="post">
     <?php
@@ -262,6 +291,12 @@ if($wpaicg_embeddings_settings_updated){
                 </td>
             </tr>
             <tr>
+                <th scope="row"><?php echo esc_html__('Use Default Port', 'gpt3-ai-content-generator'); ?></th>
+                <td>
+                    <input type="checkbox" name="wpaicg_qdrant_use_port" <?php checked(get_option('wpaicg_qdrant_use_port', 'yes'), 'yes'); ?> value="yes">
+                </td>
+            </tr>
+            <tr>
                 <th scope="row"><?php echo esc_html__('Qdrant Collections','gpt3-ai-content-generator')?></th>
                 <td>
                     <button type="button" class="button button-primary wpaicg_sync_qdrant_collections"><?php echo esc_html__('Sync Collections','gpt3-ai-content-generator')?></button>
@@ -277,7 +312,7 @@ if($wpaicg_embeddings_settings_updated){
 
                     <button type="button" class="button wpaicg_create_new_collection_btn"><?php echo esc_html__('Create New','gpt3-ai-content-generator')?></button>
                     <div class="wpaicg_new_collection_input" style="display:none; margin-top: 20px;">
-                        <input type="text" class="regular-text wpaicg_new_collection_name">
+                        <input type="text" class="regular-text wpaicg_new_collection_name" placeholder="<?php echo esc_html__('Enter collection name','gpt3-ai-content-generator')?>">
                         <button type="button" class="button button-primary wpaicg_submit_new_collection"><?php echo esc_html__('Create','gpt3-ai-content-generator')?></button>
                     </div>
                 </td>
@@ -285,7 +320,15 @@ if($wpaicg_embeddings_settings_updated){
         </table>
     </div>
 
-    <?php if ($wpaicg_provider == 'OpenAI'): ?>
+    <?php
+    // Retrieve current embeddings settings
+    $wpaicg_openai_embeddings = get_option('wpaicg_openai_embeddings', '');
+    $wpaicg_google_embeddings = get_option('wpaicg_google_embeddings', '');
+    $wpaicg_azure_embeddings = get_option('wpaicg_azure_embeddings', '');
+
+    // Check the provider and display the corresponding embeddings model selection
+    if ($wpaicg_provider == 'OpenAI'):
+    ?>
     <h3><?php echo esc_html__('Embeddings Model','gpt3-ai-content-generator')?></h3>
     <table class="form-table">
         <tr>
@@ -295,6 +338,33 @@ if($wpaicg_embeddings_settings_updated){
                     <option value="text-embedding-3-small" <?php selected($wpaicg_openai_embeddings, 'text-embedding-3-small'); ?>><?php echo esc_html__('text-embedding-3-small','gpt3-ai-content-generator')?></option>
                     <option value="text-embedding-3-large" <?php selected($wpaicg_openai_embeddings, 'text-embedding-3-large'); ?>><?php echo esc_html__('text-embedding-3-large','gpt3-ai-content-generator')?></option>
                     <option value="text-embedding-ada-002" <?php selected($wpaicg_openai_embeddings, 'text-embedding-ada-002'); ?>><?php echo esc_html__('text-embedding-ada-002','gpt3-ai-content-generator')?></option>
+                </select>
+            </td>
+        </tr>
+    </table>
+    <?php elseif ($wpaicg_provider == 'Google'): ?>
+    <h3><?php echo esc_html__('Embeddings Model','gpt3-ai-content-generator')?></h3>
+    <table class="form-table">
+        <tr>
+            <th scope="row"><?php echo esc_html__('Select Model','gpt3-ai-content-generator')?></th>
+            <td>
+                <select name="wpaicg_google_embeddings">
+                    <!-- Example Google Embeddings Options -->
+                    <option value="embedding-001" <?php selected($wpaicg_google_embeddings, 'embedding-001'); ?>><?php echo esc_html__('embedding-001','gpt3-ai-content-generator')?></option>                </select>
+            </td>
+        </tr>
+    </table>
+    <?php elseif ($wpaicg_provider == 'Azure'): ?>
+    <h3><?php echo esc_html__('Embeddings Model','gpt3-ai-content-generator')?></h3>
+    <table class="form-table">
+        <tr>
+            <th scope="row"><?php echo esc_html__('Selected Model','gpt3-ai-content-generator')?></th>
+            <td>
+                <select name="wpaicg_azure_embeddings">
+                    <!-- Display the single Azure Embedding Model -->
+                    <option value="<?php echo esc_attr($wpaicg_azure_embeddings); ?>" selected>
+                        <?php echo esc_html($wpaicg_azure_embeddings ? $wpaicg_azure_embeddings : 'No model selected'); ?>
+                    </option>
                 </select>
             </td>
         </tr>
@@ -328,13 +398,13 @@ if($wpaicg_embeddings_settings_updated){
             <th scope="row"><?php echo esc_html__('Build Index for','gpt3-ai-content-generator')?>:</th>
             <td>
                 <div class="mb-5">
-                    <div class="mb-5"><label><input<?php echo in_array('post',$wpaicg_builder_types) ? ' checked':'';?> type="checkbox" name="wpaicg_builder_types[]" value="post">&nbsp;<?php echo esc_html__('Posts','gpt3-ai-content-generator')?></label></div>
-                    <div class="mb-5"><label><input<?php echo in_array('page',$wpaicg_builder_types) ? ' checked':'';?> type="checkbox" name="wpaicg_builder_types[]" value="page">&nbsp;<?php echo esc_html__('Pages','gpt3-ai-content-generator')?></label></div>
+                    <div class="mb-5"><label><input <?php echo in_array('post',$wpaicg_builder_types) ? ' checked':'';?> type="checkbox" name="wpaicg_builder_types[]" value="post">&nbsp;<?php echo esc_html__('Posts','gpt3-ai-content-generator')?></label></div>
+                    <div class="mb-5"><label><input <?php echo in_array('page',$wpaicg_builder_types) ? ' checked':'';?> type="checkbox" name="wpaicg_builder_types[]" value="page">&nbsp;<?php echo esc_html__('Pages','gpt3-ai-content-generator')?></label></div>
                     <?php
                     if(class_exists('WooCommerce')):
                         ?>
                         <div class="mb-5">
-                            <label><input<?php echo in_array('product',$wpaicg_builder_types) ? ' checked':'';?> type="checkbox" name="wpaicg_builder_types[]" value="product">&nbsp;<?php echo esc_html__('Products','gpt3-ai-content-generator')?></label>
+                            <label><input <?php echo in_array('product',$wpaicg_builder_types) ? ' checked':'';?> type="checkbox" name="wpaicg_builder_types[]" value="product">&nbsp;<?php echo esc_html__('Products','gpt3-ai-content-generator')?></label>
                         </div>
                     <?php
                     endif;
@@ -355,14 +425,14 @@ if($wpaicg_embeddings_settings_updated){
 </form>
 <!-- Modal HTML -->
 <div id="embeddingModelChangeModal" style="display:none;">
-    <div class="wpaicg_modal">
-        <div class="wpaicg_modal_content">
+    <div class="wpaicg_emb_modal">
+        <div class="wpaicg_emb_modal_content">
             <p><strong><?php echo esc_html__('Important Notice', 'gpt3-ai-content-generator'); ?></strong></p>
             <p><?php echo esc_html__('Changing the embeddings model will require you to reindex all your content and delete old indexes.', 'gpt3-ai-content-generator'); ?></p>
             <p><?php echo esc_html__('Make sure to reindex all your content after the model change.', 'gpt3-ai-content-generator'); ?></p>
             <p><?php echo esc_html__('Do you want to proceed?', 'gpt3-ai-content-generator'); ?></p>
         </div>
-        <div class="wpaicg_assign_footer">
+        <div class="wpaicg_assign_footer_emb">
             <button id="confirmModelChange" class="button button-primary"><?php echo esc_html__('Yes, Proceed', 'gpt3-ai-content-generator'); ?></button>
             <button id="cancelModelChange" class="button"><?php echo esc_html__('Cancel', 'gpt3-ai-content-generator'); ?></button>
         </div>
@@ -393,13 +463,13 @@ if($wpaicg_embeddings_settings_updated){
 
         // Function to show modal
         function showModal() {
-            $('#wpaicg_modal_overlay').show();
+            $('#wpaicg_emb_modal_overlay').show();
             $('#embeddingModelChangeModal').show();
         }
 
         // Function to hide modal
         function hideModal() {
-            $('#wpaicg_modal_overlay').hide();
+            $('#wpaicg_emb_modal_overlay').hide();
             $('#embeddingModelChangeModal').hide();
         }
 

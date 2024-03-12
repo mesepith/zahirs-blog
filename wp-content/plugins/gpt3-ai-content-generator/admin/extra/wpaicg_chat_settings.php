@@ -38,6 +38,35 @@ if(isset($_POST['wpaicg_chat_save'])){
     } else {
         delete_option('wpaicg_banned_words');
     }
+    // Handling the new "User Uploads Preference" option
+    if (isset($_POST['wpaicg_user_uploads']) && in_array($_POST['wpaicg_user_uploads'], ['filesystem', 'media_library'])) {
+        update_option('wpaicg_user_uploads', sanitize_text_field($_POST['wpaicg_user_uploads']));
+    } else {
+        // Set default value if not set or invalid
+        update_option('wpaicg_user_uploads', 'filesystem');
+    }
+    if (isset($_POST['wpaicg_img_processing_method']) && in_array($_POST['wpaicg_img_processing_method'], ['url', 'base64'])) {
+        update_option('wpaicg_img_processing_method', sanitize_text_field($_POST['wpaicg_img_processing_method']));
+    } else {
+        // Set default value if not set or invalid
+        update_option('wpaicg_img_processing_method', 'url');
+    }
+    if (isset($_POST['wpaicg_img_vision_quality']) && in_array($_POST['wpaicg_img_vision_quality'], ['auto', 'low', 'high'])) {
+        update_option('wpaicg_img_vision_quality', sanitize_text_field($_POST['wpaicg_img_vision_quality']));
+    } else {
+        // Set default value if not set or invalid
+        update_option('wpaicg_img_vision_quality', 'auto');
+    }
+    if (isset($_POST['wpaicg_typewriter_effect']) && !empty($_POST['wpaicg_typewriter_effect'])) {
+        update_option('wpaicg_typewriter_effect', sanitize_text_field($_POST['wpaicg_typewriter_effect']));
+    } else {
+        delete_option('wpaicg_typewriter_effect');
+    }
+    if (isset($_POST['wpaicg_typewriter_effect']) && !empty($_POST['wpaicg_typewriter_effect']) && isset($_POST['wpaicg_typewriter_speed'])) {
+        update_option('wpaicg_typewriter_speed', sanitize_text_field($_POST['wpaicg_typewriter_speed']));
+    } elseif(empty($_POST['wpaicg_typewriter_effect'])) {
+        delete_option('wpaicg_typewriter_speed');
+    }    
     // Handling the new "Enable Assistants" option
     $wpaicg_assistant_feature = isset($_POST['wpaicg_assistant_feature']) ? 1 : 0;
     update_option('wpaicg_assistant_feature', $wpaicg_assistant_feature);
@@ -47,6 +76,8 @@ $wpaicg_chat_enable_sale = get_option('wpaicg_chat_enable_sale', false);
 $wpaicg_elevenlabs_hide_error = get_option('wpaicg_elevenlabs_hide_error', false);
 $wpaicg_elevenlabs_api = get_option('wpaicg_elevenlabs_api', '');
 $wpaicg_google_api_key = get_option('wpaicg_google_api_key', '');
+$wpaicg_typewriter_effect = get_option('wpaicg_typewriter_effect', false);
+$wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
 if($success){
     echo '<div class="notice notice-success is-dismissible"><p>'.esc_html__('Settings saved successfully!','gpt3-ai-content-generator').'</p></div>';
     
@@ -55,17 +86,7 @@ if($success){
 <div id="wpaicg_message" style="display: none;"></div>
 <form action="" method="post">
     <?php wp_nonce_field('wpaicg_chat_nonce'); ?>
-    <h3 class="title"><?php echo esc_html__('Text to Speech','gpt3-ai-content-generator')?></h3>
-    <p>
-    <?php 
-    printf(
-        /* translators: 1: Start link tag, 2: End link tag */
-        esc_html__('Read tutorial %1$shere%2$s', 'gpt3-ai-content-generator'), 
-        '<a href="https://docs.aipower.org/docs/ChatGPT/advanced-setup/voice-chat#voice-output" target="_blank">', 
-        '</a>'
-    ); 
-    ?>
-    </p>
+    <h3><?php echo esc_html__('Text to Speech','gpt3-ai-content-generator')?></h3>
     <table class="form-table">
         <tr>
             <th><?php echo esc_html__('ElevenLabs API Key','gpt3-ai-content-generator')?></th>
@@ -96,17 +117,17 @@ if($success){
         </tr>
         <tr>
             <th><?php echo esc_html__('Hide errors in chat','gpt3-ai-content-generator')?></th>
-            <td><input<?php echo $wpaicg_elevenlabs_hide_error ? ' checked':''?> type="checkbox" class="wpaicg_elevenlabs_hide_error" value="1" name="wpaicg_elevenlabs_hide_error"></td>
+            <td><input <?php echo $wpaicg_elevenlabs_hide_error ? ' checked':''?> type="checkbox" class="wpaicg_elevenlabs_hide_error" value="1" name="wpaicg_elevenlabs_hide_error"></td>
         </tr>
     </table>
-    <h3 class="title"><?php echo esc_html__('Token Management','gpt3-ai-content-generator')?></h3>
+    <h3><?php echo esc_html__('Token Management','gpt3-ai-content-generator')?></h3>
     <table class="form-table">
         <tr>
             <th><?php echo esc_html__('Enable Token Purchase?','gpt3-ai-content-generator')?></th>
-            <td><input<?php echo $wpaicg_chat_enable_sale ? ' checked':''?> type="checkbox" class="wpaicg_chat_enable_sale" value="1" name="wpaicg_chat_enable_sale"></td>
+            <td><input <?php echo $wpaicg_chat_enable_sale ? ' checked':''?> type="checkbox" class="wpaicg_chat_enable_sale" value="1" name="wpaicg_chat_enable_sale"></td>
         </tr>
     </table>
-    <h3 class="title"><?php echo esc_html__('Security','gpt3-ai-content-generator')?></h3>
+    <h3><?php echo esc_html__('Security','gpt3-ai-content-generator')?></h3>
         <table class="form-table">
             <tr>
                 <th><?php echo esc_html__('Banned IP Addresses','gpt3-ai-content-generator')?></th>
@@ -123,20 +144,115 @@ if($success){
                 </td>
             </tr>
         </table>
-        <h3 class="title"><?php echo esc_html__('Assistants','gpt3-ai-content-generator')?></h3>
+        <h3><?php echo esc_html__('Assistants','gpt3-ai-content-generator')?></h3>
         <table class="form-table">
             <tr>
                 <th><?php echo esc_html__('Enable Assistants', 'gpt3-ai-content-generator'); ?></th>
                 <td>
-                    <?php $wpaicg_assistant_feature = get_option('wpaicg_assistant_feature', 0); ?>
-                    <input type="checkbox" name="wpaicg_assistant_feature" value="1" <?php checked(1, $wpaicg_assistant_feature, true); ?>>
+                    <?php
+                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+                    $wpaicg_assistant_feature = get_option('wpaicg_assistant_feature', 0);
+                    // Check if provider is OpenAI
+                    if($wpaicg_provider == 'OpenAI'): ?>
+                        <input type="checkbox" name="wpaicg_assistant_feature" value="1" <?php checked(1, $wpaicg_assistant_feature, true); ?>>
+                    <?php else: ?>
+                        <input type="checkbox" name="wpaicg_assistant_feature" value="1" disabled="disabled">
+                        <!-- This feature is available in OpenAI only. -->
+                        <p><?php echo esc_html__('This feature is available in OpenAI only.', 'gpt3-ai-content-generator'); ?></p>
+                    <?php endif; ?>
                 </td>
             </tr>
         </table>
+        <?php $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI'); ?>
+        <h3><?php echo esc_html__('Images','gpt3-ai-content-generator')?></h3>
+        <table class="form-table">
+            <tr>
+                <th><?php echo esc_html__('User Upload','gpt3-ai-content-generator')?></th>
+                <td>
+                    <?php $wpaicg_user_uploads = get_option('wpaicg_user_uploads', 'filesystem'); ?>
+                    <select name="wpaicg_user_uploads" <?php if($wpaicg_provider != 'OpenAI') echo 'disabled="disabled"'; ?>>
+                        <option value="filesystem" <?php selected($wpaicg_user_uploads, 'filesystem'); ?>><?php echo esc_html__('Filesystem', 'gpt3-ai-content-generator'); ?></option>
+                        <option value="media_library" <?php selected($wpaicg_user_uploads, 'media_library'); ?>><?php echo esc_html__('Media Library', 'gpt3-ai-content-generator'); ?></option>
+                    </select>
+                    <?php if($wpaicg_provider != 'OpenAI'): ?>
+                        <p><?php echo esc_html__('This feature is available in OpenAI only.', 'gpt3-ai-content-generator'); ?></p>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        </table>
+        <table class="form-table">
+            <tr>
+                <th><?php echo esc_html__('Image Processing Method','gpt3-ai-content-generator')?></th>
+                <td>
+                    <?php $wpaicg_img_processing_method = get_option('wpaicg_img_processing_method', 'url'); ?>
+                    <select name="wpaicg_img_processing_method" <?php if($wpaicg_provider != 'OpenAI') echo 'disabled="disabled"'; ?>>
+                        <option value="url" <?php selected($wpaicg_img_processing_method, 'url'); ?>><?php echo esc_html__('URL', 'gpt3-ai-content-generator'); ?></option>
+                        <option value="base64" <?php selected($wpaicg_img_processing_method, 'base64'); ?>><?php echo esc_html__('Base64', 'gpt3-ai-content-generator'); ?></option>
+                    </select>
+                    <?php if($wpaicg_provider != 'OpenAI'): ?>
+                        <p><?php echo esc_html__('This feature is available in OpenAI only.', 'gpt3-ai-content-generator'); ?></p>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        </table>
+        <table class="form-table">
+            <tr>
+                <th><?php echo esc_html__('Image Quality','gpt3-ai-content-generator')?></th>
+                <td>
+                    <?php $wpaicg_img_vision_quality = get_option('wpaicg_img_vision_quality', 'auto'); ?>
+                    <select name="wpaicg_img_vision_quality" <?php if($wpaicg_provider != 'OpenAI') echo 'disabled="disabled"'; ?>>
+                        <option value="auto" <?php selected($wpaicg_img_vision_quality, 'auto'); ?>><?php echo esc_html__('Auto', 'gpt3-ai-content-generator'); ?></option>
+                        <option value="low" <?php selected($wpaicg_img_vision_quality, 'low'); ?>><?php echo esc_html__('Low', 'gpt3-ai-content-generator'); ?></option>
+                        <option value="high" <?php selected($wpaicg_img_vision_quality, 'high'); ?>><?php echo esc_html__('High', 'gpt3-ai-content-generator'); ?></option>
+                    </select>
+                    <?php if($wpaicg_provider != 'OpenAI'): ?>
+                        <p><?php echo esc_html__('This feature is available in OpenAI only.', 'gpt3-ai-content-generator'); ?></p>
+                    <?php endif; ?>
+                </td>
+            </tr>
+        </table>
+        <h3><?php echo esc_html__('Display Options','gpt3-ai-content-generator')?></h3>
+        <table class="form-table">
+            <tr>
+                <th><?php echo esc_html__('Typewriter Effect','gpt3-ai-content-generator')?></th>
+                <td>
+                    <input <?php echo $wpaicg_typewriter_effect ? ' checked':''?> type="checkbox" id="wpaicg_typewriter_effect" class="wpaicg_typewriter_effect" value="1" name="wpaicg_typewriter_effect">
+                </td>
+            </tr>
+            <tr id="wpaicg_typewriter_speed_row" style="display: none;">
+                <th><?php echo esc_html__('Typewriter Speed','gpt3-ai-content-generator')?></th>
+                <td>
+                    <select name="wpaicg_typewriter_speed" id="wpaicg_typewriter_speed">
+                        <?php for ($i = 1; $i <= 10; $i++): ?>
+                            <option value="<?php echo $i; ?>" <?php echo get_option('wpaicg_typewriter_speed', 1) == $i ? 'selected' : ''; ?>>
+                                <?php echo $i; ?> <?php echo $i == 1 ? ' - Fastest' : ($i == 10 ? ' - Slowest' : ''); ?>
+                            </option>
+                        <?php endfor; ?>
+                    </select>
+                </td>
+            </tr>
+        </table>
+
     <p class="submit"><button class="button button-primary" name="wpaicg_chat_save"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button></p>
 </form>
 <script>
     jQuery(document).ready(function($){
+
+        // Initial check
+        toggleTypewriterSpeedDisplay();
+
+        // On change of the checkbox
+        $('#wpaicg_typewriter_effect').change(function() {
+            toggleTypewriterSpeedDisplay();
+        });
+
+        function toggleTypewriterSpeedDisplay() {
+            if ($('#wpaicg_typewriter_effect').is(':checked')) {
+                $('#wpaicg_typewriter_speed_row').show();
+            } else {
+                $('#wpaicg_typewriter_speed_row').hide();
+            }
+        }
 
         function showMessageSuccess(message) {
             $("#wpaicg_message").css({

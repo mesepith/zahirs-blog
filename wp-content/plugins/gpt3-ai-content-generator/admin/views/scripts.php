@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 dataType: 'JSON',
                 type: 'POST',
                 beforeSend: function (){
-                    btn.html('Loading..');
+                    btn.html('Please wait...');
                 },
                 success: function (res){
                     btn.html("Sync");
