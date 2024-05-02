@@ -29,7 +29,7 @@ $pineconeindexes = get_option('wpaicg_pinecone_indexes','');
 $pineconeindexes = empty($pineconeindexes) ? array() : json_decode($pineconeindexes,true);
 
 // Define the model categories and their members.
-$gpt4_models = ['gpt-4', 'gpt-4-32k','gpt-4-1106-preview','gpt-4-vision-preview'];
+$gpt4_models = ['gpt-4','gpt-4-turbo','gpt-4-vision-preview'];
 $gpt35_models = ['gpt-3.5-turbo', 'gpt-3.5-turbo-16k', 'gpt-3.5-turbo-instruct'];
 $custom_models = get_option('wpaicg_custom_models', []);
 

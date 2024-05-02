@@ -607,7 +607,7 @@
 .nice-form-group > input[type="checkbox"].switch:checked {
   background: none;
   background-position: 0 0;
-  background-color: var(--nf-input-focus-border-color);
+  background-color: #10b981;
 }
 .nice-form-group > input[type="checkbox"].switch:checked:after {
   -webkit-transform: translateY(-50%)
@@ -1115,4 +1115,628 @@ details summary::-webkit-details-marker {
   transform: translateY(-2px);
 }
 
+.content-writer-master {
+  display: flex;
+  max-width: 90em;
+}
 
+/* CSS targeting the specific page container */
+.content-writer-master .nice-form-group > .specific-textfield,
+.content-writer-master .nice-form-group > .specific-select {
+  width: 90%; /* Ensures both elements take up the same width */
+  /* You can add any other styling here to ensure both elements look the same */
+}
+
+/* CSS targeting the specific page container */
+.content-writer-master .nice-form-group > .data-source-select {
+  width: 30%; /* Ensures both elements take up the same width */
+  /* You can add any other styling here to ensure both elements look the same */
+}
+
+/* CSS targeting the specific page container */
+.content-writer-master-content .nice-form-group > .copy-paste-category-select {
+  width: 30%; /* Ensures both elements take up the same width */
+  /* You can add any other styling here to ensure both elements look the same */
+}
+
+/* CSS targeting the specific page container */
+.content-writer-master-content .nice-form-group > .csv-category-select {
+  width: 30%; /* Ensures both elements take up the same width */
+  /* You can add any other styling here to ensure both elements look the same */
+}
+
+/* CSS targeting the specific page container */
+.content-writer-master-content .nice-form-group > .csv-author-select {
+  width: 30%; /* Ensures both elements take up the same width */
+  /* You can add any other styling here to ensure both elements look the same */
+}
+
+.content-writer-master .content-writer-master-navigation {
+  width: 18em;
+  padding: 2em 1em;
+}
+.content-writer-master .content-writer-master-navigation nav {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 2em;
+  background: #fff;
+  padding: 0.5em;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+.content-writer-master .content-writer-master-navigation a {
+  display: -webkit-flex;
+  display: flex;
+  padding: 0.75em 1em;
+  text-decoration: none;
+  border-radius: 0.25em;
+  color: #374151;
+  -webkit-align-items: center;
+  align-items: center;
+}
+.content-writer-master .content-writer-master-navigation a:hover {
+  background: #f3f4f6;
+}
+.content-writer-master .content-writer-master-navigation a svg {
+  width: 1.25em;
+  height: 1.25em;
+  margin-right: 1em;
+  color: #1f2937;
+}
+.content-writer-master .content-writer-master-content {
+  padding: 2em 1em;
+  max-width: 100%;
+  display: inline;
+}
+
+/* Media query for larger screens */
+@media only screen and (min-width: 750px) {
+  .content-writer-master .content-writer-master-content {
+    width: calc(100% - 36em); /* Updated to subtract the widths of both navs */
+  }
+}
+
+.content-writer-master-content section {
+  display: none;
+}
+
+.content-writer-master .content-writer-right-navigation {
+  width: 18em;
+  padding: 2em 1em;
+}
+.content-writer-master .content-writer-right-navigation nav {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 2em;
+  background: #fff;
+  padding: 0.5em;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+.content-writer-master .content-writer-right-navigation a {
+  display: flex;
+  text-decoration: none;
+  padding: 1em 1.5em;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  background: #10b981;
+  top: 1em;
+  right: 1em;
+  color: #fff;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+}
+.content-writer-master .content-writer-right-navigation a:hover {
+  background: #0ea271;
+}
+.content-writer-master .content-writer-right-navigation a svg {
+  width: 1.25em;
+  height: 1.25em;
+  margin-right: 1em;
+  color: #1f2937;
+}
+/* Styles for active and passive tabs */
+.content-writer-right-navigation ul li {
+  margin-bottom: 0.5em;
+}
+
+/* Style for active tab */
+.content-writer-right-navigation ul li.active a {
+  background: #4F46E5; /* Example: a dark shade of blue */
+  color: #ffffff;
+}
+
+/* Additional styling for submenu items */
+.content-writer-right-navigation .submenu ul li:hover {
+  background-color: #f0f0f0;
+}
+
+.content-writer-right-navigation .submenu ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.content-writer-right-navigation .submenu ul li {
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
+.submenu {
+  margin: 1em 0 0 0;
+}
+
+.content-writer-master .content-writer-right-navigation a.pro-feature-label {
+  align-items: center;
+  justify-content: center;
+  background: #4DB154;
+  color: #fff;
+  padding: 0.2em 1em;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  user-select: none; /* Prevent text selection */
+  text-decoration: none; /* Remove underline from links */
+  transition: transform 0.3s ease, box-shadow 0.3s ease, color 0.3s ease, background-color 0.3s ease; /* Add transitions for color and background-color */
+  margin-left: auto; /* Align to the right */
+  width: 20%;
+  display: inline;
+}
+
+.content-writer-master .content-writer-right-navigation a.pro-feature-label:hover,
+.content-writer-master .content-writer-right-navigation a.pro-feature-label:focus {
+  color: #e0e0e0; /* Brighter text color on hover */
+  background-color: #1BB126; /* Slightly lighter background on hover */
+  box-shadow: 0 0 15px #fff; /* Glow effect */
+  text-decoration: none;
+  transform: translateY(-2px);
+}
+
+.content-writer-master .content-writer-right-navigation .smallbuttons {
+  align-items: center;
+  justify-content: center;
+  background: #4DB154;
+  color: #fff;
+  padding: 0.2em 0.9em;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+  0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  user-select: none; /* Prevent text selection */
+  text-decoration: none; /* Remove underline from links */
+  transition: transform 0.3s ease, box-shadow 0.3s ease, color 0.3s ease, background-color 0.3s ease; /* Add transitions for color and background-color */
+  margin-left: auto; /* Align to the right */
+  width: 20%;
+  display: inline;
+  margin: 0.4em;
+}
+
+.content-writer-master .content-writer-right-navigation .smallbuttons:hover,
+.content-writer-master .content-writer-right-navigation .smallbuttons:focus {
+  color: #e0e0e0; /* Brighter text color on hover */
+  background-color: #1BB126; /* Slightly lighter background on hover */
+  box-shadow: 0 0 15px #fff; /* Glow effect */
+  text-decoration: none;
+  transform: translateY(-2px);
+}
+.wpaicg_template_title_result{
+  font-size: 16px;
+  display: flex;
+  margin-bottom: 10px;
+  margin-top: 1em;
+  font-weight: bold;
+  border-radius: 4px;
+  background: #e1e1e1;
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  word-wrap: break-word; /* Allow long words to be able to break and wrap onto the next line */
+  white-space: normal; /* Override any potential white-space settings that prevent wrapping */
+  line-height: 1.5; /* Set the line height to 1.6 */
+}
+
+.content-writer-master .content-writer-right-navigation .smallnotes {
+  word-wrap: break-word; /* Allow long words to be able to break and wrap onto the next line */
+  white-space: normal; /* Override any potential white-space settings that prevent wrapping */
+  line-height: 1.5; /* Set the line height to 1.6 */
+}
+.wpaicg-bulk-editor-success-message, .wpaicg-finetune-sync-message,.wpaicg-finetune-delete-message,.wpaicg-embedding-reindex-message,.wpaicg-csv-success-message, .wpaicg-finetune-success-message,.wpaicg-embedding-success-message, .wpaicg-embedding-delete-message,.wpaicg-embedding-delete-all-message, .wpaicg-copy-success-message, .wpaicg_sheets_success_msg {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+  border-radius: 5px;
+  text-align: center;
+  display: none; /* Hide by default */
+}
+.wpaicg_sheets_cron_msg {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+  border-radius: 5px;
+  word-wrap: break-word; /* Allow long words to be able to break and wrap onto the next line */
+  white-space: break-spaces; /* Override any potential white-space settings that prevent wrapping */
+  line-height: 1.6; /* Set the line height to 1.6 */
+  display: flex;
+}
+.wpaicg-embedding-save-message {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+  border-radius: 5px;
+  word-wrap: break-word; /* Allow long words to be able to break and wrap onto the next line */
+  white-space: break-spaces; /* Override any potential white-space settings that prevent wrapping */
+  line-height: 1.6; /* Set the line height to 1.6 */
+  display: flex;
+  opacity: 1;
+  transition: opacity 2s ease-out; /* Smooth transition for the opacity */
+}
+.wpaicg-embedding-save-message-hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+.wpaicg_sheets_cron_error_msg,.wpaicg_embedding_error_msg {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #f8d7da; /* Light red background */
+  color: #721c24; /* Dark red text color for contrast and readability */
+  border-color: #f5c6cb; /* Slightly lighter red for the border */
+  border-radius: 5px;
+  word-wrap: break-word; /* Allow long words to break and wrap to the next line */
+  white-space: break-spaces; /* Override any potential white-space settings that prevent wrapping */
+  line-height: 1.6; /* Maintain the line height for consistency */
+  display: flex;
+  flex-direction: column;
+}
+.toggle-shortcode-sheets {
+  padding: 0.6em 1em;
+  border-radius: 5px;
+  background: #10b981;
+  color: #fff;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+  margin-bottom: 8px;
+  word-wrap: break-word; /* Allow long words to break and wrap to the next line */
+  white-space: break-spaces; /* Override any potential white-space settings that prevent wrapping */
+  line-height: 1.6; /* Maintain the line height for consistency */
+  display: flex;
+  flex-direction: column;
+}
+.toggle-shortcode-sheets:hover {
+  background: #0ea271;
+}
+@keyframes spinrefresh {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spinrefresh {
+  animation: spinrefresh 2s linear infinite;
+}
+
+.wp-list-table th.column-id,td.column-id {
+  width: auto; /* Adjust as needed */
+}
+
+.wp-list-table th.column-batch,
+.wp-list-table td.column-batch {
+  width: auto; /* Adjust as needed */
+  word-wrap: break-word; /* Ensures text wraps */
+  white-space: normal; /* Ensures text wraps */
+}
+
+/* Optional: Ensure other columns take up the remaining space equally */
+.wp-list-table th.column-source,
+.wp-list-table th.column-status,
+.wp-list-table th.column-action {
+  width: auto;
+}
+.wpaicg-code-container {
+  overflow-x: auto; /* Enables horizontal scrolling */
+  white-space: nowrap; /* Ensures the code stays in a single line */
+  /* Additional styles for aesthetics */
+  padding: 8px;
+  border: 1px solid #ddd;
+  background-color: #f4f4f4;
+  border-radius: 4px;
+}
+.wpaicg_alert_container {
+justify-content: space-between;
+align-items: center;
+}
+.wpaicg-table-responsive {
+  overflow-x: auto; /* Enable horizontal scrolling */
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on touch devices */
+  border: 1px solid #ddd; /* Optional: adds a border around the table */
+  margin-bottom: 1em; /* Optional: adds spacing below the table */
+}
+.custom-modal-embedding-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050; /* Ensure it's above other content */
+}
+
+.custom-modal-embedding-window {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 60%; /* Fixed height for the modal window */
+  background-color: #fff;
+  padding: 10px;
+  z-index: 1051; /* Above the overlay */
+  box-shadow: 0 4px 6px rgba(0,0,0,.1);
+  display: flex;
+  flex-direction: column; /* Organizes title and content in a column */
+  width: 70%; /* Adjust width as needed */
+}
+
+.custom-modal-embedding-title {
+  margin-bottom: 20px; /* Space between title and content */
+  border-bottom: 1px solid #ccc; /* Adds a line below the title */
+  padding-bottom: 10px; /* Adds some space between the title text and the line */
+}
+
+.custom-modal-embedding-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  cursor: pointer;
+  color: #666;
+}
+
+.custom-modal-embedding-content {
+  overflow-y: auto; /* Makes only the content area scrollable */
+  line-height: 1.6; /* Increases the space between lines of text */
+  color: #333; /* Sets a slightly darker color for better readability */
+  flex: 1; /* Allows content area to fill available space */
+}
+.wpaicg_pdf{
+  max-width: 500px;
+}
+.wpaicg_pdf_progress{
+  height: 25px;
+  width: 100%;
+  position: relative;
+  background: #0fb981;
+  border-radius: 4px;
+  overflow:hidden;
+  margin-top: 1em;
+}
+.wpaicg_pdf_progress span{
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #2271b1;
+  -webkit-transition: width 0.5s ease-in-out;
+  -moz-transition: width 0.5s ease-in-out;
+  -o-transition: width 0.5s ease-in-out;
+  transition: width 0.5s ease-in-out;
+}
+.wpaicg_pdf_progress.wpaicg_error span{
+  background: #d63638;
+}
+
+.wp-core-ui .button.wpaicg-danger-btn{
+  background: #c90000;
+  color: #fff;
+  border-color: #cb0000;
+}
+.wpaicg_pdf_message{
+  margin-bottom: 20px;
+}
+.wpaicg-builder-process{
+  margin-bottom: 10px;
+}
+.wpaicg-builder-process-content{
+  height: 20px;
+  width: 100%;
+  background: #dbdbdb;
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  margin-top: 1em;
+}
+.wpaicg-percent{
+  position: absolute;
+  display: block;
+  height: 20px;
+  background: #0fb981;
+}
+
+.custom-modal-finetune-overlay, .custom-modal-training-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050; /* Ensure it's above other content */
+}
+
+.custom-modal-finetune-window {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 60%; /* Fixed height for the modal window */
+  background-color: #fff;
+  padding: 10px;
+  z-index: 1051; /* Above the overlay */
+  box-shadow: 0 4px 6px rgba(0,0,0,.1);
+  display: flex;
+  flex-direction: column; /* Organizes title and content in a column */
+  width: 70%; /* Adjust width as needed */
+}
+
+.custom-modal-training-window {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #fff;
+  padding: 10px;
+  z-index: 1051; /* Above the overlay */
+  box-shadow: 0 4px 6px rgba(0,0,0,.1);
+  display: flex;
+  flex-direction: column; /* Organizes title and content in a column */
+  white-space: normal; /* Allow text to wrap */
+  width: 70%; /* Adjust width as needed */
+  height: 60%; /* Fixed height for the modal window */
+}
+
+.custom-modal-finetune-title, .custom-modal-training-title {
+  margin-bottom: 20px; /* Space between title and content */
+  border-bottom: 1px solid #ccc; /* Adds a line below the title */
+  padding-bottom: 10px; /* Adds some space between the title text and the line */
+}
+
+.custom-modal-finetune-close, .custom-modal-training-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  cursor: pointer;
+  color: #666;
+}
+
+.custom-modal-finetune-content, .custom-modal-training-content {
+  overflow-y: auto; /* Makes only the content area scrollable */
+  line-height: 1.6; /* Increases the space between lines of text */
+  color: #333; /* Sets a slightly darker color for better readability */
+  flex: 1; /* Allows content area to fill available space */
+}
+
+/* Optional: Ensure other columns take up the remaining space equally */
+
+
+.custom-modal-create-finetune-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050; /* Ensure it's above other content */
+}
+
+.custom-modal-create-finetune-window {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #fff;
+  padding: 10px;
+  z-index: 1051; /* Above the overlay */
+  box-shadow: 0 4px 6px rgba(0,0,0,.1);
+  display: flex;
+  flex-direction: column; /* Organizes title and content in a column */
+  width: 500px; /* Adjust width as needed */
+}
+
+.custom-modal-create-finetune-title {
+  margin-bottom: 10px; /* Space between title and content */
+  border-bottom: 1px solid #ccc; /* Adds a line below the title */
+  padding-bottom: 10px; /* Adds some space between the title text and the line */
+}
+
+.custom-modal-create-finetune-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  cursor: pointer;
+  color: #666;
+}
+
+.custom-modal-finetune-content,.custom-modal-create-finetune-content {
+  overflow-y: auto; /* Makes only the content area scrollable */
+  line-height: 1.6; /* Increases the space between lines of text */
+  color: #333; /* Sets a slightly darker color for better readability */
+  flex: 1; /* Allows content area to fill available space */
+}
+
+.wpaicg_finetune_tab {
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+}
+
+.wpaicg_finetune_tab button {
+  background-color: inherit;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+  font-size: 17px;
+}
+
+.wpaicg_finetune_tab button:hover {
+  background-color: #ddd;
+}
+
+.wpaicg_finetune_tab button.active {
+  background-color: #ccc;
+}
+
+.wpaicg_finetune_tabcontent {
+  display: none;
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  border-top: none;
+}
+
+.wpaicg_finetune_content-area {
+  margin-top: 20px;
+}
+.wpaicg-delete-starter {
+  font-size: 8px; /* Smaller text size */
+  padding: 2px 5px; /* Reduce padding to decrease button size */
+  vertical-align: middle; /* Align button with the middle of the input */
+  cursor: pointer; /* Change cursor to pointer on hover */
+}
+.options-container {
+  display: flex;
+  flex-wrap: wrap; /* Allows the container to wrap items if not enough space */
+  justify-content: space-between;
+  gap: 5px; /* Reduced gap between the columns */
+}
+
+.options-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.wpaicg-option-container label {
+  font-size: 11px; /* Smaller font size for labels */
+}
+
+.wpaicg-option-container input[type="radio"] {
+  transform: scale(0.7); /* Makes radio buttons even smaller */
+  margin-right: 2px; /* Reduce spacing next to radio buttons */
+}
+
+.nice-form-group > input[type="checkbox"].switch:checked::before {
+  content: none !important;
+}

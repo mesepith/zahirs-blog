@@ -150,11 +150,13 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
             $wpaicg_chat_icon_url = isset($wpaicg_chat_widget['icon_url']) && !empty($wpaicg_chat_widget['icon_url']) ? $wpaicg_chat_widget['icon_url'] : '';
             $wpaicg_chat_status = isset($wpaicg_chat_widget['status']) && !empty($wpaicg_chat_widget['status']) ? $wpaicg_chat_widget['status'] : '';
             $wpaicg_chat_fontsize = isset($wpaicg_chat_widget['fontsize']) && !empty($wpaicg_chat_widget['fontsize']) ? $wpaicg_chat_widget['fontsize'] : '13';
-            $wpaicg_chat_fontcolor = isset($wpaicg_chat_widget['fontcolor']) && !empty($wpaicg_chat_widget['fontcolor']) ? $wpaicg_chat_widget['fontcolor'] : '#fff';
-            $wpaicg_chat_bgcolor = isset($wpaicg_chat_widget['bgcolor']) && !empty($wpaicg_chat_widget['bgcolor']) ? $wpaicg_chat_widget['bgcolor'] : '#343540';
-            $wpaicg_bg_text_field = isset($wpaicg_chat_widget['bg_text_field']) && !empty($wpaicg_chat_widget['bg_text_field']) ? $wpaicg_chat_widget['bg_text_field'] : '#fff';
-            $wpaicg_send_color = isset($wpaicg_chat_widget['send_color']) && !empty($wpaicg_chat_widget['send_color']) ? $wpaicg_chat_widget['send_color'] : '#fff';
-            $wpaicg_border_text_field = isset($wpaicg_chat_widget['border_text_field']) && !empty($wpaicg_chat_widget['border_text_field']) ? $wpaicg_chat_widget['border_text_field'] : '#ccc';
+            $wpaicg_chat_fontcolor = isset($wpaicg_chat_widget['fontcolor']) && !empty($wpaicg_chat_widget['fontcolor']) ? $wpaicg_chat_widget['fontcolor'] : '#ffffff';
+            $wpaicg_input_font_color = isset($wpaicg_chat_widget['input_font_color']) && !empty($wpaicg_chat_widget['input_font_color']) ? $wpaicg_chat_widget['input_font_color'] : '#000000';
+            $wpaicg_chat_bgcolor = isset($wpaicg_chat_widget['bgcolor']) && !empty($wpaicg_chat_widget['bgcolor']) ? $wpaicg_chat_widget['bgcolor'] : '#f8f9fa';
+            $wpaicg_bg_text_field = isset($wpaicg_chat_widget['bg_text_field']) && !empty($wpaicg_chat_widget['bg_text_field']) ? $wpaicg_chat_widget['bg_text_field'] : '#ffffff';
+            $wpaicg_send_color = isset($wpaicg_chat_widget['send_color']) && !empty($wpaicg_chat_widget['send_color']) ? $wpaicg_chat_widget['send_color'] : '#d1e8ff';
+            $wpaicg_footer_color = isset($wpaicg_chat_widget['footer_color']) && !empty($wpaicg_chat_widget['footer_color']) ? $wpaicg_chat_widget['footer_color'] : '#ffffff';
+            $wpaicg_border_text_field = isset($wpaicg_chat_widget['border_text_field']) && !empty($wpaicg_chat_widget['border_text_field']) ? $wpaicg_chat_widget['border_text_field'] : '#ced4da';
             $wpaicg_chat_width = isset($wpaicg_chat_widget['width']) && !empty($wpaicg_chat_widget['width']) ? $wpaicg_chat_widget['width'] : '40%';
             $wpaicg_chat_height = isset($wpaicg_chat_widget['height']) && !empty($wpaicg_chat_widget['height']) ? $wpaicg_chat_widget['height'] : '40%';
             $wpaicg_chat_position = isset($wpaicg_chat_widget['position']) && !empty($wpaicg_chat_widget['position']) ? $wpaicg_chat_widget['position'] : 'left';
@@ -163,6 +165,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
             $wpaicg_chat_remember_conversation = isset($wpaicg_chat_widget['remember_conversation']) && !empty($wpaicg_chat_widget['remember_conversation']) ? $wpaicg_chat_widget['remember_conversation'] : 'yes';
             $wpaicg_chat_content_aware = isset($wpaicg_chat_widget['content_aware']) && !empty($wpaicg_chat_widget['content_aware']) ? $wpaicg_chat_widget['content_aware'] : 'yes';
             $wpaicg_include_footer = (isset($wpaicg_chat_widget['footer_text']) && !empty($wpaicg_chat_widget['footer_text'])) ? 5 : 0;
+            $wpaicg_text_rounded = isset($wpaicg_chat_widget['text_rounded']) && !empty($wpaicg_chat_widget['text_rounded']) ? $wpaicg_chat_widget['text_rounded'] : 5;
+            $wpaicg_text_height = isset($wpaicg_chat_widget['text_height']) && !empty($wpaicg_chat_widget['text_height']) ? $wpaicg_chat_widget['text_height'] : 40;
+            $wpaicg_user_bg_color = isset($wpaicg_chat_widget['user_bg_color']) && !empty($wpaicg_chat_widget['user_bg_color']) ? $wpaicg_chat_widget['user_bg_color'] : '#ccf5e1';
             ?>
 
             <?php
@@ -253,20 +258,75 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                         }
                         .wpaicg_chat_widget_content .wpaicg-chatbox{
                             height: 100%;
-                            background-color: <?php echo esc_html($wpaicg_chat_bgcolor)?>;
                             border-radius: 5px;
+                            border: none;
                         }
-                        .wpaicg_widget_open .wpaicg_chat_widget_content{
-                            height: <?php echo esc_html($wpaicg_chat_height)?>px;
+                        .wpaicg_chat_widget_content {
+                            /* Initial state of the chat window - hidden */
+                            opacity: 0;
+                            transform: scale(0.9);
+                            visibility: hidden;
+                            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
                         }
+
+                        .wpaicg_widget_open .wpaicg_chat_widget_content {
+                            /* Visible state of the chat window */
+                            opacity: 1;
+                            transform: scale(1);
+                            visibility: visible;
+                            transition-delay: 0s;
+                        }
+
+                        /* Updated shining light effect for hover without background */
+                        @keyframes shine {
+                            0% {
+                                background-position: -150px;
+                            }
+                            50% {
+                                background-position: 150px;
+                            }
+                            100% {
+                                background-position: -150px;
+                            }
+                        }
+
+                        .wpaicg_chat_widget .wpaicg_toggle {
+                            position: relative;
+                            overflow: hidden;
+                            transition: box-shadow 0.3s ease;
+                        }
+
+                        .wpaicg_chat_widget .wpaicg_toggle::before {
+                            content: '';
+                            position: absolute;
+                            top: -50%;
+                            left: -50%;
+                            width: 200%;
+                            height: 200%;
+                            /* Ensure gradient is completely transparent except for the shine */
+                            background: linear-gradient(to right, transparent, rgba(255,255,255,0.8) 50%, transparent) no-repeat;
+                            transform: rotate(30deg);
+                            /* Start with the shine outside of the visible area */
+                            background-position: -150px;
+                        }
+
+                        .wpaicg_chat_widget .wpaicg_toggle:hover::before {
+                            /* Apply the animation only on hover */
+                            animation: shine 2s infinite;
+                        }
+
+                        .wpaicg_chat_widget .wpaicg_toggle img {
+                            display: block;
+                            transition: opacity 0.3s ease;
+                        }
+
                         .wpaicg_chat_widget_content{
                             position: absolute;
                             bottom: calc(100% + 15px);
-                            width: <?php echo esc_html($wpaicg_chat_width)?>px;
                             overflow: hidden;
                         }
                         .wpaicg_widget_open .wpaicg_chat_widget_content{
-                            overflow: unset;
+                            overflow: visible;
                         }
                         .wpaicg_widget_open .wpaicg_chat_widget_content .wpaicg-chatbox{
                             top: 0;
@@ -275,60 +335,83 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                             position: absolute;
                             top: 100%;
                             left: 0;
-                            width: <?php echo esc_html($wpaicg_chat_width)?>px;
-                            height: <?php echo esc_html($wpaicg_chat_height)?>px;
                             transition: top 300ms cubic-bezier(0.17, 0.04, 0.03, 0.94);
                         }
-                        .wpaicg_chat_widget_content .wpaicg-chatbox-content{
-                        }
-                        .wpaicg_chat_widget_content .wpaicg-chatbox-content ul{
-                            box-sizing: border-box;
-                            background: <?php echo esc_html($wpaicg_chat_bgcolor)?>;
-                        }
-                        .wpaicg_chat_widget_content .wpaicg-chatbox-content ul li{
-                            color: <?php echo esc_html($wpaicg_chat_fontcolor)?>;
-                            font-size: <?php echo esc_html($wpaicg_chat_fontsize)?>px;
-                        }
-                        .wpaicg_chat_widget_content .wpaicg-bot-thinking{
-                            color: <?php echo esc_html($wpaicg_chat_fontcolor)?>;
-                        }
-                        .wpaicg_chat_widget_content .wpaicg-chatbox-type{
-                        <?php
-                        if($wpaicg_include_footer):
-                        ?>
-                            padding: 5px 5px 0 5px;
-                        <?php
-                        endif;
-                        ?>
-                            border-top: 0;
-                            background: rgb(0 0 0 / 19%);
-                        }
-                        .wpaicg_chat_widget_content .wpaicg-chat-message{
-                            color: <?php echo esc_html($wpaicg_chat_fontcolor)?>;
-                        }
-                        .wpaicg_chat_widget_content textarea.wpaicg-chatbox-typing{
-                            background-color: <?php echo esc_html($wpaicg_bg_text_field)?>;
-                            border-color: <?php echo esc_html($wpaicg_border_text_field)?>;
-                        }
-                        .wpaicg_chat_widget_content .wpaicg-chatbox-send{
-                            color: <?php echo esc_html($wpaicg_send_color)?>;
-                        }
+
                         .wpaicg-chatbox-footer{
-                            height: 18px;
-                            font-size: 11px;
-                            padding: 0 5px;
-                            color: <?php echo esc_html($wpaicg_send_color)?>;
-                            background: rgb(0 0 0 / 19%);
-                            margin-top:2px;
-                            margin-bottom: 2px;
+                            font-size: 0.75rem;
+                            padding: 12px 20px;
                         }
                         /* inherit for hyperlink */
                         .wpaicg-chatbox-footer a{
                             color: inherit;
                         }
-                        .wpaicg_chat_widget_content textarea.wpaicg-chatbox-typing:focus{
-                            outline: none;
+
+                        textarea.wpaicg-chat-shortcode-typing,textarea.wpaicg-chatbox-typing {
+                            flex: 1;
+                            resize: vertical;
+                            padding-left: 1em;
                         }
+
+                        textarea.auto-expand {
+                            overflow: hidden; /* Prevents scrollbar flash during size adjustment */
+                            transition: box-shadow 0.5s ease-in-out;
+                        }
+
+                        textarea.auto-expand.resizing {
+                            transition: box-shadow 0.5s ease-in-out;
+                            box-shadow: 0 0 12px rgba(81, 203, 238, 0.8);
+                        }
+
+
+                        textarea.auto-expand:focus {
+                            outline: none;
+                            box-shadow: 0 0 5px rgba(81, 203, 238, 1);
+                        }
+
+                        /* Updated shining light effect for hover without background */
+                        @keyframes shine {
+                            0% {
+                                background-position: -150px;
+                            }
+                            50% {
+                                background-position: 150px;
+                            }
+                            100% {
+                                background-position: -150px;
+                            }
+                        }
+
+                        .wpaicg_chat_widget .wpaicg_toggle {
+                            position: relative;
+                            overflow: hidden;
+                            transition: box-shadow 0.3s ease;
+                        }
+
+                        .wpaicg_chat_widget .wpaicg_toggle::before {
+                            content: '';
+                            position: absolute;
+                            top: -50%;
+                            left: -50%;
+                            width: 200%;
+                            height: 200%;
+                            /* Ensure gradient is completely transparent except for the shine */
+                            background: linear-gradient(to right, transparent, rgba(255,255,255,0.8) 50%, transparent) no-repeat;
+                            transform: rotate(30deg);
+                            /* Start with the shine outside of the visible area */
+                            background-position: -150px;
+                        }
+
+                        .wpaicg_chat_widget .wpaicg_toggle:hover::before {
+                            /* Apply the animation only on hover */
+                            animation: shine 2s infinite;
+                        }
+
+                        .wpaicg_chat_widget .wpaicg_toggle img {
+                            display: block;
+                            transition: opacity 0.3s ease;
+                        }
+
                         .wpaicg_chat_widget .wpaicg_toggle{
                             cursor: pointer;
                         }
@@ -350,26 +433,22 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                         .wpaicg-img-icon{
                             cursor: pointer;
                         }
-                        .wpaicg-img-icon svg{
+
+                        .wpaicg-pdf-icon svg{
                             width: 16px;
                             height: 16px;
                             fill: currentColor;
                         }
-                        .wpaicg-pdf-icon svg{
-                            width: 22px;
-                            height: 22px;
-                            fill: currentColor;
-                        }
                         .wpaicg_chat_additions span{
                             cursor: pointer;
-                            margin-right: 2px;
+                            margin-right: 10px;
                         }
                         .wpaicg_chat_additions span:last-of-type{
-                            margin-right: 0;
+                            margin-right: 0.5em;
                         }
                         .wpaicg-pdf-loading{
-                            width: 18px;
-                            height: 18px;
+                            width: 16px;
+                            height: 16px;
                             border: 2px solid #FFF;
                             border-bottom-color: transparent;
                             border-radius: 50%;
@@ -396,12 +475,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                             margin: 5px 0px;
                             border-radius: 4px;
                             white-space: pre-wrap;
-                        }
-                        textarea.wpaicg-chat-shortcode-typing,textarea.wpaicg-chatbox-typing{
-                            height: 30px;
-                        }
-                        .wpaicg_chat_widget_content .wpaicg-chatbox-content,.wpaicg-chat-shortcode-content{
-                            overflow: hidden;
                         }
                         .wpaicg_chatbox_line{
                             overflow: hidden;
@@ -505,19 +578,14 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                 .wpaicg-img-icon{
                     cursor: pointer;
                 }
-                .wpaicg-img-icon svg{
+                .wpaicg-pdf-icon svg{
                     width: 16px;
                     height: 16px;
                     fill: currentColor;
                 }
-                .wpaicg-pdf-icon svg{
-                    width: 22px;
-                    height: 22px;
-                    fill: currentColor;
-                }
                 .wpaicg-pdf-loading{
-                    width: 18px;
-                    height: 18px;
+                    width: 16px;
+                    height: 16px;
                     border: 2px solid #FFF;
                     border-bottom-color: transparent;
                     border-radius: 50%;
@@ -535,10 +603,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                 }
                 .wpaicg_chat_additions span{
                     cursor: pointer;
-                    margin-right: 2px;
+                    margin-right: 10px;
                 }
                 .wpaicg_chat_additions span:last-of-type{
-                    margin-right: 0;
+                    margin-right: 0.5em;
                 }
                 .wp-picker-container{
                     z-index: 99999;
@@ -656,9 +724,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Hook')) {
                     border-radius: 4px;
                     white-space: pre-wrap;
                 }
-                .wpaicg_chat_widget_content .wpaicg-chatbox-content,.wpaicg-chat-shortcode-content{
-                    overflow: hidden;
-                }
+
                 .wpaicg_chatbox_line{
                     overflow: hidden;
                     text-align: center;

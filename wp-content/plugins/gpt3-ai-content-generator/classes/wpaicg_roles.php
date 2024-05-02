@@ -90,17 +90,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Roles')) {
                     'troubleshoot' => array('name' => 'Troubleshoot')
                 )
             ),
-            'finetune' => array(
-                'name' => 'Train your AI',
-                'hide' => 'finetune',
-                'roles' => array(
-                    'upload' => array('name' => 'Upload'),
-                    'manual' => array('name' => 'Manual Entry'),
-                    'data' => array('name' => 'Data Converter'),
-                    'files' => array('name' => 'Datasets'),
-                    'file-tunes' => array('name' => 'Training')
-                )
-            ),
             'audio' => array(
                 'hide' => 'audio',
                 'name' => 'Audio Converter',

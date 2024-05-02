@@ -2,9 +2,9 @@
 Contributors: senols
 Tags: chatgpt, gpt, ai, openai, chatbot
 Requires at least: 5.0.0
-Tested up to: 6.4
+Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.8.44
+Stable tag: 1.8.59
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
  
@@ -151,107 +151,62 @@ Note: You can view non-Minified JS files [here](https://github.com/aipowerorg/No
 
 == Changelog ==
 
-= 1.8.44 =
+= 1.8.59 =
 
-- Settings page has been redesigned.
+- Automatic loading of previous chat conversations when the page is reloaded. (Note: Remember to clear both your site and browser caches.)
+- Smooth scrolling functionality in the chatbot.
+- Smooth transitions for conversation starters.
+- Fixed top bar layout within the chatbot interface.
+- Improved white-labeling options for licensing.
+- PHP 8.* enhancements.
+- Optimized garbage collection processes.
 
-= 1.8.43 =
+= 1.8.58 =
 
-- Fixed an issue in AI forms and the chat bot.
+- Fixed permission issue in fine-tuning module.
+- Better error handling for streaming in chat bot.
+- Better error handling for Qdrant.
 
-= 1.8.42 =
+= 1.8.57 =
 
-- Redesigned Chat bot tabs.
+- Added ready-to-use "Themes" for chat bots.
+- Improved styling options for chat bots.
+- Fixed layout and CSS issues in chat bots.
+- Fixed an issue where conversation starters were not being saved in custom bots.
+- Refined overall design for creating custom chat bot.
+- Improved the functionality of the Reset button in chat bots.
+- More styling improvements.
+- Fixed chat widhet border issue.
 
-= 1.8.41 =
+= 1.8.56 =
 
-- Added an option to disable the Typewriter effect in the chat bot. It is off by default. To enable it, go to the ChatGPT - Settings tab.
-- Enhanced styling and markdown formatting in the chat bot interface.
-- Improved URL parsing in stream mode.
-- Resolved an issue where audio would play twice in voice chat.
+- Added ready-to-use "Themes" for chat bots.
+- Improved styling options for chat bots.
+- Fixed layout and CSS issues in chat bots.
+- Fixed an issue where conversation starters were not being saved in custom bots.
+- Refined overall design for creating custom chat bot.
+- Improved the functionality of the Reset button in chat bots.
 
-Please note: This update includes changes to the JavaScript files. To ensure these changes take effect, please clear your cache completely—both on your site and in your browser. If you're using a caching plugin, remember to clear the cache there as well.
+= 1.8.55 =
 
-= 1.8.40 =
+- Fixed a scrolling issue in the chat widget that prevented automatic scrolling, making messages invisible.
+- Fixed an issue with the chat shortcode height when viewed on mobile devices.
+- Fixed an overlap issue between the footer and the textarea in shortcode fullscreen mode.
 
-- Better error handling for Gemini Pro.
+PS: Please dont forget to clear your cache.
 
-= 1.8.39 =
+= 1.8.54 =
 
-[NEW]
+- Automatically hide conversation starters once a message is sent.
+- Added conversation starters for Custom Bots.
 
-- Gemini Pro is now available. Give it a try.
+Read the documentation [here](https://docs.aipower.org/docs/ChatGPT/advanced-setup/context#conversation-starters).
 
-Read the documentation [here](https://docs.aipower.org/docs/ai-engine/google).
 
-[NEW]
-
-- Google's embedding model embedding-001 is available for you as an alternative to OpenAI.
-
-Read the documentation [here](https://docs.aipower.org/docs/embeddings#embedding-models).
-
-[Improvements]
-
-- Added "Default port" option for Qdrant in case your endpoint dont support 6333.
-
-= 1.8.38 =
-
-- Gemini Pro is now available. Give it a try.
-
-= 1.8.37 =
-
-- Fixed an issue in AI Forms
-
-= 1.8.36 =
-
-- Integrated new Pinecone api endpoint
-- Improvements in SearchGPT
-
-= 1.8.35 =
-
-- Prevent sending of empty chat messages.
-- Improved chat bot's nonce verification.
-- Resolved PDF upload problems.
-- Corrected index deletion error.
-
-= 1.8.34 =
-
-- Integration of Qdrant with SearchGPT.
-- Fixed an issue with custom post types in embeddings.
-
-= 1.8.33 =
+= 1.8.53 =
 
 [NEW]
 
-- Added Embeddings support for AI Forms. Both Qdrant and Pinecone are available now for your AI forms.
-- Added Import, Export and Delete buttons for AI Forms. You can now export and import all your forms with one click.
+- Introducing Conversation Starters!  Imrpove user engagement with custom Conversation Starters for your chatbot. 
 
-Read the tutorial [here](https://docs.aipower.org/docs/ai-forms#embeddings).
-
-[Improvements]
-
-- Fixed an issue in SearchGPT.
-
-= 1.8.32 =
-
-- Added "Reset", "Export" and "Import" buttons for the chat bot.
-- Adjusted padding for the "Footer text" in the chat bot.
-- Now you can add hyperlink in the chat bot footer text.
-- New validation added for tag generation in the WooCommerce Product Writer.
-- Fixed an issue in the WooCommerce Product Writer where the "%" symbol inside the custom prompts was interrupting content generation.
-- Added a validation for the token value in the Content Writer log.
-
-= 1.8.31 =
-
-**New**
-
-You can now upload images directly into the chatbot, powered by GPT-Vision. 
-
-Read the tutorial [here](https://docs.aipower.org/docs/ChatGPT/advanced-setup/image-upload).
-
-**Improvements**
-
-- Voice chat input fields are now automatically disabled when streaming mode is enabled.
-- Fixed a small CSS issue under the Settings page.
-- Fixed an issue in Role Manager.
-
+Read the documentation [here](https://docs.aipower.org/docs/ChatGPT/advanced-setup/context#conversation-starters).

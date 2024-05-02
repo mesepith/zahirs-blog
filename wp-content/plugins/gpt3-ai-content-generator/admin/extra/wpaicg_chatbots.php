@@ -23,18 +23,22 @@ $wpaicg_chat_frequency_penalty = get_option('wpaicg_chat_frequency_penalty',$exi
 $wpaicg_chat_presence_penalty = get_option('wpaicg_chat_presence_penalty',$existingValue['presence_penalty']);
 $wpaicg_chat_icon = 'default';
 $wpaicg_chat_fontsize = '13';
-$wpaicg_chat_fontcolor = '#fff';
-$wpaicg_chat_bgcolor = '#343540';
-$wpaicg_bg_text_field = '#fff';
-$wpaicg_send_color = '#fff';
-$wpaicg_border_text_field = '#ccc';
+$wpaicg_chat_fontcolor = '#495057';
+$wpaicg_chat_bgcolor = '#f8f9fa';
+$wpaicg_bg_text_field = '#ffffff';
+$wpaicg_send_color = '#d1e8ff';
+$wpaicg_footer_font_color = '#495057';
+$wpaicg_input_font_color = '#495057';
+$wpaicg_footer_color = '#ffffff';
+$wpaicg_border_text_field = '#cccccc'; 
+$wpaicg_chat_thinking_color = '#d1e8ff';
 $wpaicg_footer_text = '';
-$wpaicg_user_bg_color = '#444654';
-$wpaicg_ai_bg_color = '#343541';
+$wpaicg_user_bg_color = '#ccf5e1';
+$wpaicg_ai_bg_color = '#d1e8ff';
 $wpaicg_use_avatar = false;
 $wpaicg_ai_avatar = 'default';
 $wpaicg_ai_avatar_id = '';
-$wpaicg_chat_width = '100%';
+$wpaicg_chat_width = '450';
 $wpaicg_chat_height = '50%';
 $wpaicg_chat_position = 'left';
 $wpaicg_chat_tone = 'friendly';
@@ -57,8 +61,8 @@ $wpaicg_chat_vectordb = 'pinecone';
 $wpaicg_chat_embedding_top = false;
 $wpaicg_audio_enable = false;
 $wpaicg_image_enable = false;
-$wpaicg_mic_color = '#222';
-$wpaicg_stop_color = '#f00';
+$wpaicg_mic_color = '#d1e8ff';
+$wpaicg_stop_color = '#d1e8ff';
 $wpaicg_user_limited = false;
 $wpaicg_guest_limited = false;
 $wpaicg_user_tokens = 0;
@@ -81,7 +85,360 @@ $wpaicg_qdrant_collections = get_option('wpaicg_qdrant_collections',[]);
 $wpaicg_qdrant_collections = empty($wpaicg_qdrant_collections) ? array() : $wpaicg_qdrant_collections;
 $wpaicg_typewriter_effect = get_option('wpaicg_typewriter_effect', false);
 $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
+$conversation_starters = []; 
+
 ?>
+<style>
+    .wpaicg-chat-shortcode {
+        width: <?php echo esc_html($wpaicg_chat_width)?>;
+        background-color: <?php echo esc_html($wpaicg_chat_bgcolor)?>;
+        border-radius: 4px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        max-width: 100%;
+        overflow: hidden;
+        border: 1px solid #E0E0E0;
+        transition: box-shadow 0.3s ease;
+        margin-right: 20px; /* Adjust as needed */
+    }
+    .wpaicg-chat-shortcode:hover {
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2); /* Enhanced shadow on hover for interaction feedback */
+    }
+    .wpaicg-chat-shortcode-content {
+        overflow-y: auto;
+        flex-grow: 1;
+        padding: 15px; /* Increased padding for more space around messages */
+    }
+    .wpaicg-chat-shortcode-content ul {
+        overflow-y: auto;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .wpaicg-chat-shortcode-footer {
+        color: <?php echo esc_html($wpaicg_footer_font_color)?>;
+        background: <?php echo esc_html($wpaicg_footer_color)?>;
+        font-size: 0.75rem;
+        padding: 12px 20px;
+        border-top: 1px solid <?php echo esc_html($wpaicg_footer_color)?>;
+    }
+    .wpaicg-chat-shortcode-footer a {
+        color: inherit;
+        text-decoration: none;
+    }
+    
+    .wpaicg-chat-shortcode-content ul li {
+        color: <?php echo esc_html($wpaicg_chat_fontcolor)?>;
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+        margin-right: 10px;
+        padding: 10px;
+        border-radius: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        width: fit-content;
+    }
+
+    .wpaicg-chat-shortcode-content ul .wpaicg-user-message {
+        margin-left: auto; /* This pushes the user messages to the right */
+        background-color: #ccf5e1; /* Example background color for user messages */
+    }
+
+    .wpaicg-chat-shortcode-content ul li .wpaicg-chat-message {
+        color: inherit;
+    }
+    .wpaicg-chat-shortcode-content ul li strong {
+        font-weight: bold;
+        margin-right: 5px;
+        float: left;
+        color: inherit;
+    }
+    .wpaicg-chat-shortcode-content ul li p {
+        font-size: inherit;
+    }
+
+    .wpaicg-chat-shortcode-content ul li p {
+        margin: 0;
+        padding: 0;
+    }
+    .wpaicg-chat-shortcode-content ul li p:after {
+        clear: both;
+        display: block;
+    }
+    .wpaicg-chat-shortcode .wpaicg-bot-thinking {
+        bottom: 0;
+        font-size: 11px;
+        display: none;
+        padding-left: 15px;
+    }
+
+    .wpaicg-chat-shortcode .wpaicg-ai-message .wpaicg-chat-message,
+    .wpaicg-chat-shortcode .wpaicg-user-message .wpaicg-chat-message {
+        color: inherit;
+    }
+
+    .wpaicg-chat-message-error {
+        color: #f00;
+    }
+    .wpaicg-chat-message {
+        line-height: auto;
+    }
+
+    .wpaicg-jumping-dots span {
+        position: relative;
+        bottom: 0;
+        -webkit-animation: wpaicg-jump 1500ms infinite;
+        animation: wpaicg-jump 2s infinite;
+    }
+    .wpaicg-jumping-dots .wpaicg-dot-1 {
+        -webkit-animation-delay: 200ms;
+        animation-delay: 200ms;
+    }
+    .wpaicg-jumping-dots .wpaicg-dot-2 {
+        -webkit-animation-delay: 400ms;
+        animation-delay: 400ms;
+    }
+    .wpaicg-jumping-dots .wpaicg-dot-3 {
+        -webkit-animation-delay: 600ms;
+        animation-delay: 600ms;
+    }
+
+    .wpaicg-chat-shortcode-type {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        color: <?php echo esc_html($wpaicg_send_color)?>;
+    }
+
+    .wpaicg-chat-shortcode-send {
+        color: <?php echo esc_html($wpaicg_send_color)?>;
+    }
+
+    textarea.wpaicg-chat-shortcode-typing {
+        flex: 1;
+        border: 1px solid <?php echo esc_html($wpaicg_border_text_field)?>;
+        background-color: <?php echo esc_html($wpaicg_bg_text_field)?>;
+        resize: vertical;
+        border-radius: 3px;
+        line-height: 2;
+        padding-left: 1em;
+        color: <?php echo esc_html($wpaicg_input_font_color)?>;
+        font-size: <?php echo esc_html($wpaicg_chat_fontsize)?>px;
+    }
+
+    textarea.auto-expand {
+        overflow: hidden; /* Prevents scrollbar flash during size adjustment */
+        transition: box-shadow 0.5s ease-in-out;
+        color: <?php echo esc_html($wpaicg_input_font_color)?>;
+    }
+
+    textarea.auto-expand.resizing {
+        transition: box-shadow 0.5s ease-in-out;
+        box-shadow: 0 0 12px rgba(81, 203, 238, 0.8);
+        color: <?php echo esc_html($wpaicg_input_font_color)?>;
+    }
+
+
+    textarea.auto-expand:focus {
+        outline: none;
+        box-shadow: 0 0 5px rgba(81, 203, 238, 1);
+        color: <?php echo esc_html($wpaicg_input_font_color)?>;
+    }
+
+    textarea.wpaicg-chat-shortcode-typing::placeholder {
+        color: <?php echo esc_html($wpaicg_input_font_color)?>;
+    }
+
+    @-webkit-keyframes wpaicg-jump {
+        0%   {bottom: 0px;}
+        20%  {bottom: 5px;}
+        40%  {bottom: 0px;}
+    }
+
+    @keyframes wpaicg-jump {
+        0%   {bottom: 0px;}
+        20%  {bottom: 5px;}
+        40%  {bottom: 0px;}
+    }
+    /* Adjustments for screens that are 768px wide or less (typical for tablets and smartphones) */
+    @media (max-width: 768px) {
+        .wpaicg-chat-shortcode {
+            /* Adjust the width and right margin for smaller screens */
+            width: auto; /* This makes the chat window adapt to the screen size */
+            margin-right: 10px; /* Smaller margin for smaller devices */
+            margin-left: 10px; /* Add some space on the left as well */
+        }
+    }
+
+    /* Further adjustments for very small screens, like iPhones */
+    @media (max-width: 480px) {
+        .wpaicg-chat-shortcode {
+            /* You might want even smaller margins here */
+            margin-right: 5px;
+            margin-left: 5px;
+        }
+    }
+    .wpaicg-chat-shortcode .wpaicg-mic-icon {
+        color: <?php echo esc_html($wpaicg_mic_color)?>;
+    }
+    .wpaicg-chat-shortcode .wpaicg-img-icon {
+        color: <?php echo esc_html($wpaicg_send_color)?>;
+    }
+    .wpaicg-chat-shortcode .wpaicg-pdf-icon {
+        color: <?php echo esc_html($wpaicg_send_color)?>;
+    }
+    .wpaicg-chat-shortcode .wpaicg-pdf-remove {
+        color: <?php echo esc_html($wpaicg_send_color)?>;
+        font-size: 33px;
+        justify-content: center;
+        align-items: center;
+        width: 16px;
+        height: 16px;
+        line-height: unset;
+        font-family: Arial, serif;
+        border-radius: 50%;
+        font-weight: normal;
+        padding: 0;
+        margin: 0;
+    }
+    .wpaicg-chat-shortcode .wpaicg-pdf-loading {
+        border-color: <?php echo esc_html($wpaicg_send_color)?>;
+        border-bottom-color: transparent;
+    }
+    .wpaicg-chat-shortcode .wpaicg-mic-icon.wpaicg-recording {
+        color: <?php echo esc_html($wpaicg_stop_color)?>;
+    }
+    .wpaicg_chat_additions {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: absolute;
+        right: 20px;
+    }
+
+    .wpaicg-chat-shortcode .wpaicg-chatbox-action-bar {
+        position: absolute;
+        top: 0; /* Position it at the top of the chat window */
+        right: 0;
+        left: 0; /* Ensure it spans the full width */
+        height: 40px;
+        padding: 0 10px;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        background: <?php echo esc_html($wpaicg_footer_color)?>;
+        color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        transition: background-color 0.3s ease;
+    }
+
+    /* Button Styles */
+    .wpaicg-chatbox-download-btn,
+    .wpaicg-chatbox-clear-btn,
+    .wpaicg-chatbox-fullscreen,
+    .wpaicg-chatbox-close-btn {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center; /* Center content */
+        margin: 0 5px; /* Adjust spacing between buttons */
+        transition: background-color 0.3s ease; /* Smooth transition for interactions */
+    }
+
+    /* SVG Icon Adjustments */
+    .wpaicg-chatbox-download-btn svg,
+    .wpaicg-chatbox-clear-btn svg,
+    .wpaicg-chatbox-fullscreen svg,
+    .wpaicg-chatbox-close-btn svg {
+        fill: currentColor;
+        height: 16px; /* Adjust size for visibility */
+        width: 16px;
+    }
+    /* Hover States for Button Interactions */
+    .wpaicg-chatbox-download-btn:hover,
+    .wpaicg-chatbox-clear-btn:hover,
+    .wpaicg-chatbox-fullscreen:hover,
+    .wpaicg-chatbox-close-btn:hover {
+        background-color: rgba(0, 0, 0, 0.1); /* Slight highlight on hover */
+    }
+    .wpaicg-chatbox-fullscreen svg.wpaicg-exit-fullscreen {
+        display: none;
+        fill: none;
+        height: 16px;
+        width: 16px;
+    }
+    /* Fullscreen Button SVG Paths */
+    .wpaicg-chatbox-fullscreen svg.wpaicg-exit-fullscreen path,
+    .wpaicg-chatbox-fullscreen svg.wpaicg-active-fullscreen path {
+        fill: currentColor; /* Ensure visibility */
+    }
+    .wpaicg-chatbox-fullscreen svg.wpaicg-active-fullscreen {
+        fill: none;
+        height: 16px;
+        width: 16px;
+    }
+
+    /* Adjusting visibility for fullscreen icons */
+    .wpaicg-chatbox-fullscreen.wpaicg-fullscreen-box svg.wpaicg-active-fullscreen {
+        display: none; /* Hide when in fullscreen */
+    }
+    .wpaicg-chatbox-fullscreen.wpaicg-fullscreen-box svg.wpaicg-exit-fullscreen {
+        display: block; /* Show exit icon in fullscreen mode */
+    }
+    .wpaicg-fullscreened {
+        border-radius: 0;
+        border: none; /* Remove border in fullscreen */
+    }
+    .wpaicg-fullscreened .wpaicg-chatbox-action-bar {
+        border-radius: 0; /* Remove border-radius in fullscreen */
+        top: 0;
+        z-index: 99;
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+    }
+    /* Ensures that the chat window does not extend beyond the viewport height */
+    .wpaicg-fullscreened .wpaicg-chat-shortcode {
+        height: 100vh; /* Full viewport height */
+        width: 100vw; /* Full viewport width */
+        max-width: 100vw; /* Prevents exceeding the viewport width */
+        border-radius: 0; /* Removes border radius in fullscreen */
+        border: none; /* Removes border in fullscreen */
+        box-shadow: none; /* Removes shadow in fullscreen */
+        display: flex;
+        flex-direction: column;
+    }
+    
+    /* Adjusts the chat content area to not overlap with the message input area */
+    .wpaicg-fullscreened .wpaicg-chat-shortcode-content {
+        padding: 15px;
+        overflow-y: auto; /* Adjust if content exceeds the container height */
+    }
+
+
+    .wpaicg-fullscreened .wpaicg-chat-shortcode-footer,
+    .wpaicg-fullscreened .wpaicg-chat-shortcode-type {
+        position: fixed;
+        bottom: 0;
+        width: calc(100% - 30px); /* Adjust padding to prevent overlap */
+        padding: 45px 15px; /* Ensure consistent padding */
+    }
+
+    .wpaicg-fullscreened .wpaicg-chat-shortcode .wpaicg-bot-thinking {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        padding: 15px;
+    }
+
+    .wpaicg-chat-shortcode .wpaicg-chatbox-action-bar {
+        position: relative;
+        top: 0;
+        display: flex;
+        justify-content: flex-end;
+    }
+</style>
 <style>
     .wp-picker-holder{
         z-index: 99;
@@ -112,105 +469,7 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
     .wp-picker-holder{
         position: absolute;
     }
-    .wpaicg-chat-shortcode-send{
-        display: flex;
-        align-items: center;
-        padding: 2px 3px;
-        cursor: pointer;
-    }
-    .wpaicg-bot-thinking {
-        bottom: 0;
-        font-size: 11px;
-        padding: 2px 6px;
-        display: none;
-    }
-    .wpaicg-chat-shortcode-send svg{
-        width: 30px;
-        height: 30px;
-        fill: currentColor;
-        stroke: currentColor;
-    }
-    .wpaicg-chat-shortcode-type {
-        display: flex;
-        align-items: center;
-        padding: 5px;
-    }
-    textarea.wpaicg-chat-shortcode-typing {
-        flex: 1;
-        border: 1px solid #ccc;
-        border-radius: 3px;
-        padding: 0 8px;
-        min-height: 30px;
-        line-height: 2;
-        box-shadow: 0 0 0 transparent;
-        margin: 0;
-        resize: vertical; /* allows the user to resize the textarea vertically */
-        overflow: auto;
-        word-wrap: break-word;
-    }
-    .wpaicg-chat-shortcode-content ul {
-        overflow-y: auto;
-        margin: 0;
-        padding: 0;
-    }
-    .wpaicg-chat-shortcode-content ul li {
-        display: flex;
-        margin-bottom: 0;
-        padding: 10px;
-    }
-    .wpaicg-chat-shortcode-content ul li p {
-        margin: 0;
-        padding: 0;
-    }
-    .wp-picker-input-wrap input[type=text]{
-        width: 4rem!important;
-    }
-    .wpaicg-chat-shortcode-content ul li p,.wpaicg-chat-shortcode-content ul li span{
-        font-size: inherit;
-        display: flow-root;
-    }
-    .wpaicg-chat-shortcode-content ul li strong {
-        font-weight: bold;
-        margin-right: 5px;
-        float: left;
-    }
-    .wpaicg_chat_additions{
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        position: absolute;
-        right: 47px;
-    }
-    .wpaicg-mic-icon {
-        cursor: pointer;
-    }
-    .wpaicg-mic-icon svg {
-        width: 16px;
-        height: 16px;
-        fill: currentColor;
-    }
-    .wpaicg-img-icon {
-        cursor: pointer;
-    }
-    .wpaicg-img-icon svg {
-        width: 16px;
-        height: 16px;
-        fill: currentColor;
-    }
-    .wpaicg-chat-shortcode{
-        border-radius: 4px;
-        overflow: hidden;
-    }
-    .wpaicg-chat-shortcode-footer{
-        height: 18px;
-        font-size: 11px;
-        padding: 0 5px;
-        color: #fff;
-        margin-bottom: 2px;
-    }
-    .wpaicg-chat-shortcode-footer a {
-        color: inherit; /* This makes the hyperlink inherit the color from its parent */
-    }
+  
     .wpaicg_chatbox_avatar,.wpaicg_chatbox_icon{
         cursor: pointer;
     }
@@ -224,30 +483,15 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
         position: absolute;
         margin-left: -21px;
         padding: 10px;
-        border-top: 1px solid #d9d9d9;
-        background: #fff;
+        border-top: 1px solid <?php echo esc_html($wpaicg_footer_color)?>;
         border-bottom-left-radius: 5px;
         border-bottom-right-radius: 5px;
     }
     .wpaicg-bot-footer > div{
         flex: 1;
     }
-    .wpaicg_modal_content{
-    }
-    .wpaicg-pdf-remove{
-        color: #222;
-        font-size: 33px;
-        justify-content: center;
-        align-items: center;
-        width: 22px;
-        height: 22px;
-        line-height: unset;
-        font-family: Arial, serif;
-        border-radius: 50%;
-        font-weight: normal;
-        padding: 0;
-        margin: 0;
-    }
+
+    
     .wpaicg-grid-3{
         border: 1px solid #d9d9d9;
         border-radius: 5px;
@@ -295,251 +539,281 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
     <div class="wpaicg-grid">
         <div class="wpaicg-grid-3">
             <form action="" method="post" class="wpaicg-bot-form">
-                <?php
-                wp_nonce_field('wpaicg_chatbot_save');
-                ?>
+                <?php wp_nonce_field('wpaicg_chatbot_save'); ?>
                 <input value="<?php echo esc_html($wpaicg_chat_icon_url)?>" type="hidden" name="bot[icon_url]" class="wpaicg_chatbot_icon_url">
                 <input value="<?php echo esc_html($wpaicg_ai_avatar_id)?>" type="hidden" name="bot[ai_avatar_id]" class="wpaicg_chatbot_ai_avatar_id">
                 <input value="" type="hidden" name="bot[id]" class="wpaicg_chatbot_id">
                 <input value="wpaicg_update_chatbot" type="hidden" name="action">
                 <!--Type-->
                 <div class="wpaicg-bot-type wpaicg-bot-wizard">
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Name','gpt3-ai-content-generator')?>:</label>
-                        <input type="text" name="bot[name]" class="regular-text wpaicg_chatbot_name">
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Give your bot a name','gpt3-ai-content-generator')?></label>
+                        <input type="text" name="bot[name]" class="wpaicg_chatbot_name">
                     </div>
-                    <div class="wpaicg-mb-10">
+                    <div class="nice-form-group">
                         <label><strong><?php echo esc_html__('What would you like to create?','gpt3-ai-content-generator')?></strong></label>
                     </div>
-                    <div class="wpaicg-mb-10"><label><input type="radio" name="bot[type]" value="shortcode" class="wpaicg_chatbot_type_shortcode">&nbsp;<?php echo esc_html__('Shortcode','gpt3-ai-content-generator')?></label></div>
-                    <div class="wpaicg-mb-10"><label><input type="radio" name="bot[type]" value="widget" class="wpaicg_chatbot_type_widget">&nbsp;<?php echo esc_html__('Widget','gpt3-ai-content-generator')?></label></div>
-                    <div class="wpaicg-mb-10 wpaicg-widget-pages" style="display: none">
-                    <div class="wpaicg-mb-10">
-                        <label><strong><?php echo esc_html__('Where would you like to display it?','gpt3-ai-content-generator')?></strong></label>
+                    <div class="nice-form-group">
+                        <label>
+                            <input type="radio" name="bot[type]" value="shortcode" class="wpaicg_chatbot_type_shortcode">&nbsp;<?php echo esc_html__('Shortcode','gpt3-ai-content-generator')?>
+                        </label>
                     </div>
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Page / Post ID','gpt3-ai-content-generator')?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_pages" name="bot[pages]" placeholder="<?php echo esc_html__('Example: 1,2,3','gpt3-ai-content-generator')?>">
+                    <div class="nice-form-group">
+                        <label>
+                            <input type="radio" name="bot[type]" value="widget" class="wpaicg_chatbot_type_widget">&nbsp;<?php echo esc_html__('Widget','gpt3-ai-content-generator')?>
+                        </label>
+                    </div>
+                    <div class="wpaicg-mb-10 wpaicg-widget-pages" style="display: none">
+                        <div class="nice-form-group">
+                            <label><strong><?php echo esc_html__('Where would you like to display it?','gpt3-ai-content-generator')?></strong></label>
+                        </div>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Page / Post ID','gpt3-ai-content-generator')?></label>
+                            <input type="text" class="wpaicg_chatbot_pages" name="bot[pages]" placeholder="<?php echo esc_html__('Example: 1,2,3','gpt3-ai-content-generator')?>">
+                        </div>
                     </div>
                     <div class="wpaicg-mb-10 wpaicg_chatbot_position" style="display: none">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Position','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_chat_position == 'left' ? ' checked': ''?> type="radio" value="left" name="bot[position]" class="wpaicg_chatbot_position_left"> <?php echo esc_html__('Bottom Left','gpt3-ai-content-generator')?>
-                        <input<?php echo $wpaicg_chat_position == 'right' ? ' checked': ''?> type="radio" value="right" name="bot[position]" class="wpaicg_chatbot_position_right"> <?php echo esc_html__('Bottom Right','gpt3-ai-content-generator')?>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Position','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="nice-form-group">
+                            <input <?php echo $wpaicg_chat_position == 'left' ? ' checked': ''?> type="radio" value="left" name="bot[position]" class="wpaicg_chatbot_position_left"> <?php echo esc_html__('Bottom Left','gpt3-ai-content-generator')?>
+                            <input <?php echo $wpaicg_chat_position == 'right' ? ' checked': ''?> type="radio" value="right" name="bot[position]" class="wpaicg_chatbot_position_right"> <?php echo esc_html__('Bottom Right','gpt3-ai-content-generator')?>
+                        </div>
                     </div>
                     <div class="wpaicg-bot-footer">
                         <div>
-                            <button type="button" class="button button-primary wpaicg-bot-step" data-type="language"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
+                            <button type="button" class="button button-primary wpaicg-bot-step" data-type="parameters"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
                         </div>
                         <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
                     </div>
                 </div>
                 <!--Language-->
                 <div class="wpaicg-bot-language wpaicg-bot-wizard" style="display: none">
-                    <h3><?php echo esc_html__('Language, Tone and Profession','gpt3-ai-content-generator')?></h3>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Language','gpt3-ai-content-generator')?>:</label>
-                        <select class="regular-text wpaicg_chatbot_language"  name="bot[language]">
-                            <option value="en">English</option>
-                            <option value="af">Afrikaans</option>
-                            <option value="ar">Arabic</option>
-                            <option value="bg">Bulgarian</option>
-                            <option value="zh">Chinese</option>
-                            <option value="hr">Croatian</option>
-                            <option value="cs">Czech</option>
-                            <option value="da">Danish</option>
-                            <option value="nl">Dutch</option>
-                            <option value="et">Estonian</option>
-                            <option value="fil">Filipino</option>
-                            <option value="fi">Finnish</option>
-                            <option value="fr">French</option>
-                            <option value="de">German</option>
-                            <option value="el">Greek</option>
-                            <option value="he">Hebrew</option>
-                            <option value="hi">Hindi</option>
-                            <option value="hu">Hungarian</option>
-                            <option value="id">Indonesian</option>
-                            <option value="it">Italian</option>
-                            <option value="ja">Japanese</option>
-                            <option value="ko">Korean</option>
-                            <option value="lv">Latvian</option>
-                            <option value="lt">Lithuanian</option>
-                            <option value="ms">Malay</option>
-                            <option value="no">Norwegian</option>
-                            <option value="fa">Persian</option>
-                            <option value="pl">Polish</option>
-                            <option value="pt">Portuguese</option>
-                            <option value="ro">Romanian</option>
-                            <option value="ru">Russian</option>
-                            <option value="sr">Serbian</option>
-                            <option value="sk">Slovak</option>
-                            <option value="sl">Slovenian</option>
-                            <option value="sv">Swedish</option>
-                            <option value="es">Spanish</option>
-                            <option value="th">Thai</option>
-                            <option value="tr">Turkish</option>
-                            <option value="uk">Ukrainian</option>
-                            <option value="vi">Vietnamese</option>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Tone','gpt3-ai-content-generator')?>:</label>
-                        <select class="regular-text wpaicg_chatbot_tone" name="bot[tone]">
-                            <option value="friendly"><?php echo esc_html__('Friendly','gpt3-ai-content-generator')?></option>
-                            <option value="professional"><?php echo esc_html__('Professional','gpt3-ai-content-generator')?></option>
-                            <option value="sarcastic"><?php echo esc_html__('Sarcastic','gpt3-ai-content-generator')?></option>
-                            <option value="humorous"><?php echo esc_html__('Humorous','gpt3-ai-content-generator')?></option>
-                            <option value="cheerful"><?php echo esc_html__('Cheerful','gpt3-ai-content-generator')?></option>
-                            <option value="anecdotal"><?php echo esc_html__('Anecdotal','gpt3-ai-content-generator')?></option>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label">Act As:</label>
-                        <select name="bot[proffesion]" class="regular-text wpaicg_chatbot_proffesion">
-                            <option value="none"><?php echo esc_html__('None','gpt3-ai-content-generator')?></option>
-                            <option value="accountant"><?php echo esc_html__('Accountant','gpt3-ai-content-generator')?></option>
-                            <option value="advertisingspecialist"><?php echo esc_html__('Advertising Specialist','gpt3-ai-content-generator')?></option>
-                            <option value="architect"><?php echo esc_html__('Architect','gpt3-ai-content-generator')?></option>
-                            <option value="artist"><?php echo esc_html__('Artist','gpt3-ai-content-generator')?></option>
-                            <option value="blogger"><?php echo esc_html__('Blogger','gpt3-ai-content-generator')?></option>
-                            <option value="businessanalyst"><?php echo esc_html__('Business Analyst','gpt3-ai-content-generator')?></option>
-                            <option value="businessowner"><?php echo esc_html__('Business Owner','gpt3-ai-content-generator')?></option>
-                            <option value="carexpert"><?php echo esc_html__('Car Expert','gpt3-ai-content-generator')?></option>
-                            <option value="consultant"><?php echo esc_html__('Consultant','gpt3-ai-content-generator')?></option>
-                            <option value="counselor"><?php echo esc_html__('Counselor','gpt3-ai-content-generator')?></option>
-                            <option value="cryptocurrencytrader"><?php echo esc_html__('Cryptocurrency Trader','gpt3-ai-content-generator')?></option>
-                            <option value="cryptocurrencyexpert"><?php echo esc_html__('Cryptocurrency Expert','gpt3-ai-content-generator')?></option>
-                            <option value="customersupport"><?php echo esc_html__('Customer Support','gpt3-ai-content-generator')?></option>
-                            <option value="designer"><?php echo esc_html__('Designer','gpt3-ai-content-generator')?></option>
-                            <option value="digitalmarketinagency"><?php echo esc_html__('Digital Marketing Agency','gpt3-ai-content-generator')?></option>
-                            <option value="editor"><?php echo esc_html__('Editor','gpt3-ai-content-generator')?></option>
-                            <option value="engineer"><?php echo esc_html__('Engineer','gpt3-ai-content-generator')?></option>
-                            <option value="eventplanner"><?php echo esc_html__('Event Planner','gpt3-ai-content-generator')?></option>
-                            <option value="freelancer"><?php echo esc_html__('Freelancer','gpt3-ai-content-generator')?></option>
-                            <option value="insuranceagent"><?php echo esc_html__('Insurance Agent','gpt3-ai-content-generator')?></option>
-                            <option value="insurancebroker"><?php echo esc_html__('Insurance Broker','gpt3-ai-content-generator')?></option>
-                            <option value="interiordesigner"><?php echo esc_html__('Interior Designer','gpt3-ai-content-generator')?></option>
-                            <option value="journalist"><?php echo esc_html__('Journalist','gpt3-ai-content-generator')?></option>
-                            <option value="marketingagency"><?php echo esc_html__('Marketing Agency','gpt3-ai-content-generator')?></option>
-                            <option value="marketingexpert"><?php echo esc_html__('Marketing Expert','gpt3-ai-content-generator')?></option>
-                            <option value="marketingspecialist"><?php echo esc_html__('Marketing Specialist','gpt3-ai-content-generator')?></option>
-                            <option value="photographer"><?php echo esc_html__('Photographer','gpt3-ai-content-generator')?></option>
-                            <option value="programmer"><?php echo esc_html__('Programmer','gpt3-ai-content-generator')?></option>
-                            <option value="publicrelationsagency"><?php echo esc_html__('Public Relations Agency','gpt3-ai-content-generator')?></option>
-                            <option value="publisher"><?php echo esc_html__('Publisher','gpt3-ai-content-generator')?></option>
-                            <option value="realestateagent"><?php echo esc_html__('Real Estate Agent','gpt3-ai-content-generator')?></option>
-                            <option value="recruiter"><?php echo esc_html__('Recruiter','gpt3-ai-content-generator')?></option>
-                            <option value="reporter"><?php echo esc_html__('Reporter','gpt3-ai-content-generator')?></option>
-                            <option value="salesperson"><?php echo esc_html__('Sales Person','gpt3-ai-content-generator')?></option>
-                            <option value="salerep"><?php echo esc_html__('Sales Representative','gpt3-ai-content-generator')?></option>
-                            <option value="seoagency"><?php echo esc_html__('SEO Agency','gpt3-ai-content-generator')?></option>
-                            <option value="seoexpert"><?php echo esc_html__('SEO Expert','gpt3-ai-content-generator')?></option>
-                            <option value="socialmediaagency"><?php echo esc_html__('Social Media Agency','gpt3-ai-content-generator')?></option>
-                            <option value="student"><?php echo esc_html__('Student','gpt3-ai-content-generator')?></option>
-                            <option value="teacher"><?php echo esc_html__('Teacher','gpt3-ai-content-generator')?></option>
-                            <option value="technicalsupport"><?php echo esc_html__('Technical Support','gpt3-ai-content-generator')?></option>
-                            <option value="trainer"><?php echo esc_html__('Trainer','gpt3-ai-content-generator')?></option>
-                            <option value="travelagency"><?php echo esc_html__('Travel Agency','gpt3-ai-content-generator')?></option>
-                            <option value="videographer"><?php echo esc_html__('Videographer','gpt3-ai-content-generator')?></option>
-                            <option value="webdesignagency"><?php echo esc_html__('Web Design Agency','gpt3-ai-content-generator')?></option>
-                            <option value="webdesignexpert"><?php echo esc_html__('Web Design Expert','gpt3-ai-content-generator')?></option>
-                            <option value="webdevelopmentagency"><?php echo esc_html__('Web Development Agency','gpt3-ai-content-generator')?></option>
-                            <option value="webdevelopmentexpert"><?php echo esc_html__('Web Development Expert','gpt3-ai-content-generator')?></option>
-                            <option value="webdesigner"><?php echo esc_html__('Web Designer','gpt3-ai-content-generator')?></option>
-                            <option value="webdeveloper"><?php echo esc_html__('Web Developer','gpt3-ai-content-generator')?></option>
-                            <option value="writer"><?php echo esc_html__('Writer','gpt3-ai-content-generator')?></option>
-                        </select>
-                    </div>
+                    <h3><?php echo esc_html__('Interface','gpt3-ai-content-generator')?></h3>
+
                     <div class="wpaicg-bot-footer">
                         <div>
-                            <button type="button" class="button wpaicg-bot-step" data-type="type"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
-                            <button type="button" class="button button-primary wpaicg-bot-step" data-type="style"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
+                            <button type="button" class="button wpaicg-bot-step" data-type="style"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
+                            <button type="button" class="button button-primary wpaicg-bot-step" data-type="audio"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
                         </div>
                         <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
                     </div>
                 </div>
                 <!--Style-->
                 <div class="wpaicg-bot-style wpaicg-bot-wizard" style="display: none">
-                    <h3><?php echo esc_html__('Style','gpt3-ai-content-generator')?></h3>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Font Size','gpt3-ai-content-generator')?>:</label>
-                        <select name="bot[fontsize]" class="wpaicg_chatbot_fontsize">
-                            <?php
-                            for($i = 10; $i <= 30; $i++){
-                                echo '<option'.($wpaicg_chat_fontsize == $i ? ' selected' :'').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10" style="position: relative">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Font Color','gpt3-ai-content-generator')?>:</label>
-                        <input value="<?php echo esc_html($wpaicg_chat_fontcolor)?>" type="text" class="wpaicgchat_color wpaicg_chatbot_fontcolor" name="bot[fontcolor]">
-                    </div>
-                    <div class="wpaicg-mb-10" style="position: relative">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Background Color','gpt3-ai-content-generator')?>:</label>
-                        <input value="<?php echo esc_html($wpaicg_chat_bgcolor)?>" type="text" class="wpaicgchat_color wpaicg_chatbot_bgcolor" name="bot[bgcolor]">
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Border Radius - Window','gpt3-ai-content-generator')?>:</label>
-                        <input style="width: 80px" value="8" type="number" min="0" class="wpaicg_chatbot_chat_rounded" name="bot[chat_rounded]">px
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Text Field Height','gpt3-ai-content-generator')?>:</label>
-                        <input style="width: 80px" value="40" type="number" min="30" class="wpaicg_chatbot_text_height" name="bot[text_height]">px
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Border Radius - Text Field','gpt3-ai-content-generator')?>:</label>
-                        <input style="width: 80px" value="8" type="number" min="0" class="wpaicg_chatbot_text_rounded" name="bot[text_rounded]">px
-                    </div>
-                    <div class="wpaicg-mb-10" style="position: relative">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Text Field Background','gpt3-ai-content-generator')?>:</label>
-                        <input value="<?php echo esc_html($wpaicg_bg_text_field)?>" type="text" class="wpaicgchat_color wpaicg_chatbot_bg_text_field" name="bot[bg_text_field]">
-                    </div>
-                    <div class="wpaicg-mb-10" style="position: relative">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Text Field Border','gpt3-ai-content-generator')?>:</label>
-                        <input value="<?php echo esc_html($wpaicg_border_text_field)?>" type="text" class="wpaicgchat_color wpaicg_chatbot_border_text_field" name="bot[border_text_field]">
-                    </div>
-                    <div class="wpaicg-mb-10" style="position: relative">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Button Color','gpt3-ai-content-generator')?>:</label>
-                        <input value="<?php echo esc_html($wpaicg_send_color)?>" type="text" class="wpaicgchat_color wpaicg_chatbot_send_color" name="bot[send_color]">
-                    </div>
-                    <div class="wpaicg-mb-10" style="position: relative">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('User Background Color','gpt3-ai-content-generator')?>:</label>
-                        <input value="<?php echo esc_html($wpaicg_user_bg_color)?>" type="text" class="wpaicgchat_color wpaicg_chatbot_user_bg_color" name="bot[user_bg_color]">
-                    </div>
-                    <div class="wpaicg-mb-10" style="position: relative">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('AI Background Color','gpt3-ai-content-generator')?>:</label>
-                        <input value="<?php echo esc_html($wpaicg_ai_bg_color)?>" type="text" class="wpaicgchat_color wpaicg_chatbot_ai_bg_color" name="bot[ai_bg_color]">
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Width','gpt3-ai-content-generator')?>:</label>
-                        <input value="<?php echo esc_html($wpaicg_chat_width)?>" style="width: 100px;" class="wpaicg_chatbot_width" min="100" type="text" name="bot[width]">
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Height','gpt3-ai-content-generator')?>:</label>
-                        <input value="<?php echo esc_html($wpaicg_chat_height)?>" style="width: 100px;" class="wpaicg_chatbot_height" min="100" type="text" name="bot[height]">
-                    </div>
-                    <div class="wpaicg-widget-icon" style="display: none">
-                        <div class="wpaicg-mb-10">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Icon (75x75)','gpt3-ai-content-generator')?>:</label>
-                            <div style="display: inline-flex; align-items: center">
-                                <input checked class="wpaicg_chatbox_icon_default wpaicg_chatbot_icon_default" type="radio" value="default" name="bot[icon]">
-                                <div style="text-align: center">
-                                    <img style="display: block;width: 40px; height: 40px" src="<?php echo esc_html(WPAICG_PLUGIN_URL).'admin/images/chatbot.png'?>"<br>
-                                    <strong><?php echo esc_html__('Default','gpt3-ai-content-generator')?></strong>
-                                </div>
-                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                                <input type="radio" class="wpaicg_chatbox_icon_custom wpaicg_chatbot_icon_custom" value="custom" name="bot[icon]">
-                                <div style="text-align: center">
-                                    <div class="wpaicg_chatbox_icon">
-                                        <svg width="40px" height="40px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M246.6 9.4c-12.5-12.5-32.8-12.5-45.3 0l-128 128c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 109.3V320c0 17.7 14.3 32 32 32s32-14.3 32-32V109.3l73.4 73.4c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-128-128zM64 352c0-17.7-14.3-32-32-32s-32 14.3-32 32v64c0 53 43 96 96 96H352c53 0 96-43 96-96V352c0-17.7-14.3-32-32-32s-32 14.3-32 32v64c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V352z"/></svg><br>
-                                    </div>
-                                    <strong><?php echo esc_html__('Custom','gpt3-ai-content-generator')?></strong>
-                                </div>
+                    <h3 style="margin-top: -0.2em;"><?php echo esc_html__('Themes','gpt3-ai-content-generator')?></h3>
+                    <div class="options-container" style="display: flex; justify-content: space-between;margin-top: -0.5em;">
+                        <!-- First Options Group -->
+                        <div class="options-group">
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="default" checked>
+                                <label><?php echo esc_html__('Default','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="midnightElegance">
+                                <label><?php echo esc_html__('Night','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="sunriseSerenity">
+                                <label><?php echo esc_html__('Sun','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="forestWhisper">
+                                <label><?php echo esc_html__('Forest','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="oceanBreeze">
+                                <label><?php echo esc_html__('Ocean','gpt3-ai-content-generator')?></label>
+                            </div>
+                        </div>
+                        <!-- Second Options Group -->
+                        <div class="options-group">
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="spaceGalaxy">
+                                <label><?php echo esc_html__('Space','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="desertDune">
+                                <label><?php echo esc_html__('Desert','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="winterWonderland">
+                                <label><?php echo esc_html__('Winter','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="cityscapeGlow">
+                                <label><?php echo esc_html__('City','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="mountainPeak">
+                                <label><?php echo esc_html__('Mountain','gpt3-ai-content-generator')?></label>
+                            </div>
+                        </div>
+                        <!-- Third Options Group -->
+                        <div class="options-group">
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="glade">
+                                <label><?php echo esc_html__('Glade','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="dusk">
+                                <label><?php echo esc_html__('Dusk','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="dawn">
+                                <label><?php echo esc_html__('Dawn','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="mist">
+                                <label><?php echo esc_html__('Mist','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="veil">
+                                <label><?php echo esc_html__('Veil','gpt3-ai-content-generator')?></label>
+                            </div>
+                        </div>
+                        <!-- Fourth Options Group -->
+                        <div class="options-group">
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="peak">
+                                <label><?php echo esc_html__('Peak','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="vale">
+                                <label><?php echo esc_html__('Vale','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="cove">
+                                <label><?php echo esc_html__('Cove','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="rift">
+                                <label><?php echo esc_html__('Rift','gpt3-ai-content-generator')?></label>
+                            </div>
+                            <div class="wpaicg-option-container">
+                                <input type="radio" name="chat_theme" value="isle">
+                                <label><?php echo esc_html__('Isle','gpt3-ai-content-generator')?></label>
                             </div>
                         </div>
                     </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Use Avatars','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_use_avatar ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_use_avatar" name="bot[use_avatar]">
+                    <h3><?php echo esc_html__('Chat Window','gpt3-ai-content-generator')?></h3>
+                    <!-- Color Pickers Container -->
+                    <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: -1em;">
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Box','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_chat_bgcolor)?>" type="color" class="wpaicg_chatbot_bgcolor" name="bot[bgcolor]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Font','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_chat_fontcolor)?>" type="color" class="wpaicg_chatbot_fontcolor" name="bot[fontcolor]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('AI','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_ai_bg_color)?>" type="color" class="wpaicg_chatbot_ai_bg_color" name="bot[ai_bg_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('User','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_user_bg_color)?>" type="color" class="wpaicg_chatbot_user_bg_color" name="bot[user_bg_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Width','gpt3-ai-content-generator')?></label>
+                            <input style="width: 50px;font-size: 11px;height: 32px;" value="<?php echo esc_html($wpaicg_chat_width)?>" class="wpaicg_chatbot_width" min="100" type="text" name="bot[width]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Height','gpt3-ai-content-generator')?></label>
+                            <input style="width: 50px;font-size: 11px;height: 32px;" value="<?php echo esc_html($wpaicg_chat_height)?>" class="wpaicg_chatbot_height" min="100" type="text" name="bot[height]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Radius','gpt3-ai-content-generator')?></label>
+                            <input style="width: 50px;font-size: 11px;height: 32px;" value="8" type="number" min="0" class="wpaicg_chatbot_chat_rounded" name="bot[chat_rounded]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Font','gpt3-ai-content-generator')?></label>
+                            <select style="width: 50px;font-size: 11px;height: 32px;padding: 0 1.2em;background-position: right;" name="bot[fontsize]" class="wpaicg_chatbot_fontsize">
+                                <?php
+                                for($i = 10; $i <= 30; $i++){
+                                    echo '<option'.($wpaicg_chat_fontsize == $i ? ' selected' :'').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
+                                }
+                                ?>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Text Field -->
+                    <h3><?php echo esc_html__('Text Field','gpt3-ai-content-generator')?></h3>
+                    <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: -1em;">
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Box','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_bg_text_field)?>" type="color" class="wpaicg_chatbot_bg_text_field" name="bot[bg_text_field]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Font','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_input_font_color)?>" type="color" class="wpaicg_chatbot_input_font_color" name="bot[input_font_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Border','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_border_text_field)?>" type="color" class="wpaicg_chatbot_border_text_field" name="bot[border_text_field]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Button','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_send_color)?>" type="color" class="wpaicg_chatbot_send_color" name="bot[send_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Mic','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_mic_color)?>" type="color" class="wpaicg_chatbot_mic_color" name="bot[mic_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Stop','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_stop_color)?>" type="color" class="wpaicg_chatbot_stop_color" name="bot[stop_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Height','gpt3-ai-content-generator')?></label>
+                            <input style="width: 55px;font-size: 11px;height: 32px;" value="40" type="number" min="30" class="wpaicg_chatbot_text_height" name="bot[text_height]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Radius','gpt3-ai-content-generator')?></label>
+                            <input style="width: 55px;font-size: 11px;height: 32px;" value="8" type="number" min="0" class="wpaicg_chatbot_text_rounded" name="bot[text_rounded]">
+                        </div>
+                    </div>
+                    <!-- Header / Footer -->
+                    <h3><?php echo esc_html__('Header / Footer','gpt3-ai-content-generator')?></h3>
+                    <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: -1em;">
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Box','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_footer_color)?>" type="color" class="wpaicg_chatbot_footer_color" name="bot[footer_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Font','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_footer_font_color)?>" type="color" class="wpaicg_chatbot_footer_font_color" name="bot[footer_font_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Icons','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="#495057" type="color" class="wpaicg_chatbot_bar_color" name="bot[bar_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Wait','gpt3-ai-content-generator')?></label>
+                            <input style="width: 30px;height: 32px;" value="#495057" type="color" class="wpaicg_chatbot_thinking_color" name="bot[thinking_color]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Fullscreen','gpt3-ai-content-generator')?></label>
+                            <input style="border-color: #10b981;margin-top: 4px;" <?php echo $wpaicg_chat_fullscreen ? ' checked':''?> value="1" type="checkbox" class="switch wpaicg_chatbot_fullscreen" name="bot[fullscreen]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Download','gpt3-ai-content-generator')?></label>
+                            <input style="border-color: #10b981;margin-top: 4px;" <?php echo $wpaicg_chat_download_btn ? ' checked':''?> value="1" type="checkbox" class="switch wpaicg_chatbot_download_btn" name="bot[download_btn]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Clear','gpt3-ai-content-generator')?></label>
+                            <input style="border-color: #10b981;margin-top: 4px;" <?php echo $wpaicg_chat_clear_btn ? ' checked':''?> value="1" type="checkbox" class="switch wpaicg_chatbot_clear_btn" name="bot[clear_btn]">
+                        </div>
+                        <div class="nice-form-group" style="flex: 1;">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Close','gpt3-ai-content-generator')?></label>
+                            <input style="border-color: #10b981;margin-top: 4px;" <?php echo $wpaicg_chat_close_btn ? ' checked':''?> value="1" type="checkbox" class="switch wpaicg_chatbot_close_btn" name="bot[close_btn]">
+                        </div>
+                    </div>
+                    <div class="nice-form-group">
+                        <input <?php echo $wpaicg_use_avatar ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_use_avatar" name="bot[use_avatar]">
+                        <label><?php echo esc_html__('Use Avatar','gpt3-ai-content-generator')?></label>
                     </div>
                     <div class="wpaicg-mb-10">
                         <label class="wpaicg-form-label"><?php echo esc_html__('AI Avatar (40x40)','gpt3-ai-content-generator')?>:</label>
@@ -559,74 +833,55 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                             </div>
                         </div>
                     </div>
-                    <div class="mb-5">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Fullscreen Button','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_chat_fullscreen ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_fullscreen" name="bot[fullscreen]">
-                    </div>
-                    <div class="mb-5">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Close Button','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_chat_close_btn ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_close_btn" name="bot[close_btn]">
-                    </div>
-                    <div class="mb-5">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Download Button','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_chat_download_btn ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_download_btn" name="bot[download_btn]">
-                    </div>
-                    <div class="mb-5">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Clear Button','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_chat_clear_btn ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_clear_btn" name="bot[clear_btn]">
-                    </div>
-                    <div class="mb-5" style="position: relative">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Bar Icons Color','gpt3-ai-content-generator')?>:</label>
-                        <input value="#fff" type="text" class="wpaicgchat_color wpaicg_chatbot_bar_color" name="bot[bar_color]">
-                    </div>
-                    <div class="mb-5" style="position: relative">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('AI Thinking Text Color','gpt3-ai-content-generator')?>:</label>
-                        <input value="#fff" type="text" class="wpaicgchat_color wpaicg_chatbot_thinking_color" name="bot[thinking_color]">
-                    </div>
-                    <div class="mb-5">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Delay time','gpt3-ai-content-generator')?>:</label>
-                        <input placeholder="<?php echo esc_html__('in seconds. eg. 5','gpt3-ai-content-generator')?>" value="" type="text" class="wpaicg_chatbot_delay_time" name="bot[delay_time]">
-                    </div>
-                    <?php
-                    if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()):
-                        ?>
-                        <div class="mb-5" style="position: relative">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('PDF Icon Color','gpt3-ai-content-generator')?>:</label>
-                            <input value="#222" type="text" class="wpaicgchat_color wpaicg_chatbot_pdf_color" name="bot[pdf_color]">
+                    <div class="wpaicg-widget-icon" style="display: none">
+                        <div class="wpaicg-mb-10">
+                            <label class="wpaicg-form-label"><?php echo esc_html__('Widget Icon (75x75)','gpt3-ai-content-generator')?>:</label>
+                            <div style="display: inline-flex; align-items: center">
+                                <input checked class="wpaicg_chatbox_icon_default wpaicg_chatbot_icon_default" type="radio" value="default" name="bot[icon]">
+                                <div style="text-align: center">
+                                    <img style="display: block;width: 40px; height: 40px" src="<?php echo esc_html(WPAICG_PLUGIN_URL).'admin/images/chatbot.png'?>"<br>
+                                    <strong><?php echo esc_html__('Default','gpt3-ai-content-generator')?></strong>
+                                </div>
+                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                <input type="radio" class="wpaicg_chatbox_icon_custom wpaicg_chatbot_icon_custom" value="custom" name="bot[icon]">
+                                <div style="text-align: center">
+                                    <div class="wpaicg_chatbox_icon">
+                                        <svg width="40px" height="40px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M246.6 9.4c-12.5-12.5-32.8-12.5-45.3 0l-128 128c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 109.3V320c0 17.7 14.3 32 32 32s32-14.3 32-32V109.3l73.4 73.4c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-128-128zM64 352c0-17.7-14.3-32-32-32s-32 14.3-32 32v64c0 53 43 96 96 96H352c53 0 96-43 96-96V352c0-17.7-14.3-32-32-32s-32 14.3-32 32v64c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V352z"/></svg><br>
+                                    </div>
+                                    <strong><?php echo esc_html__('Custom','gpt3-ai-content-generator')?></strong>
+                                </div>
+                            </div>
                         </div>
-                    <?php
-                    else:
-                        ?>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('PDF Icon Color','gpt3-ai-content-generator')?>:</label>
-                            <?php echo esc_html__('Available in Pro','gpt3-ai-content-generator')?>
+                    </div>
+                    <div class="wpaicg-chatbot-delay-time" style="display: none">
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Display Widget After','gpt3-ai-content-generator')?></label>
+                            <input placeholder="<?php echo esc_html__('in seconds. eg. 5','gpt3-ai-content-generator')?>" value="" type="text" class="wpaicg_chatbot_delay_time" name="bot[delay_time]">
                         </div>
-                    <?php
-                    endif;
-                    ?>
+                    </div>
                     <div class="wpaicg-bot-footer">
                         <div>
-                        <button type="button" class="button wpaicg-bot-step" data-type="language"><?php echo esc_html__('Previous','gpt3-ai-content-generator');?></button>
-                        <button type="button" class="button button-primary wpaicg-bot-step" data-type="parameters"><?php echo esc_html__('Next','gpt3-ai-content-generator');?></button>
+                        <button type="button" class="button wpaicg-bot-step" data-type="context"><?php echo esc_html__('Previous','gpt3-ai-content-generator');?></button>
+                        <button type="button" class="button button-primary wpaicg-bot-step" data-type="custom"><?php echo esc_html__('Next','gpt3-ai-content-generator');?></button>
                         </div>
                         <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator');?></button>
                     </div>
                 </div>
                 <!--Parameters-->
                 <div class="wpaicg-bot-parameters wpaicg-bot-wizard" style="display: none">
-                    <h3><?php echo esc_html__('Parameters','gpt3-ai-content-generator');?></h3>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label" for="wpaicg_chat_model"><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?>:</label>
+                    <h3 style="margin-top: -0.2em;"><?php echo esc_html__('AI Settings','gpt3-ai-content-generator');?></h3>
+                    <div class="nice-form-group" style="margin-top: -0.3em;">
+                        <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
                         <?php if ($wpaicg_provider === 'Azure'): ?>
                             <?php $azure_model = get_option('wpaicg_azure_deployment', ''); ?>
-                            <input type="text" class="regular-text wpaicg_chatbot_model" id="wpaicg_chat_model" name="bot[model]" value="<?php echo esc_attr($azure_model); ?>" readonly>
+                            <input type="text" class="wpaicg_chatbot_model" id="wpaicg_chat_model" name="bot[model]" value="<?php echo esc_attr($azure_model); ?>" readonly>
                             <!-- else if google -->
                         <?php elseif ($wpaicg_provider === 'Google'): ?>
                             <?php 
                             $google_models = ['gemini-pro' => 'Gemini Pro']; 
                             $google_model = get_option('wpaicg_google_default_model', 'gemini-pro');
                             ?>
-                            <select class="regular-text wpaicg_chatbot_model" id="wpaicg_chat_model" name="bot[model]" value="<?php echo esc_attr($google_model); ?>">
+                            <select class="wpaicg_chatbot_model" id="wpaicg_chat_model" name="bot[model]" value="<?php echo esc_attr($google_model); ?>">
                                 <?php foreach ($google_models as $model_key => $model_name): ?>
                                     <option value="<?php echo esc_attr($model_key); ?>"<?php selected($model_key, $google_model); ?>><?php echo esc_html($model_name); ?></option>
                                 <?php endforeach; ?>
@@ -636,8 +891,7 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                             <?php
                             $gpt4_models = [
                                 'gpt-4' => 'GPT-4',
-                                'gpt-4-32k' => 'GPT-4 32K',
-                                'gpt-4-1106-preview' => 'GPT-4 Turbo',
+                                'gpt-4-turbo' => 'GPT-4 Turbo',
                                 'gpt-4-vision-preview' => 'GPT-4 Vision'
                             ];
                             $gpt35_models = [
@@ -648,7 +902,7 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                             $custom_models = get_option('wpaicg_custom_models', []);
                             $current_model = 'gpt-3.5-turbo';
                             ?>
-                        <select class="regular-text wpaicg_chatbot_model" id="wpaicg_chat_model" name="bot[model]" value="<?php echo esc_attr($current_model); ?>">
+                        <select class="wpaicg_chatbot_model" id="wpaicg_chat_model" name="bot[model]" value="<?php echo esc_attr($current_model); ?>">
                             <?php // Function to display options
                             function display_options($models, $selected_model){
                                 foreach ($models as $model_key => $model_name): ?>
@@ -676,75 +930,78 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                         </select>
                         <?php endif; ?>
                     </div>
-
-                    <div class="mb-5">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Streaming','gpt3-ai-content-generator')?>:</label>
-                        <input <?php echo $wpaicg_streaming ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_openai_stream_nav" name="bot[openai_stream_nav]">
+                    <fieldset class="nice-form-group" style="margin-top: 1em;">
+                    <legend><?php echo esc_html__('Options', 'gpt3-ai-content-generator'); ?></legend>
+                        <div class="nice-form-group">
+                            <input <?php echo $wpaicg_streaming ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_openai_stream_nav" name="bot[openai_stream_nav]">
+                            <label><?php echo esc_html__('Streaming','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="nice-form-group">
+                            <input <?php echo $wpaicg_image_enable ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_image_enable" name="bot[image_enable]">
+                            <label><?php echo esc_html__('Image Upload (GPT-Vision Only)','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="nice-form-group">
+                            <input name="bot[chat_addition]" class="wpaicg_chatbot_chat_addition" value="1" type="checkbox" id="wpaicg_chat_addition">
+                            <label><?php echo esc_html__('Instructions','gpt3-ai-content-generator')?></label>
+                        </div>
+                    </fieldset>
+                    <?php 
+                        $wpaicg_additions_json = file_get_contents(WPAICG_PLUGIN_DIR.'admin/chat/context.json');
+                        $wpaicg_additions = json_decode($wpaicg_additions_json, true);
+                    ?>
+                    <div class="nice-form-group">
+                        <select disabled class="wpaicg_chat_addition_template">
+                            <option value=""><?php echo esc_html__('Select Template','gpt3-ai-content-generator')?></option>
+                            <?php
+                            foreach($wpaicg_additions as $key=>$wpaicg_addition){
+                                echo '<option value="'.esc_html($wpaicg_addition).'">'.esc_html($key).'</option>';
+                            }
+                            ?>
+                        </select>
                     </div>
-                    <div class="mb-5">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Enable Image Upload','gpt3-ai-content-generator')?>:</label>
-                        <input <?php echo $wpaicg_image_enable ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_image_enable" name="bot[image_enable]">
+                    <div class="nice-form-group">
+                        <textarea style="width: 100%;" rows="8" disabled name="bot[chat_addition_text]" id="wpaicg_chat_addition_text" class="regular-text wpaicg_chatbot_chat_addition_text"><?php echo esc_html__('You are a helpful AI Assistant. Please be friendly.','gpt3-ai-content-generator')?></textarea>
                     </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Temperature','gpt3-ai-content-generator');?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_temperature" id="label_temperature" name="bot[temperature]" value="<?php
-                        echo  esc_html( $wpaicg_chat_temperature ) ;
-                        ?>">
-                    </div>
-
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Max Tokens','gpt3-ai-content-generator');?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_max_tokens" id="label_max_tokens" name="bot[max_tokens]" value="<?php
-                        echo  esc_html( $wpaicg_chat_max_tokens ) ;
-                        ?>" >
-                    </div>
-
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Top P','gpt3-ai-content-generator');?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_top_p" id="label_top_p" name="bot[top_p]" value="<?php
-                        echo  esc_html( $wpaicg_chat_top_p ) ;
-                        ?>" >
-                    </div>
-
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Best Of','gpt3-ai-content-generator');?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_best_of" id="label_best_of" name="bot[best_of]" value="<?php
-                        echo  esc_html( $wpaicg_chat_best_of ) ;
-                        ?>" >
-                    </div>
-
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Frequency Penalty','gpt3-ai-content-generator');?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_frequency_penalty" id="label_frequency_penalty" name="bot[frequency_penalty]" value="<?php
-                        echo  esc_html( $wpaicg_chat_frequency_penalty ) ;
-                        ?>" >
-                    </div>
-
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Presence Penalty','gpt3-ai-content-generator');?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_presence_penalty" id="label_presence_penalty" name="bot[presence_penalty]" value="<?php
-                        echo  esc_html( $wpaicg_chat_presence_penalty ) ;
-                        ?>" >
+                    <!-- Advanced Parameters -->
+                    <p></p>
+                    <a href="#" class="wpaicg-advanced-settings-link"><?php echo esc_html__('Show Advanced Parameters','gpt3-ai-content-generator'); ?></a>
+                    <div class="wpaicg-advanced-settings" style="display: none;">
+                        <div class="nice-form-group" style="display: flex;">
+                            <div class="nice-form-group" style="max-width: 60px;padding-right: 25px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('Max Token','gpt3-ai-content-generator');?></label>
+                                <input style="width: 60px;" type="text" class="wpaicg_chatbot_max_tokens" id="label_max_tokens" name="bot[max_tokens]" value="<?php echo esc_html( $wpaicg_chat_max_tokens ) ;?>" >
+                            </div>
+                            <div class="nice-form-group" style="max-width: 60px;padding-right: 25px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('Temperature','gpt3-ai-content-generator');?></label>
+                                <input style="width: 50px;" type="text" class="wpaicg_chatbot_temperature" id="label_temperature" name="bot[temperature]" value="<?php echo esc_html( $wpaicg_chat_temperature ) ;?>">
+                            </div>
+                            <div class="nice-form-group" style="max-width: 60px;padding-right: 25px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('Top P','gpt3-ai-content-generator');?></label>
+                                <input style="width: 50px;" type="text" class="wpaicg_chatbot_top_p" id="label_top_p" name="bot[top_p]" value="<?php echo esc_html( $wpaicg_chat_top_p ) ; ?>" >
+                            </div>
+                            <div class="nice-form-group" style="display: none;max-width: 60px;padding-right: 25px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('Best Of','gpt3-ai-content-generator');?></label>
+                                <input style="width: 50px;" type="hidden" class="wpaicg_chatbot_best_of" id="label_best_of" name="bot[best_of]" value="<?php echo esc_html( $wpaicg_chat_best_of ) ;?>" >
+                            </div>
+                            <div class="nice-form-group" style="max-width: 60px;padding-right: 25px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('FP','gpt3-ai-content-generator');?></label>
+                                <input style="width: 50px;" type="text" class="wpaicg_chatbot_frequency_penalty" id="label_frequency_penalty" name="bot[frequency_penalty]" value="<?php echo esc_html( $wpaicg_chat_frequency_penalty ) ;?>" >
+                            </div>
+                            <div class="nice-form-group" style="max-width: 60px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('PP','gpt3-ai-content-generator');?></label>
+                                <input style="width: 50px;" type="text" class="wpaicg_chatbot_presence_penalty" id="label_presence_penalty" name="bot[presence_penalty]" value="<?php echo esc_html( $wpaicg_chat_presence_penalty ) ;?>" >
+                            </div>
+                        </div>
                     </div>
                     <div class="wpaicg-bot-footer">
                         <div>
-                            <button type="button" class="button wpaicg-bot-step" data-type="style"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
-
-                            <?php
-                            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');  // Fetching the provider
-                            $next_tab = (\WPAICG\wpaicg_util_core()->wpaicg_is_pro() && $wpaicg_provider === 'OpenAI') ? 'moderation' : 'audio';  // Decide which tab to go next
-                            ?>
-
-                            <button type="button" class="button button-primary wpaicg-bot-step" data-type="<?php echo esc_attr($next_tab); ?>"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
-
-                            
+                            <button type="button" class="button wpaicg-bot-step" data-type="type"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
+                            <button type="button" class="button button-primary wpaicg-bot-step" data-type="context"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
                         </div>
                         <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
                     </div>
                 </div>
-                <?php
-                if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()):
-                    ?>
+                <?php if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()): ?>
                     <div class="wpaicg-bot-moderation wpaicg-bot-wizard" style="display: none">
                         <h3>Moderation</h3>
                         <div class="wpaicg-mb-10">
@@ -774,23 +1031,15 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                 endif;
                 ?>
                 <div class="wpaicg-bot-audio wpaicg-bot-wizard" style="display: none">
-                    <h3><?php echo esc_html__('VoiceChat','gpt3-ai-content-generator')?></h3>
+                    <h3 style="margin-top: -0.2em;"><?php echo esc_html__('Speech','gpt3-ai-content-generator')?></h3>
                     <?php
                         $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');  // Fetching the provider
                         // If the provider isn't Azure or Google, display the fields
                         if ($wpaicg_provider !== 'Azure' && $wpaicg_provider !== 'Google') {
                         ?>
-                            <div class="wpaicg-mb-10">
-                                <label class="wpaicg-form-label"><?php echo esc_html__('Enable Speech to Text','gpt3-ai-content-generator')?>:</label>
+                            <div class="nice-form-group">
                                 <input value="1" type="checkbox" class="wpaicg_chatbot_audio_enable" name="bot[audio_enable]">
-                            </div>
-                            <div class="wpaicg-mb-10">
-                                <label class="wpaicg-form-label"><?php echo esc_html__('Mic Color','gpt3-ai-content-generator')?>:</label>
-                                <input value="<?php echo esc_html($wpaicg_mic_color)?>" type="text" class="wpaicgchat_color wpaicg_chatbot_mic_color" name="bot[mic_color]">
-                            </div>
-                            <div class="wpaicg-mb-10">
-                                <label class="wpaicg-form-label"><?php echo esc_html__('Stop Color','gpt3-ai-content-generator')?>:</label>
-                                <input value="<?php echo esc_html($wpaicg_stop_color)?>" type="text" class="wpaicgchat_color wpaicg_chatbot_stop_color" name="bot[stop_color]">
+                                <label><?php echo esc_html__('Enable Speech to Text','gpt3-ai-content-generator')?></label>
                             </div>
                         <?php 
                         } else {  // If the provider is Azure, display the notice
@@ -802,18 +1051,17 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                         }
                         ?>
 
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Enable Text to Speech','gpt3-ai-content-generator')?>:</label>
-                        <input class="wpaicg_chatbot_chat_to_speech" value="1" type="checkbox" name="bot[chat_to_speech]">
-                    </div>
-                    <div class="mb-5">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Provider','gpt3-ai-content-generator')?>:</label>
-                        <select disabled name="bot[voice_service]" class="wpaicg_chatbot_voice_service">
-                        <option value="openai"><?php echo esc_html__('OpenAI','gpt3-ai-content-generator')?></option>
-                            <option value="elevenlabs"><?php echo esc_html__('ElevenLabs','gpt3-ai-content-generator')?></option>
-                            <option value="google"><?php echo esc_html__('Google','gpt3-ai-content-generator')?></option>
-                            
-                        </select>
+                        <div class="nice-form-group">
+                            <input class="wpaicg_chatbot_chat_to_speech" value="1" type="checkbox" name="bot[chat_to_speech]">
+                            <label><?php echo esc_html__('Enable Text to Speech','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Provider','gpt3-ai-content-generator')?></label>
+                            <select disabled name="bot[voice_service]" class="wpaicg_chatbot_voice_service">
+                                <option value="openai"><?php echo esc_html__('OpenAI','gpt3-ai-content-generator')?></option>
+                                <option value="elevenlabs"><?php echo esc_html__('ElevenLabs','gpt3-ai-content-generator')?></option>
+                                <option value="google"><?php echo esc_html__('Google','gpt3-ai-content-generator')?></option>
+                            </select>
                     </div>
                     <?php
                         // OpenAI settings
@@ -823,15 +1071,15 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                         $wpaicg_openai_speed = 1;
                     ?>
                     <div class="wpaicg_voice_service_openai" style="display:none">
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Model','gpt3-ai-content-generator')?>:</label>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Model','gpt3-ai-content-generator')?></label>
                         <select name="bot[openai_model]" class="wpaicg_chatbot_openai_model">
                             <option value="tts-1" <?php echo $wpaicg_openai_model == 'tts-1' ? 'selected' : ''; ?>>tts-1</option>
                             <option value="tts-1-hd" <?php echo $wpaicg_openai_model == 'tts-1-hd' ? 'selected' : ''; ?>>tts-1-hd</option>
                         </select>
                     </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Voice','gpt3-ai-content-generator')?>:</label>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Voice','gpt3-ai-content-generator')?></label>
                         <select name="bot[openai_voice]" class="wpaicg_chatbot_openai_voice">
                             <option value="alloy">Alloy</option>
                             <option value="echo">Echo</option>
@@ -841,8 +1089,8 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                             <option value="shimmer">Shimmer</option>
                         </select>
                     </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Response Format','gpt3-ai-content-generator')?>:</label>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Response Format','gpt3-ai-content-generator')?></label>
                         <select name="bot[openai_output_format]" class="wpaicg_chatbot_openai_output_format">
                             <option value="mp3">MP3</option>
                             <option value="opus">Opus</option>
@@ -850,8 +1098,8 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                             <option value="flac">FLAC</option>
                         </select>
                     </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Speed','gpt3-ai-content-generator')?>:</label>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Speed','gpt3-ai-content-generator')?></label>
                         <input type="number" min="0.25" max="4.0" step="0.25" value="1" name="bot[openai_voice_speed]" class="wpaicg_chatbot_openai_voice_speed">
                     </div>
                 </div>
@@ -864,9 +1112,9 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                         $wpaicg_voice_pitch = 0;
                         $wpaicg_google_api_key = get_option('wpaicg_google_api_key', '');
                     ?>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Voice Language','gpt3-ai-content-generator')?>:</label>
-                            <select<?php echo empty($wpaicg_google_api_key) ? ' disabled':''?> name="bot[voice_language]" class="wpaicg_voice_language wpaicg_chatbot_voice_language">
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Voice Language','gpt3-ai-content-generator')?></label>
+                            <select <?php echo empty($wpaicg_google_api_key) ? ' disabled':''?> name="bot[voice_language]" class="wpaicg_voice_language wpaicg_chatbot_voice_language">
                                 <?php
                                 foreach(\WPAICG\WPAICG_Google_Speech::get_instance()->languages as $key=>$voice_language){
                                     echo '<option'.($wpaicg_voice_language == $key ? ' selected':'').' value="'.esc_html($key).'">'.esc_html($voice_language).'</option>';
@@ -874,14 +1122,14 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                                 ?>
                             </select>
                         </div>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Voice Name','gpt3-ai-content-generator')?>:</label>
-                            <select<?php echo empty($wpaicg_google_api_key) ? ' disabled':''?> data-value="<?php echo esc_html($wpaicg_voice_name)?>" name="bot[voice_name]" class="wpaicg_voice_name wpaicg_chatbot_voice_name">
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Voice Name','gpt3-ai-content-generator')?></label>
+                            <select <?php echo empty($wpaicg_google_api_key) ? ' disabled':''?> data-value="<?php echo esc_html($wpaicg_voice_name)?>" name="bot[voice_name]" class="wpaicg_voice_name wpaicg_chatbot_voice_name">
                             </select>
                         </div>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Audio Device Profile','gpt3-ai-content-generator')?>:</label>
-                            <select<?php echo empty($wpaicg_google_api_key) ? ' disabled':''?> name="bot[voice_device]" class="wpaicg_chatbot_voice_device">
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Audio Device Profile','gpt3-ai-content-generator')?></label>
+                            <select <?php echo empty($wpaicg_google_api_key) ? ' disabled':''?> name="bot[voice_device]" class="wpaicg_chatbot_voice_device">
                                 <?php
                                 foreach(\WPAICG\WPAICG_Google_Speech::get_instance()->devices() as $key => $device){
                                     echo '<option'.($wpaicg_voice_device == $key ? ' selected':'').' value="'.esc_html($key).'">'.esc_html($device).'</option>';
@@ -889,12 +1137,12 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                                 ?>
                             </select>
                         </div>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Voice Speed','gpt3-ai-content-generator')?>:</label>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Voice Speed','gpt3-ai-content-generator')?></label>
                             <input <?php echo empty($wpaicg_google_api_key) ? ' disabled':''?> type="text" class="wpaicg_voice_speed wpaicg_chatbot_voice_speed" value="<?php echo esc_html($wpaicg_voice_speed)?>" name="bot[voice_speed]">
                         </div>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Voice Pitch','gpt3-ai-content-generator')?>:</label>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Voice Pitch','gpt3-ai-content-generator')?>:</label>
                             <input <?php echo empty($wpaicg_google_api_key) ? ' disabled':''?> type="text" class="wpaicg_voice_pitch wpaicg_chatbot_voice_pitch" value="<?php echo esc_html($wpaicg_voice_pitch)?>" name="bot[voice_pitch]">
                         </div>
                     </div>
@@ -906,8 +1154,8 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                     ?>
 
                     <div class="wpaicg_voice_service_elevenlabs">
-                        <div class="wpaicg-mb-10">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Select a Voice','gpt3-ai-content-generator')?>:</label>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Select a Voice','gpt3-ai-content-generator')?></label>
                             <select <?php echo empty($wpaicg_elevenlabs_api_key) ? ' disabled':'' ?> name="bot[elevenlabs_voice]" class="wpaicg_chatbot_elevenlabs_voice">
                                 <?php
                                 foreach(\WPAICG\WPAICG_ElevenLabs::get_instance()->voices as $key => $voice){
@@ -917,8 +1165,8 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                             </select>
                         </div>
                         <!-- Model Dropdown -->
-                        <div class="wpaicg-mb-10">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Select a Model', 'gpt3-ai-content-generator')?>:</label>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Select a Model', 'gpt3-ai-content-generator')?></label>
                             <select <?php echo empty($wpaicg_elevenlabs_api_key) ? ' disabled':'' ?> name="bot[elevenlabs_model]" class="wpaicg_chatbot_elevenlabs_model">
                                 <?php
                                 foreach(\WPAICG\WPAICG_ElevenLabs::get_instance()->models as $key => $model){
@@ -930,242 +1178,248 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                     </div>
                     <div class="wpaicg-bot-footer">
                         <div>
-                        <button type="button" class="button wpaicg-bot-step" data-type="parameters"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
-                        <button type="button" class="button button-primary wpaicg-bot-step" data-type="custom"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
-                        </div>
-                        <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
-                    </div>
-                </div>
-                <div class="wpaicg-bot-custom wpaicg-bot-wizard" style="display: none">
-                    <h3><?php echo esc_html__('Custom Text','gpt3-ai-content-generator')?></h3>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('AI Name','gpt3-ai-content-generator')?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_ai_name" name="bot[ai_name]" value="AI" >
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('You','gpt3-ai-content-generator')?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_you" name="bot[you]" value="<?php echo esc_html__('You','gpt3-ai-content-generator')?>" >
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('AI Thinking','gpt3-ai-content-generator')?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_ai_thinking" name="bot[ai_thinking]" value="<?php echo esc_html__('AI thinking','gpt3-ai-content-generator')?>" >
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Placeholder','gpt3-ai-content-generator')?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_placeholder" name="bot[placeholder]" value="<?php echo esc_html__('Type message..','gpt3-ai-content-generator')?>" >
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Welcome Message','gpt3-ai-content-generator')?>:</label>
-                        <input type="text" class="regular-text wpaicg_chatbot_welcome" name="bot[welcome]" value="<?php echo esc_html__('Hello human, I am a GPT powered AI chat bot. Ask me anything!','gpt3-ai-content-generator')?>" >
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('No Answer Message','gpt3-ai-content-generator')?>:</label>
-                        <input class="regular-text wpaicg_chatbot_no_answer" type="text" value="" name="bot[no_answer]">
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Footer Note','gpt3-ai-content-generator')?>:</label>
-                        <input class="regular-text wpaicg_chatbot_footer_text" value="" type="text" name="bot[footer_text]" placeholder="<?php echo esc_html__('Powered by ...','gpt3-ai-content-generator')?>">
-                    </div>
-                    <div class="wpaicg-bot-footer">
-                        <div>
-                        <button type="button" class="button wpaicg-bot-step" data-type="audio"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
-                        <button type="button" class="button button-primary wpaicg-bot-step" data-type="context"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
-                        </div>
-                        <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
-                    </div>
-                </div>
-                <div class="wpaicg-bot-context wpaicg-bot-wizard" style="display: none">
-                    <h3><?php echo esc_html__('Context','gpt3-ai-content-generator')?></h3>
-
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Additional Context?','gpt3-ai-content-generator')?>:</label>
-                        <input name="bot[chat_addition]" class="wpaicg_chatbot_chat_addition" value="1" type="checkbox" id="wpaicg_chat_addition">
-                    </div>
-                    <?php
-                    $wpaicg_additions_json = file_get_contents(WPAICG_PLUGIN_DIR.'admin/chat/context.json');
-                    $wpaicg_additions = json_decode($wpaicg_additions_json, true);
-                    ?>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Template','gpt3-ai-content-generator')?>:</label>
-                        <select disabled class="wpaicg_chat_addition_template">
-                            <option value=""><?php echo esc_html__('Select Template','gpt3-ai-content-generator')?></option>
-                            <?php
-                            foreach($wpaicg_additions as $key=>$wpaicg_addition){
-                                echo '<option value="'.esc_html($wpaicg_addition).'">'.esc_html($key).'</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label" style="vertical-align: top;"><?php echo esc_html__('Context','gpt3-ai-content-generator')?>:
-                            <small style="font-weight: normal;display: block">
-                                <?php
-                                printf(
-                                    /* translators: 1: [sitename] shortcode, 2: [siteurl] shortcode, 3: [domain] shortcode, 4: [date] shortcode */
-                                    esc_html__('You can add shortcode %1$s and %2$s and %3$s and %4$s in context', 'gpt3-ai-content-generator'),
-                                    '<code>[sitename]</code>',
-                                    '<code>[siteurl]</code>',
-                                    '<code>[domain]</code>',
-                                    '<code>[date]</code>'
-                                );
-                                ?>
-                            </small>
-                        </label>
-                        <textarea rows="8" disabled name="bot[chat_addition_text]" id="wpaicg_chat_addition_text" class="regular-text wpaicg_chatbot_chat_addition_text"><?php echo esc_html__('You are a helpful AI Assistant. Please be friendly.','gpt3-ai-content-generator')?></textarea>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Remember Conversation','gpt3-ai-content-generator')?>:</label>
-                        <select name="bot[remember_conversation]" class="wpaicg_chatbot_remember_conversation">
-                            <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
-                            <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Remember Conv. Up To','gpt3-ai-content-generator')?>:</label>
-                        <select name="bot[conversation_cut]" class="wpaicg_chatbot_conversation_cut">
-                            <?php
-                            for($i=3;$i<=50;$i++){
-                                echo '<option'.(10 == $i ? ' selected':'').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('User Aware','gpt3-ai-content-generator')?>:</label>
-                        <select name="bot[user_aware]" class="wpaicg_chatbot_user_aware">
-                            <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
-                            <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Content Aware','gpt3-ai-content-generator')?>:</label>
-                        <select name="bot[content_aware]" class="wpaicg_chatbot_content_aware">
-                            <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
-                            <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Use Excerpt','gpt3-ai-content-generator')?>:</label>
-                        <input checked type="checkbox" id="wpaicg_chat_excerpt" class="wpaicg_chatbot_chat_excerpt">
-                    </div>
-
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Use Embeddings','gpt3-ai-content-generator')?>:</label>
-                        <input type="checkbox" value="1" name="bot[embedding]" id="wpaicg_chat_embedding" class="asdisabled wpaicg_chatbot_embedding">
-                    </div>
-                    <!-- Vector DB Provider -->
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Vector DB','gpt3-ai-content-generator')?>:</label>
-                        <select disabled name="bot[vectordb]" id="wpaicg_chat_vectordb" class="asdisabled wpaicg_chatbot_vectordb">
-                            <option value="pinecone"><?php echo esc_html__('Pinecone','gpt3-ai-content-generator')?></option>
-                            <option value="qdrant"><?php echo esc_html__('Qdrant','gpt3-ai-content-generator')?></option>
-                        </select>
-                    </div>
-                    <!-- Pinecone Indexes -->
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Pinecone Index','gpt3-ai-content-generator')?>:</label>
-                        <select disabled name="bot[embedding_index]" id="wpaicg_chat_embedding_index" class="asdisabled wpaicg_chatbot_embedding_index">
-                            <option value=""><?php echo esc_html__('Default','gpt3-ai-content-generator')?></option>
-                            <?php
-                            foreach($wpaicg_pinecone_indexes as $wpaicg_pinecone_index){
-                                echo '<option value="'.esc_html($wpaicg_pinecone_index['url']).'">'.esc_html($wpaicg_pinecone_index['name']).'</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <!-- Qdrant Collections -->
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Qdrant Collection','gpt3-ai-content-generator')?>:</label>
-                        <select disabled name="bot[qdrant_collection]" id="wpaicg_chat_qdrant_collection" class="asdisabled wpaicg_chatbot_qdrant_collection">
-                            <?php foreach ($wpaicg_qdrant_collections as $wpaicg_qdrant_collection) {
-                                $selected = $wpaicg_qdrant_collection === '' ? ' selected' : '';
-                                echo '<option value="' . esc_attr($wpaicg_qdrant_collection) . '"' . $selected . '>' . esc_html($wpaicg_qdrant_collection) . '</option>';
-                            } ?>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Method','gpt3-ai-content-generator')?>:</label>
-                        <select disabled name="bot[embedding_type]" id="wpaicg_chat_embedding_type" class="asdisabled wpaicg_chatbot_embedding_type">
-                            <option value="openai"><?php echo esc_html__('Embeddings + Completion','gpt3-ai-content-generator')?></option>
-                            <option value=""><?php echo esc_html__('Embeddings only','gpt3-ai-content-generator')?></option>
-                        </select>
-                    </div>
-                    <div class="wpaicg-mb-10">
-                        <label class="wpaicg-form-label"><?php echo esc_html__('Limit','gpt3-ai-content-generator')?>:</label>
-                        <select disabled name="bot[embedding_top]" id="wpaicg_chat_embedding_top" class="asdisabled wpaicg_chatbot_embedding_top">
-                            <?php
-                            for($i = 1; $i <=5;$i++){
-                                echo '<option value="'.esc_html($i).'">'.esc_html($i).'</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <?php
-                    if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()):
-                        ?>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Enable PDF Upload','gpt3-ai-content-generator')?>:</label>
-                            <input disabled type="checkbox" value="1" name="bot[embedding_pdf]" class="asdisabled wpaicg_chatbot_embedding_pdf">
-                        </div>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Limit PDF Pages','gpt3-ai-content-generator')?>:</label>
-                            <select disabled name="bot[pdf_pages]" id="wpaicg_chat_pdf_pages" class="asdisabled wpaicg_chatbot_pdf_pages" style="width: 65px!important;">
-                                <?php
-                                $pdf_pages = 120;
-                                for($i=1;$i <= 120;$i++){
-                                    echo '<option'.($pdf_pages == $i ? ' selected':'').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label" style="vertical-align:top">
-                                <?php echo esc_html__('PDF Success Message','gpt3-ai-content-generator')?>:
-                                <small style="font-weight: normal;display: block">
-                                <?php
-                                printf(
-                                    /* translators: 1: [questions] shortcode */
-                                    esc_html__('You can include the following shortcode in the message: %1$s.','gpt3-ai-content-generator'),
-                                    '<code>[questions]</code>'
-                                );
-                                ?>
-                                </small>
-                            </label>
-                            <textarea disabled rows="8" name="bot[embedding_pdf_message]" class="asdisabled wpaicg_chatbot_embedding_pdf_message">Congrats! Your PDF is uploaded now! You can ask questions about your document.\nExample Questions:[questions]</textarea>
-                        </div>
-                    <?php
-                    else:
-                        ?>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Enable PDF Upload','gpt3-ai-content-generator')?>:</label>
-                            <input type="checkbox" disabled> <?php echo esc_html__('Available in Pro','gpt3-ai-content-generator')?>
-                        </div>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('Limit PDF Pages','gpt3-ai-content-generator')?>:</label>
-                            <select disabled style="width: 65px!important;">
-                                <option><?php echo esc_html__('Available in Pro','gpt3-ai-content-generator')?></option>
-                            </select>
-                        </div>
-                        <div class="mb-5">
-                            <label class="wpaicg-form-label"><?php echo esc_html__('PDF Success Message','gpt3-ai-content-generator')?>:</label>
-                            <textarea disabled rows="8" ><?php echo esc_html__('Available in Pro','gpt3-ai-content-generator')?></textarea>
-                        </div>
-                    <?php
-                    endif;
-                    ?>
-                    <div class="wpaicg-bot-footer">
-                        <div>
                         <button type="button" class="button wpaicg-bot-step" data-type="custom"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
                         <button type="button" class="button button-primary wpaicg-bot-step" data-type="logs"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
                         </div>
                         <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
                     </div>
                 </div>
+                <div class="wpaicg-bot-custom wpaicg-bot-wizard" style="display: none">
+                    <h3 style="margin-top: -0.2em;"><?php echo esc_html__('Interface','gpt3-ai-content-generator')?></h3>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('AI Name','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100%;" type="text" class="wpaicg_chatbot_ai_name" name="bot[ai_name]" value="AI" >
+                    </div>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('User Name','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100%;" type="text" class="wpaicg_chatbot_you" name="bot[you]" value="<?php echo esc_html__('You','gpt3-ai-content-generator')?>" >
+                    </div>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Response Wait Message','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100%;" type="text" class="wpaicg_chatbot_ai_thinking" name="bot[ai_thinking]" value="<?php echo esc_html__('Gathering thoughts','gpt3-ai-content-generator')?>" >
+                    </div>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Placeholder','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100%;" type="text" class="wpaicg_chatbot_placeholder" name="bot[placeholder]" value="<?php echo esc_html__('Type message..','gpt3-ai-content-generator')?>" >
+                    </div>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Welcome Message','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100%;" type="text" class="wpaicg_chatbot_welcome" name="bot[welcome]" value="<?php echo esc_html__('Hello human, I am a GPT powered AI chat bot. Ask me anything!','gpt3-ai-content-generator')?>" >
+                    </div>
+                    <div class="nice-form-group" style="display: none">
+                        <label><?php echo esc_html__('No Answer Message','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100%;" class="wpaicg_chatbot_no_answer" type="hidden" value="" name="bot[no_answer]">
+                    </div>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Footer Note','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100%;" class="wpaicg_chatbot_footer_text" value="" type="text" name="bot[footer_text]" placeholder="<?php echo esc_html__('Powered by ...','gpt3-ai-content-generator')?>">
+                    </div>
+                    <div class="wpaicg-bot-footer">
+                        <div>
+                        <button type="button" class="button wpaicg-bot-step" data-type="style"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
+                        <button type="button" class="button button-primary wpaicg-bot-step" data-type="audio"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
+                        </div>
+                        <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
+                    </div>
+                </div>
+                <!--Context-->
+                <div class="wpaicg-bot-context wpaicg-bot-wizard" style="display: none">
+                    <h3 style="margin-top: -0.2em;"><?php echo esc_html__('Knowledge','gpt3-ai-content-generator')?></h3>
+                    <div class="nice-form-group" style="display: flex;margin-top: -1em;">
+                        <div class="nice-form-group" style="padding-right: 30px;">
+                            <label><?php echo esc_html__('Content Aware','gpt3-ai-content-generator')?></label>
+                            <select style="width: 100px;" name="bot[content_aware]" class="wpaicg_chatbot_content_aware">
+                                <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
+                                <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
+                            </select>
+                        </div>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Conversational Memory','gpt3-ai-content-generator')?></label>
+                            <select style="width: 100px;" name="bot[remember_conversation]" class="wpaicg_chatbot_remember_conversation">
+                                <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
+                                <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
+                            </select>
+                        </div>
+                    </div>
+                    <fieldset class="nice-form-group" style="margin-top: 1em;">
+                    <legend><?php echo esc_html__('Data Source', 'gpt3-ai-content-generator'); ?></legend>
+                        <div class="nice-form-group">
+                            <input checked type="checkbox" id="wpaicg_chat_excerpt" class="wpaicg_chatbot_chat_excerpt">
+                            <label><?php echo esc_html__('Use Excerpt','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="nice-form-group">
+                            <input type="checkbox" value="1" name="bot[embedding]" id="wpaicg_chat_embedding" class="asdisabled wpaicg_chatbot_embedding">
+                            <label><?php echo esc_html__('Use Embeddings','gpt3-ai-content-generator')?></label>
+                        </div>
+                    </fieldset>
+                    <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: 1em;">
+                        <!-- Vector DB Provider -->
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Vector DB','gpt3-ai-content-generator')?></label>
+                            <select style="width: 100px;" disabled name="bot[vectordb]" id="wpaicg_chat_vectordb" class="asdisabled wpaicg_chatbot_vectordb">
+                                <option value="pinecone"><?php echo esc_html__('Pinecone','gpt3-ai-content-generator')?></option>
+                                <option value="qdrant"><?php echo esc_html__('Qdrant','gpt3-ai-content-generator')?></option>
+                            </select>
+                        </div>
+                        <!-- Pinecone Indexes -->
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Index','gpt3-ai-content-generator')?></label>
+                            <select style="width: 100px;" disabled name="bot[embedding_index]" id="wpaicg_chat_embedding_index" class="asdisabled wpaicg_chatbot_embedding_index">
+                                <option value=""><?php echo esc_html__('Default','gpt3-ai-content-generator')?></option>
+                                <?php
+                                foreach($wpaicg_pinecone_indexes as $wpaicg_pinecone_index){
+                                    echo '<option value="'.esc_html($wpaicg_pinecone_index['url']).'">'.esc_html($wpaicg_pinecone_index['name']).'</option>';
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <!-- Qdrant Collections -->
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Collection','gpt3-ai-content-generator')?></label>
+                            <select style="width: 100px;" disabled name="bot[qdrant_collection]" id="wpaicg_chat_qdrant_collection" class="asdisabled wpaicg_chatbot_qdrant_collection">
+                                <?php foreach ($wpaicg_qdrant_collections as $wpaicg_qdrant_collection) {
+                                    $selected = $wpaicg_qdrant_collection === '' ? ' selected' : '';
+                                    echo '<option value="' . esc_attr($wpaicg_qdrant_collection) . '"' . $selected . '>' . esc_html($wpaicg_qdrant_collection) . '</option>';
+                                } ?>
+                            </select>
+                        </div>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Limit','gpt3-ai-content-generator')?></label>
+                            <select style="width: 100px;" disabled name="bot[embedding_top]" id="wpaicg_chat_embedding_top" class="asdisabled wpaicg_chatbot_embedding_top">
+                                <?php
+                                for($i = 1; $i <=5;$i++){
+                                    echo '<option value="'.esc_html($i).'">'.esc_html($i).'</option>';
+                                }
+                                ?>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Conversation Starters -->
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Conversation Starters', 'gpt3-ai-content-generator'); ?></label>
+                        <?php foreach($conversation_starters as $index => $starter): ?>
+                            <input type="hidden" name="bot[conversation_starters][<?php echo $index; ?>]" value="<?php echo esc_attr($starter); ?>">
+                        <?php endforeach; ?>
+                        <a href="javascript:void(0)" class="wpaicg_add_conversation_starter"><?php echo esc_html__('Edit Conversation Starters', 'gpt3-ai-content-generator'); ?></a>
+                    </div>
+                    <?php if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()): ?>
+                        <fieldset class="nice-form-group">
+                            <div class="nice-form-group">
+                                <input disabled type="checkbox" value="1" name="bot[embedding_pdf]" class="asdisabled wpaicg_chatbot_embedding_pdf">
+                                <label><?php echo esc_html__('Enable PDF Upload','gpt3-ai-content-generator')?></label>
+                            </div>
+                        </fieldset>
+                        <div class="nice-form-group">
+                            <textarea style="width: 100%;" disabled rows="4" name="bot[embedding_pdf_message]" class="asdisabled wpaicg_chatbot_embedding_pdf_message">Congrats! Your PDF is uploaded now! You can ask questions about your document.\nExample Questions:[questions]</textarea>
+                        </div>
+                    <?php else: ?>
+                        <fieldset class="nice-form-group">
+                            <div class="nice-form-group">
+                                <input type="checkbox" disabled> <?php echo esc_html__('Enable PDF Upload (Pro Plan)','gpt3-ai-content-generator')?>
+                            </div>
+                        </fieldset>
+                    <?php endif; ?>
+                    <!-- Additional Options -->
+                    <p></p>
+                    <a href="#" class="wpaicg-additional-settings-link"><?php echo esc_html__('Show Additional Options','gpt3-ai-content-generator'); ?></a>
+                    <div class="wpaicg-additional-settings" style="display: none;">
+                        <div class="nice-form-group" style="display: flex;">
+                            <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('Memory Limit','gpt3-ai-content-generator')?></label>
+                                <select style="width: 80px;font-size: 10px;" name="bot[conversation_cut]" class="wpaicg_chatbot_conversation_cut">
+                                    <?php
+                                    for($i=3;$i<=50;$i++){
+                                        echo '<option'.(10 == $i ? ' selected':'').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('User Aware','gpt3-ai-content-generator')?></label>
+                                <select style="width: 80px;font-size: 10px;" name="bot[user_aware]" class="wpaicg_chatbot_user_aware">
+                                    <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
+                                    <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
+                                </select>
+                            </div>
+                            <?php if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()): ?>
+                            <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('PDF Page Limit','gpt3-ai-content-generator')?></label>
+                                <select style="width: 80px;font-size: 10px;" disabled name="bot[pdf_pages]" id="wpaicg_chat_pdf_pages" class="asdisabled wpaicg_chatbot_pdf_pages">
+                                    <?php
+                                    $pdf_pages = 120;
+                                    for($i=1;$i <= 120;$i++){
+                                        echo '<option'.($pdf_pages == $i ? ' selected':'').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('PDF Icon','gpt3-ai-content-generator')?></label>
+                                    <input style="height: 44px;" value="#222" type="color" class="wpaicg_chatbot_pdf_color" name="bot[pdf_color]">
+                                </div>
+                            <?php else: ?>
+                                <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('PDF Page Limit','gpt3-ai-content-generator')?></label>
+                                <select style="width: 80px;font-size: 10px;" disabled>
+                                    <option><?php echo esc_html__('Available in Pro','gpt3-ai-content-generator')?></option>
+                                </select>
+                            </div>
+                            <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('PDF Icon','gpt3-ai-content-generator')?></label>
+                                <input style="height: 44px;" disabled value="#222" type="color" class="wpaicg_chatbot_pdf_color" name="bot[pdf_color]">
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="nice-form-group" style="display: flex;">
+                            <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('Language','gpt3-ai-content-generator')?></label>
+                                <?php $language_options = \WPAICG\WPAICG_Util::get_instance()->chat_language_options; ?>
+                                <select style="width: 80px;font-size: 10px;" class="wpaicg_chatbot_language"  name="bot[language]">
+                                    <?php foreach($language_options as $key => $value){?>
+                                        <option value="<?php echo esc_html($key)?>"><?php echo esc_html($value)?></option>
+                                    <?php }?>
+                                </select>
+                            </div>
+                            <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('Tone','gpt3-ai-content-generator')?></label>
+                                <?php $tone_options = \WPAICG\WPAICG_Util::get_instance()->chat_tone_options; ?>
+                                <select style="width: 80px;font-size: 10px;" class="wpaicg_chatbot_tone" name="bot[tone]">
+                                    <?php foreach($tone_options as $key => $value){?>
+                                        <option value="<?php echo esc_html($key)?>"><?php echo esc_html($value)?></option>
+                                    <?php }?>
+                                </select>
+                            </div>
+                            <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('Profession','gpt3-ai-content-generator')?></label>
+                                <?php $proffesion_options = \WPAICG\WPAICG_Util::get_instance()->chat_profession_options; ?>
+                                <select style="width: 80px;font-size: 10px;" name="bot[proffesion]" class="wpaicg_chatbot_proffesion">
+                                    <?php foreach($proffesion_options as $key => $value){?>
+                                        <option value="<?php echo esc_html($key)?>"><?php echo esc_html($value)?></option>
+                                    <?php }?>
+                                </select>
+                            </div>
+                            <div class="nice-form-group" style="padding-right: 5px;">
+                                <label style="font-size: 10px;"><?php echo esc_html__('Embedding Type','gpt3-ai-content-generator')?></label>
+                                <select style="width: 80px;font-size: 10px;" disabled name="bot[embedding_type]" id="wpaicg_chat_embedding_type" class="asdisabled wpaicg_chatbot_embedding_type">
+                                    <option value="openai"><?php echo esc_html__('Conversational','gpt3-ai-content-generator')?></option>
+                                    <option value=""><?php echo esc_html__('Non-Conversational','gpt3-ai-content-generator')?></option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="wpaicg-bot-footer">
+                        <div>
+                        <button type="button" class="button wpaicg-bot-step" data-type="parameters"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
+                        <button type="button" class="button button-primary wpaicg-bot-step" data-type="style"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
+                        </div>
+                        <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
+                    </div>
+                </div>
                 <div class="wpaicg-bot-logs wpaicg-bot-wizard" style="display: none">
-                    <h3><?php echo esc_html__('Logs','gpt3-ai-content-generator')?></h3>
+                    <h3 style="margin-top: -0.2em;"><?php echo esc_html__('Logs','gpt3-ai-content-generator')?></h3>
                     <div class="wpaicg-mb-10">
                         <label class="wpaicg-form-label"><?php echo esc_html__('Save Chat Logs','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_save_logs ? ' checked': ''?> class="wpaicg_chatbot_save_logs" value="1" type="checkbox" name="bot[save_logs]">
+                        <input <?php echo $wpaicg_save_logs ? ' checked': ''?> class="wpaicg_chatbot_save_logs" value="1" type="checkbox" name="bot[save_logs]">
                     </div>
                     <div class="wpaicg-mb-10">
                         <label class="wpaicg-form-label"><?php echo esc_html__('Save Prompt','gpt3-ai-content-generator')?>:</label>
@@ -1181,21 +1435,21 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                     </div>
                     <div class="wpaicg-bot-footer">
                         <div>
-                        <button type="button" class="button wpaicg-bot-step" data-type="context"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
+                        <button type="button" class="button wpaicg-bot-step" data-type="audio"><?php echo esc_html__('Previous','gpt3-ai-content-generator')?></button>
                         <button type="button" class="button button-primary wpaicg-bot-step" data-type="tokens"><?php echo esc_html__('Next','gpt3-ai-content-generator')?></button>
                         </div>
                         <button class="button button-primary wpaicg-chatbot-submit"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
                     </div>
                 </div>
                 <div class="wpaicg-bot-tokens wpaicg-bot-wizard" style="display: none">
-                    <h3><?php echo esc_html__('Token Management','gpt3-ai-content-generator')?></h3>
+                    <h3 style="margin-top: -0.2em;"><?php echo esc_html__('Token Management','gpt3-ai-content-generator')?></h3>
                     <div class="wpaicg-mb-10">
                         <label class="wpaicg-form-label"><?php echo esc_html__('Limit Registered User','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_user_limited ? ' checked': ''?> type="checkbox" value="1" class="wpaicg_user_token_limit wpaicg_chatbot_user_limited" name="bot[user_limited]">
+                        <input <?php echo $wpaicg_user_limited ? ' checked': ''?> type="checkbox" value="1" class="wpaicg_user_token_limit wpaicg_chatbot_user_limited" name="bot[user_limited]">
                     </div>
                     <div class="wpaicg-mb-10">
                         <label class="wpaicg-form-label"><?php echo esc_html__('Token Limit','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_user_limited ? '' : ' disabled'?> style="width: 80px" class="wpaicg_user_token_limit_text wpaicg_chatbot_user_tokens" type="text" value="<?php echo esc_html($wpaicg_user_tokens)?>" name="bot[user_tokens]">
+                        <input <?php echo $wpaicg_user_limited ? '' : ' disabled'?> style="width: 80px" class="wpaicg_user_token_limit_text wpaicg_chatbot_user_tokens" type="text" value="<?php echo esc_html($wpaicg_user_tokens)?>" name="bot[user_tokens]">
                     </div>
                     <div class="wpaicg-mb-10">
                         <label class="wpaicg-form-label"><?php echo esc_html__('Role based limit','gpt3-ai-content-generator')?>:</label>
@@ -1209,11 +1463,11 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                     </div>
                     <div class="wpaicg-mb-10">
                         <label class="wpaicg-form-label"><?php echo esc_html__('Limit Non-Registered User','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_guest_limited ? ' checked': ''?> type="checkbox" class="wpaicg_guest_token_limit wpaicg_chatbot_guest_limited" value="1" name="bot[guest_limited]">
+                        <input <?php echo $wpaicg_guest_limited ? ' checked': ''?> type="checkbox" class="wpaicg_guest_token_limit wpaicg_chatbot_guest_limited" value="1" name="bot[guest_limited]">
                     </div>
                     <div class="wpaicg-mb-10">
                         <label class="wpaicg-form-label"><?php echo esc_html__('Token Limit','gpt3-ai-content-generator')?>:</label>
-                        <input<?php echo $wpaicg_guest_limited ? '' : ' disabled'?> class="wpaicg_guest_token_limit_text wpaicg_chatbot_guest_tokens" style="width: 80px" type="text" value="<?php echo esc_html($wpaicg_guest_tokens)?>" name="bot[guest_tokens]">
+                        <input <?php echo $wpaicg_guest_limited ? '' : ' disabled'?> class="wpaicg_guest_token_limit_text wpaicg_chatbot_guest_tokens" style="width: 80px" type="text" value="<?php echo esc_html($wpaicg_guest_tokens)?>" name="bot[guest_tokens]">
                     </div>
                     <div class="wpaicg-mb-10">
                         <label class="wpaicg-form-label"><?php echo esc_html__('Notice','gpt3-ai-content-generator')?>:</label>
@@ -1283,7 +1537,7 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                      >
                     <div class="wpaicg-chat-shortcode-content" style="background-color: <?php echo esc_html($wpaicg_chat_bgcolor)?>;">
                         <ul class="wpaicg-chat-shortcode-messages" style="height: <?php echo esc_html($wpaicg_chat_height)?>">
-                            <li style="background: rgb(0 0 0 / 32%); padding: 10px;margin-bottom: 0;display:none" class="wpaicg_chatbot_log_preview">
+                            <li style="background: #ccf5e1; padding: 10px;border-radius: unset;font-size: 11px;font-style: italic;display:none;" class="wpaicg_chatbot_log_preview">
                                 <p><span class="wpaicg-chat-message"></span></p>
                             </li>
                             <li class="wpaicg-ai-message" style="color: <?php echo esc_html($wpaicg_chat_fontcolor)?>; font-size: <?php echo esc_html($wpaicg_chat_fontsize)?>px; background-color: <?php echo esc_html($wpaicg_ai_bg_color);?>">
@@ -1293,10 +1547,10 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                                 </p>
                             </li>
                         </ul>
-                        <span class="wpaicg-bot-thinking" style="display: none;background-color: <?php echo esc_html($wpaicg_chat_bgcolor)?>;color:<?php echo esc_html($wpaicg_chat_fontcolor)?>"><span class="wpaicg_chatbot_ai_thinking_view"><?php echo esc_html__('AI thinking','gpt3-ai-content-generator')?></span>&nbsp;<span class="wpaicg-jumping-dots"><span class="wpaicg-dot-1">.</span><span class="wpaicg-dot-2">.</span><span class="wpaicg-dot-3">.</span></span></span>
                     </div>
+                    <span class="wpaicg-bot-thinking" style="display: none;color:<?php echo esc_html($wpaicg_chat_fontcolor)?>">Gathering thoughts&nbsp;<span class="wpaicg-jumping-dots"><span class="wpaicg-dot-1">.</span><span class="wpaicg-dot-2">.</span><span class="wpaicg-dot-3">.</span></span></span>
                     <div class="wpaicg-chat-shortcode-type" style="background-color: <?php echo esc_html($wpaicg_chat_bgcolor)?>;">
-                        <textarea style="border-color: <?php echo esc_html($wpaicg_border_text_field)?>;background-color: <?php echo esc_html($wpaicg_bg_text_field)?>" type="text" class="wpaicg-chat-shortcode-typing" placeholder="<?php echo esc_html__('Type message..','gpt3-ai-content-generator')?>"></textarea>
+                        <textarea style="border-color: <?php echo esc_html($wpaicg_border_text_field)?>;background-color: <?php echo esc_html($wpaicg_bg_text_field)?>" type="text" class="auto-expand wpaicg-chat-shortcode-typing" placeholder="<?php echo esc_html__('Type message..','gpt3-ai-content-generator')?>"></textarea>
                         <div class="wpaicg_chat_additions">
                             <span class="wpaicg-mic-icon" data-type="shortcode" style="<?php echo $wpaicg_audio_enable ? '' : 'display:none'?>;color: <?php echo esc_html($wpaicg_mic_color)?>">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M176 0C123 0 80 43 80 96V256c0 53 43 96 96 96s96-43 96-96V96c0-53-43-96-96-96zM48 216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 89.1 66.2 162.7 152 174.4V464H104c-13.3 0-24 10.7-24 24s10.7 24 24 24h72 72c13.3 0 24-10.7 24-24s-10.7-24-24-24H200V430.4c85.8-11.7 152-85.3 152-174.4V216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 70.7-57.3 128-128 128s-128-57.3-128-128V216z"/></svg>
@@ -1313,10 +1567,10 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
                             <span class="wpaicg-pdf-loading" style="display: none"></span>
                             <span data-type="shortcode" alt="<?php echo esc_html__('Clear','gpt3-ai-content-generator')?>" title="<?php echo esc_html__('Clear','gpt3-ai-content-generator')?>" class="wpaicg-pdf-remove" style="display: none">&times;</span>
                             <input type="file" accept="application/pdf" class="wpaicg-pdf-file" style="display: none">
+                            <span class="wpaicg-chat-shortcode-send">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-send"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            </span>
                         </div>
-                        <span class="wpaicg-chat-shortcode-send" style="color:<?php echo esc_html($wpaicg_send_color)?>">
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.5004 11.9998H5.00043M4.91577 12.2913L2.58085 19.266C2.39742 19.8139 2.3057 20.0879 2.37152 20.2566C2.42868 20.4031 2.55144 20.5142 2.70292 20.5565C2.87736 20.6052 3.14083 20.4866 3.66776 20.2495L20.3792 12.7293C20.8936 12.4979 21.1507 12.3822 21.2302 12.2214C21.2993 12.0817 21.2993 11.9179 21.2302 11.7782C21.1507 11.6174 20.8936 11.5017 20.3792 11.2703L3.66193 3.74751C3.13659 3.51111 2.87392 3.39291 2.69966 3.4414C2.54832 3.48351 2.42556 3.59429 2.36821 3.74054C2.30216 3.90893 2.3929 4.18231 2.57437 4.72906L4.91642 11.7853C4.94759 11.8792 4.96317 11.9262 4.96933 11.9742C4.97479 12.0168 4.97473 12.0599 4.96916 12.1025C4.96289 12.1506 4.94718 12.1975 4.91577 12.2913Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </span>
                     </div>
                     <div style="<?php echo $wpaicg_include_footer ? '' :' display:none'?>;background-color: <?php echo esc_html($wpaicg_chat_bgcolor)?>" class="wpaicg-chat-shortcode-footer"></div>
                 </div>
@@ -1327,12 +1581,12 @@ $wpaicg_typewriter_speed = get_option('wpaicg_typewriter_speed', 1);
         </div>
     </div>
 </div>
-<?php
-if(isset($_GET['update_success']) && !empty($_GET['update_success'])){
-    ?>
-    <p style="color: #26a300; font-weight: bold;"><?php echo esc_html__('Congratulations! Your chatbot has been saved successfully!','gpt3-ai-content-generator')?></p>
+<?php if(isset($_GET['update_success']) && !empty($_GET['update_success'])){ ?>
+    <p style="color: #26a300; font-weight: bold;">
+        <?php echo esc_html__('Congratulations! Your chatbot has been saved successfully!','gpt3-ai-content-generator')?>
+    </p>
     <?php
-}
+    }
 ?>
 <?php
 $wpaicg_bot_page = isset($_GET['wpage']) && !empty($_GET['wpage']) ? sanitize_text_field($_GET['wpage']) : 1;
@@ -1555,6 +1809,36 @@ $wpaicg_bots = new WP_Query($args);
             wpaicgChangeVoiceService($(e.currentTarget));
         });
 
+        // display advanced settings
+        $(document).on('click', '.wpaicg-advanced-settings-link', function(e) {
+            e.preventDefault();
+            var wpaicgadvancedSettings = $('.wpaicg-advanced-settings');
+            var wpaicgadvancedSettingsLink = $(this);
+
+            if (wpaicgadvancedSettings.css('display') === 'none') {
+                wpaicgadvancedSettings.css('display', 'block');
+                wpaicgadvancedSettingsLink.text('<?php echo esc_js(esc_html__('Hide Advanced Parameters','gpt3-ai-content-generator')); ?>');
+            } else {
+                wpaicgadvancedSettings.css('display', 'none');
+                wpaicgadvancedSettingsLink.text('<?php echo esc_js(esc_html__('Show Advanced Parameters','gpt3-ai-content-generator')); ?>');
+            }
+        });
+
+        // display additional settings
+        $(document).on('click', '.wpaicg-additional-settings-link', function(e) {
+            e.preventDefault();
+            var wpaicgadvancedSettings = $('.wpaicg-additional-settings');
+            var wpaicgadvancedSettingsLink = $(this);
+
+            if (wpaicgadvancedSettings.css('display') === 'none') {
+                wpaicgadvancedSettings.css('display', 'block');
+                wpaicgadvancedSettingsLink.text('<?php echo esc_js(esc_html__('Hide Additional Options','gpt3-ai-content-generator')); ?>');
+            } else {
+                wpaicgadvancedSettings.css('display', 'none');
+                wpaicgadvancedSettingsLink.text('<?php echo esc_js(esc_html__('Show Additional Options','gpt3-ai-content-generator')); ?>');
+            }
+        });
+
         $(document).on('keypress','.wpaicg_voice_speed,.wpaicg_voice_pitch', function (e){
             var charCode = (e.which) ? e.which : e.keyCode;
             if (charCode > 31 && (charCode < 48 || charCode > 57) && charCode !== 46) {
@@ -1577,20 +1861,19 @@ $wpaicg_bots = new WP_Query($args);
         });
 
         $(document).on('change', '.wpaicg_chatbot_vectordb', function(e) {
-            let parent = $(e.currentTarget).closest('.wpaicg-mb-10').parent();
+            let parent = $(e.currentTarget).closest('.nice-form-group').parent();
             let selectedDB = $(e.currentTarget).val();
-            parent.find('.wpaicg_chatbot_embedding_index, .wpaicg_chatbot_qdrant_collection').closest('.wpaicg-mb-10').hide(); // Hide both by default
+            parent.find('.wpaicg_chatbot_embedding_index, .wpaicg_chatbot_qdrant_collection').closest('.nice-form-group').hide(); // Hide both by default
 
             if (selectedDB === 'qdrant') {
                 // Show Qdrant Collection dropdown if Qdrant is selected
-                parent.find('.wpaicg_chatbot_qdrant_collection').closest('.wpaicg-mb-10').show();
+                parent.find('.wpaicg_chatbot_qdrant_collection').closest('.nice-form-group').show();
             } else if (selectedDB === 'pinecone') {
                 // Show Pinecone Index dropdown if Pinecone is selected
-                parent.find('.wpaicg_chatbot_embedding_index').closest('.wpaicg-mb-10').show();
+                parent.find('.wpaicg_chatbot_embedding_index').closest('.nice-form-group').show();
             }
         });
 
-        
         function wpaicgsetVoices(element){
             let parent = element.parent().parent();
             let language = element.val();
@@ -1653,16 +1936,420 @@ $wpaicg_bots = new WP_Query($args);
                 modalContent.find('.wpaicg_chatbot_log_notice_message').attr('disabled','disabled');
             }
         });
+
+        // Define your themes
+        var themes = {
+            default: {
+                fontColor: "#495057",
+                aiBgColor: "#d1e8ff",
+                userBgColor: "#ccf5e1",
+                windowBgColor: "#f8f9fa",
+                inputFontColor: "#495057",
+                borderTextField: "#CED4DA",
+                sendColor: "#d1e8ff",
+                bgTextField: "#FFFFFF",
+                footerColor: "#FFFFFF",
+                thinkingColor: "#495057",
+                footerfontColor: "#495057",
+                headericonColor: "#495057",
+                pdfColor: "#d1e8ff",
+                micColor: "#d1e8ff",
+                stopColor: "#d1e8ff",
+            },
+            midnightElegance: {
+                fontColor: "#E8E8E8",
+                aiBgColor: "#495057",
+                userBgColor: "#6C757D",
+                windowBgColor: "#343A40",
+                inputFontColor: "#F8F9FA",
+                borderTextField: "#6C757D",
+                sendColor: "#F8F9FA",
+                bgTextField: "#495057",
+                footerColor: "#495057",
+                thinkingColor: "#CED4DA",
+                footerfontColor: "#FFFFFF",
+                headericonColor: "#FFFFFF",
+                pdfColor: "#F8F9FA",
+                micColor: "#F8F9FA",
+                stopColor: "#F8F9FA",
+            },
+            sunriseSerenity: { /* Sunrise Serenity theme settings */ 
+                fontColor: "#543D35",
+                aiBgColor: "#FFD27D",
+                userBgColor: "#FFEBB7",
+                windowBgColor: "#FFF6E5",
+                inputFontColor: "#543D35",
+                borderTextField: "#FFD27D",
+                sendColor: "#FFA500",
+                bgTextField: "#FFF6E5",
+                footerColor: "#FFD27D",
+                thinkingColor: "#FFA500",
+                footerfontColor: "#543D35",
+                headericonColor: "#543D35",
+                pdfColor: "#FFA500",
+                micColor: "#FFA500",
+                stopColor: "#FFA500",
+            },
+            forestWhisper: {
+                fontColor: "#004225",
+                aiBgColor: "#A9D9C3",
+                userBgColor: "#CDEBDA",
+                windowBgColor: "#E6F4EA",
+                inputFontColor: "#004225",
+                borderTextField: "#A9D9C3",
+                sendColor: "#006400",
+                bgTextField: "#E6F4EA",
+                footerColor: "#A9D9C3",
+                thinkingColor: "#006400",
+                footerfontColor: "#004225",
+                headericonColor: "#004225",
+                pdfColor: "#006400",
+                micColor: "#006400",
+                stopColor: "#006400",
+            },
+            oceanBreeze: {
+                fontColor: "#02457A",
+                aiBgColor: "#A3D5D9",
+                userBgColor: "#CCEFF5",
+                windowBgColor: "#EAF7FA",
+                inputFontColor: "#02457A",
+                borderTextField: "#A3D5D9",
+                sendColor: "#017991",
+                bgTextField: "#EAF7FA",
+                footerColor: "#A3D5D9",
+                thinkingColor: "#017991",
+                footerfontColor: "#02457A",
+                headericonColor: "#02457A",
+                pdfColor: "#017991",
+                micColor: "#017991",
+                stopColor: "#017991",
+            },
+            spaceGalaxy: {
+                fontColor: "#CCCCCC", // Light grey for contrast against dark backgrounds
+                aiBgColor: "#2E2E3A", // Deep space dark
+                userBgColor: "#414152", // Darker shade for distinction
+                windowBgColor: "#31313D", // Dark space gray
+                inputFontColor: "#CCCCCC",
+                borderTextField: "#414152",
+                sendColor: "#5D5DFF", // Galaxy inspired blue
+                bgTextField: "#31313D",
+                footerColor: "#2E2E3A",
+                thinkingColor: "#5D5DFF",
+                footerfontColor: "#CCCCCC",
+                headericonColor: "#CCCCCC",
+                pdfColor: "#5D5DFF",
+                micColor: "#5D5DFF",
+                stopColor: "#5D5DFF",
+            },
+            desertDune: {
+                fontColor: "#4E403B", // Earthy brown
+                aiBgColor: "#F4C07A", // Sandy dune
+                userBgColor: "#FCE5C0", // Lighter sand
+                windowBgColor: "#FAE0AC", // Warm light sand
+                inputFontColor: "#4E403B",
+                borderTextField: "#F4C07A",
+                sendColor: "#D98941", // Desert sunset
+                bgTextField: "#FAE0AC",
+                footerColor: "#F4C07A",
+                thinkingColor: "#D98941",
+                footerfontColor: "#4E403B",
+                headericonColor: "#4E403B",
+                pdfColor: "#D98941",
+                micColor: "#D98941",
+                stopColor: "#D98941",
+            },
+            winterWonderland: {
+                fontColor: "#004C70", // Deep winter blue
+                aiBgColor: "#AED9E0", // Frosty blue
+                userBgColor: "#D0EFFF", // Light frost
+                windowBgColor: "#CCEFFF", // Very light blue
+                inputFontColor: "#004C70",
+                borderTextField: "#AED9E0",
+                sendColor: "#007BFF", // Bright winter sky blue
+                bgTextField: "#CCEFFF",
+                footerColor: "#AED9E0",
+                thinkingColor: "#007BFF",
+                footerfontColor: "#004C70",
+                headericonColor: "#004C70",
+                pdfColor: "#007BFF",
+                micColor: "#007BFF",
+                stopColor: "#007BFF",
+            },
+            cityscapeGlow: {
+                fontColor: "#EBEBEB", // Light grey for urban night glow
+                aiBgColor: "#555555", // Dark urban gray
+                userBgColor: "#6E6E6E", // Slightly lighter grey for distinction
+                windowBgColor: "#4D4D4D", // Dark grey representing night
+                inputFontColor: "#EBEBEB",
+                borderTextField: "#6E6E6E",
+                sendColor: "#FF9500", // Neon sign orange
+                bgTextField: "#4D4D4D",
+                footerColor: "#555555",
+                thinkingColor: "#FF9500",
+                footerfontColor: "#EBEBEB",
+                headericonColor: "#EBEBEB",
+                pdfColor: "#FF9500",
+                micColor: "#FF9500",
+                stopColor: "#FF9500",
+            },
+            mountainPeak: {
+                fontColor: "#3E423F", // Dark greenish-gray
+                aiBgColor: "#A8B4A5", // Mountain mist
+                userBgColor: "#CFD8CD", // Light mountain fog
+                windowBgColor: "#BCC5B9", // Pale greenish-gray, evoking rock surfaces
+                inputFontColor: "#3E423F",
+                borderTextField: "#A8B4A5",
+                sendColor: "#5A7252", // Pine green
+                bgTextField: "#BCC5B9",
+                footerColor: "#A8B4A5",
+                thinkingColor: "#5A7252",
+                footerfontColor: "#3E423F",
+                headericonColor: "#3E423F",
+                pdfColor: "#5A7252",
+                micColor: "#5A7252",
+                stopColor: "#5A7252",
+            },
+            glade: {
+                fontColor: "#3A6351",
+                aiBgColor: "#A7C4BC",
+                userBgColor: "#D9EAD3",
+                windowBgColor: "#E4EFE7",
+                inputFontColor: "#3A6351",
+                borderTextField: "#A7C4BC",
+                sendColor: "#81B29A",
+                bgTextField: "#E4EFE7",
+                footerColor: "#A7C4BC",
+                thinkingColor: "#81B29A",
+                footerfontColor: "#3A6351",
+                headericonColor: "#3A6351",
+                pdfColor: "#81B29A",
+                micColor: "#81B29A",
+                stopColor: "#81B29A",
+            },
+            dusk: {
+                fontColor: "#FFE8D6",
+                aiBgColor: "#2B2D42",
+                userBgColor: "#8D99AE",
+                windowBgColor: "#EDF2F4",
+                inputFontColor: "#FFE8D6",
+                borderTextField: "#8D99AE",
+                sendColor: "#EF233C",
+                bgTextField: "#EDF2F4",
+                footerColor: "#2B2D42",
+                thinkingColor: "#EF233C",
+                footerfontColor: "#FFE8D6",
+                headericonColor: "#FFE8D6",
+                pdfColor: "#EF233C",
+                micColor: "#EF233C",
+                stopColor: "#EF233C",
+            },
+            dawn: {
+                fontColor: "#563F1B",
+                aiBgColor: "#F2CC8F",
+                userBgColor: "#FAF3DD",
+                windowBgColor: "#FFF9EB",
+                inputFontColor: "#563F1B",
+                borderTextField: "#F2CC8F",
+                sendColor: "#E07A5F",
+                bgTextField: "#FFF9EB",
+                footerColor: "#F2CC8F",
+                thinkingColor: "#E07A5F",
+                footerfontColor: "#563F1B",
+                headericonColor: "#563F1B",
+                pdfColor: "#E07A5F",
+                micColor: "#E07A5F",
+                stopColor: "#E07A5F",
+            },
+            mist: {
+                fontColor: "#646E78",
+                aiBgColor: "#CFD9DF",
+                userBgColor: "#E2E8EE",
+                windowBgColor: "#F4F6F8",
+                inputFontColor: "#646E78",
+                borderTextField: "#CFD9DF",
+                sendColor: "#9FB3C8",
+                bgTextField: "#F4F6F8",
+                footerColor: "#CFD9DF",
+                thinkingColor: "#9FB3C8",
+                footerfontColor: "#646E78",
+                headericonColor: "#646E78",
+                pdfColor: "#9FB3C8",
+                micColor: "#9FB3C8",
+                stopColor: "#9FB3C8",
+            },
+            veil: {
+                fontColor: "#D1D1D1",
+                aiBgColor: "#B1A2A2",
+                userBgColor: "#EADDDC",
+                windowBgColor: "#F7F3F2",
+                inputFontColor: "#D1D1D1",
+                borderTextField: "#B1A2A2",
+                sendColor: "#C49AAB",
+                bgTextField: "#F7F3F2",
+                footerColor: "#B1A2A2",
+                thinkingColor: "#C49AAB",
+                footerfontColor: "#D1D1D1",
+                headericonColor: "#D1D1D1",
+                pdfColor: "#C49AAB",
+                micColor: "#C49AAB",
+                stopColor: "#C49AAB",
+            },
+            peak: {
+                fontColor: "#4A4E69",
+                aiBgColor: "#9A8C98",
+                userBgColor: "#C9ADA7",
+                windowBgColor: "#F2E9E4",
+                inputFontColor: "#4A4E69",
+                borderTextField: "#9A8C98",
+                sendColor: "#C2CAD0",
+                bgTextField: "#F2E9E4",
+                footerColor: "#9A8C98",
+                thinkingColor: "#C2CAD0",
+                footerfontColor: "#4A4E69",
+                headericonColor: "#4A4E69",
+                pdfColor: "#C2CAD0",
+                micColor: "#C2CAD0",
+                stopColor: "#C2CAD0",
+            },
+
+            vale: {
+                fontColor: "#1D3557",
+                aiBgColor: "#A8DADC",
+                userBgColor: "#F1FAEE",
+                windowBgColor: "#F8FAF9",
+                inputFontColor: "#1D3557",
+                borderTextField: "#A8DADC",
+                sendColor: "#457B9D",
+                bgTextField: "#F8FAF9",
+                footerColor: "#A8DADC",
+                thinkingColor: "#457B9D",
+                footerfontColor: "#1D3557",
+                headericonColor: "#1D3557",
+                pdfColor: "#457B9D",
+                micColor: "#457B9D",
+                stopColor: "#457B9D",
+            },
+
+            cove: {
+                fontColor: "#05668D",
+                aiBgColor: "#02C3A7",
+                userBgColor: "#00FA9A",
+                windowBgColor: "#E0F9F5",
+                inputFontColor: "#05668D",
+                borderTextField: "#02C3A7",
+                sendColor: "#028090",
+                bgTextField: "#E0F9F5",
+                footerColor: "#02C3A7",
+                thinkingColor: "#028090",
+                footerfontColor: "#05668D",
+                headericonColor: "#05668D",
+                pdfColor: "#028090",
+                micColor: "#028090",
+                stopColor: "#028090",
+            },
+            rift: {
+                fontColor: "#555B6E",
+                aiBgColor: "#89B0AE",
+                userBgColor: "#BEE3DB",
+                windowBgColor: "#E5E5E5",
+                inputFontColor: "#555B6E",
+                borderTextField: "#89B0AE",
+                sendColor: "#7A9E9F",
+                bgTextField: "#E5E5E5",
+                footerColor: "#89B0AE",
+                thinkingColor: "#7A9E9F",
+                footerfontColor: "#555B6E",
+                headericonColor: "#555B6E",
+                pdfColor: "#7A9E9F",
+                micColor: "#7A9E9F",
+                stopColor: "#7A9E9F",
+            },
+
+            isle: {
+                fontColor: "#3D5A80",
+                aiBgColor: "#98C1D9",
+                userBgColor: "#E0FBFC",
+                windowBgColor: "#EEF6FB",
+                inputFontColor: "#3D5A80",
+                borderTextField: "#98C1D9",
+                sendColor: "#293241",
+                bgTextField: "#EEF6FB",
+                footerColor: "#98C1D9",
+                thinkingColor: "#293241",
+                footerfontColor: "#3D5A80",
+                headericonColor: "#3D5A80",
+                pdfColor: "#293241",
+                micColor: "#293241",
+                stopColor: "#293241",
+            }
+        };
+
+        $(document).on('change', 'input[name="chat_theme"]', function () {
+            var theme = $(this).val(); // Get the selected theme value
+            if (themes[theme]) {
+                updateTheme(themes[theme]);
+            }
+        });
+
+        function updateTheme(theme) {
+            let modalContent = $('.wpaicg_modal_content');
+
+            modalContent.find('.wpaicg_chatbot_fontcolor').val(theme.fontColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_ai_bg_color').val(theme.aiBgColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_user_bg_color').val(theme.userBgColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_bgcolor').val(theme.windowBgColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_input_font_color').val(theme.inputFontColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_border_text_field').val(theme.borderTextField).trigger('input');
+            modalContent.find('.wpaicg_chatbot_send_color').val(theme.sendColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_bg_text_field').val(theme.bgTextField).trigger('input');
+            modalContent.find('.wpaicg_chatbot_footer_color').val(theme.footerColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_thinking_color').val(theme.thinkingColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_footer_font_color').val(theme.footerfontColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_pdf_color').val(theme.pdfColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_mic_color').val(theme.micColor).trigger('input');
+            modalContent.find('.wpaicg_chatbot_stop_color').val(theme.stopColor).trigger('input');
+
+            // Call wpaicgUpdateRealtime if needed to immediately apply changes
+            wpaicgUpdateRealtime();
+        }
+
+        
+        $(document).on('input change', '.wpaicg_chatbot_footer_font_color,.wpaicg_chatbot_thinking_color,.wpaicg_chatbot_pdf_color,.wpaicg_chatbot_footer_color, .wpaicg_chatbot_mic_color, .wpaicg_chatbot_send_color, .wpaicg_chatbot_border_text_field, .wpaicg_chatbot_bg_text_field, .wpaicg_chatbot_bgcolor, .wpaicg_chatbot_fontcolor, .wpaicg_chatbot_ai_bg_color, .wpaicg_chatbot_user_bg_color', function() {
+            wpaicgUpdateRealtime();
+        });
+
         function wpaicgUpdateRealtime(){
             let modalContent = $('.wpaicg_modal_content');
             let fontsize = modalContent.find('.wpaicg_chatbot_fontsize').val();
-            let fontcolor = modalContent.find('.wpaicg_chatbot_fontcolor').iris('color');
-            let bgcolor = modalContent.find('.wpaicg_chatbot_bgcolor').iris('color');
-            let inputbg = modalContent.find('.wpaicg_chatbot_bg_text_field').iris('color');
-            let inputborder = modalContent.find('.wpaicg_chatbot_border_text_field').iris('color');
-            let sendcolor = modalContent.find('.wpaicg_chatbot_send_color').iris('color');
-            let userbg = modalContent.find('.wpaicg_chatbot_user_bg_color').iris('color');;
-            let aibg = modalContent.find('.wpaicg_chatbot_ai_bg_color').iris('color');
+            let fontcolor = modalContent.find('.wpaicg_chatbot_fontcolor').val();
+
+            // background color
+            let bgcolor = modalContent.find('.wpaicg_chatbot_bgcolor').val();
+            $('.wpaicg-chat-shortcode-content').css('background-color', bgcolor);
+            $('.wpaicg-chat-shortcode-type').css('background-color', bgcolor);
+            $('.wpaicg-bot-thinking').css('background-color', bgcolor);
+            
+            // ai background color
+            let aibg = modalContent.find('.wpaicg_chatbot_ai_bg_color').val();
+            // user background color
+            let userbg = modalContent.find('.wpaicg_chatbot_user_bg_color').val();
+
+            let inputbg = modalContent.find('.wpaicg_chatbot_bg_text_field').val();
+
+            let inputborder = modalContent.find('.wpaicg_chatbot_border_text_field').val();
+            let sendcolor = modalContent.find('.wpaicg_chatbot_send_color').val();
+            let miccolor = modalContent.find('.wpaicg_chatbot_mic_color').val();
+            let footercolor = modalContent.find('.wpaicg_chatbot_footer_color').val();
+            let pdf_color = modalContent.find('.wpaicg_chatbot_pdf_color').val();
+
+            let thinking_color = modalContent.find('.wpaicg_chatbot_thinking_color').val();
+            $('.wpaicg-bot-thinking').css('color', thinking_color);
+
+            let footerfontcolor = modalContent.find('.wpaicg_chatbot_footer_font_color').val();
+            $('.wpaicg-chat-shortcode-footer').css('color', footerfontcolor);
+
+            let inputfontcolor = modalContent.find('.wpaicg_chatbot_input_font_color').val();
+
             let useavatar = modalContent.find('.wpaicg_chatbot_use_avatar').prop('checked') ? true : false;
             let chatwidth = modalContent.find('.wpaicg_chatbot_width').val();
             let chatheight = modalContent.find('.wpaicg_chatbot_height').val();
@@ -1672,8 +2359,7 @@ $wpaicg_bots = new WP_Query($args);
             let save_log = modalContent.find('.wpaicg_chatbot_save_logs').prop('checked') ? true :false;
             let log_notice = modalContent.find('.wpaicg_chatbot_log_notice').prop('checked') ? true :false;
             let log_notice_msg = modalContent.find('.wpaicg_chatbot_log_notice_message').val();
-            let miccolor = modalContent.find('.wpaicg_chatbot_mic_color').iris('color');
-            let pdf_color = modalContent.find('.wpaicg_chatbot_pdf_color').iris('color');
+
             let ai_thinking = modalContent.find('.wpaicg_chatbot_ai_thinking').val();
             let ai_name = modalContent.find('.wpaicg_chatbot_ai_name').val();
             let you_name = modalContent.find('.wpaicg_chatbot_you').val();
@@ -1744,17 +2430,11 @@ $wpaicg_bots = new WP_Query($args);
             let content_height = parseInt(chatheight) - 44;
             if(footer !== ''){
                 content_height  = parseInt(chatheight) - 44 - 13;
-                modalContent.find('.wpaicg-chat-shortcode-type').css({
-                    padding: '5px 5px 0 5px'
-                });
                 $('.wpaicg-chat-shortcode-footer').html(footer);
                 $('.wpaicg-chat-shortcode-footer').show();
             }
             else{
                 $('.wpaicg-chat-shortcode-footer').hide();
-                modalContent.find('.wpaicg-chat-shortcode-type').css({
-                    padding: '5px'
-                })
             }
             modalContent.find('.wpaicg-chat-shortcode-content ul').css({
                 height: content_height+'px'
@@ -1785,7 +2465,9 @@ $wpaicg_bots = new WP_Query($args);
                 'background-color': aibg
             });
             modalContent.find('.wpaicg-chat-shortcode-footer').css({
-                'background-color': bgcolor
+                'background-color': footercolor,
+                'color': footerfontcolor,
+                'border-top': '1px solid '+footercolor
             });
             modalContent.find('.wpaicg-chat-shortcode').attr('data-fontsize',fontsize);
             modalContent.find('.wpaicg-chat-shortcode').attr('data-color',fontcolor);
@@ -1810,17 +2492,14 @@ $wpaicg_bots = new WP_Query($args);
             modalContent.find('.wpaicg-chat-shortcode-messages li.wpaicg-user-message').css({
                 'background-color': userbg
             });
-            modalContent.find('.wpaicg-chat-shortcode-content').css({
-                'background-color': bgcolor
-            });
-            modalContent.find('.wpaicg-chat-shortcode-type').css({
-                'background-color': bgcolor
-            });
+
             modalContent.find('textarea.wpaicg-chat-shortcode-typing').css({
                 'background-color': inputbg,
-                'border-color':inputborder
+                'border-color':inputborder,
+                'color': inputfontcolor
             });
             modalContent.find('textarea.wpaicg-chat-shortcode-typing').attr('placeholder', placeholder);
+            
             modalContent.find('.wpaicg-chat-shortcode-send').css({
                 'color': sendcolor
             })
@@ -1863,9 +2542,7 @@ $wpaicg_bots = new WP_Query($args);
                 $('.wpaicg_chatbot_image_enable').prop('checked', false);
                 $('.wpaicg_chatbot_image_enable').attr('disabled', 'disabled');
             } 
-            if(footer !== ''){
 
-            }
             wpaicgChatShortcodeSize();
 
         }
@@ -1894,11 +2571,13 @@ $wpaicg_bots = new WP_Query($args);
         $(document).on('click','.wpaicg_chatbot_type_widget', function (){
             $('.wpaicg_modal_content .wpaicg_chatbot_position').show();
             $('.wpaicg_modal_content .wpaicg-widget-icon').show();
+            $('.wpaicg_modal_content .wpaicg-chatbot-delay-time').show();
             $('.wpaicg_modal_content .wpaicg-widget-pages').show();
             $('.wpaicg_modal_content .wpaicg-chatbot-widget-icon').show();
         });
         $(document).on('click','.wpaicg_chatbot_type_shortcode', function (){
             $('.wpaicg_modal_content .wpaicg-chatbot-widget-icon').hide();
+            $('.wpaicg_modal_content .wpaicg-chatbot-delay-time').hide();
             $('.wpaicg_modal_content .wpaicg_chatbot_position').hide();
             $('.wpaicg_modal_content .wpaicg-widget-pages').hide();
             $('.wpaicg_modal_content .wpaicg-widget-icon').hide();
@@ -1921,16 +2600,17 @@ $wpaicg_bots = new WP_Query($args);
             wpaicgcollectVoices($('.wpaicg_modal_content .wpaicg_voice_language'));
             // on modal load if vectordb is pinecone then we show pinecone index and hide qdrant collection and vice versa
             if ($('.wpaicg_modal_content .wpaicg_chatbot_vectordb').val() === 'pinecone') {
-                $('.wpaicg_modal_content .wpaicg_chatbot_embedding_index').closest('.wpaicg-mb-10').show();
-                $('.wpaicg_modal_content .wpaicg_chatbot_qdrant_collection').closest('.wpaicg-mb-10').hide();
+                $('.wpaicg_modal_content .wpaicg_chatbot_embedding_index').closest('.nice-form-group').show();
+                $('.wpaicg_modal_content .wpaicg_chatbot_qdrant_collection').closest('.nice-form-group').hide();
             } else {
-                $('.wpaicg_modal_content .wpaicg_chatbot_embedding_index').closest('.wpaicg-mb-10').hide();
-                $('.wpaicg_modal_content .wpaicg_chatbot_qdrant_collection').closest('.wpaicg-mb-10').show();
+                $('.wpaicg_modal_content .wpaicg_chatbot_embedding_index').closest('.nice-form-group').hide();
+                $('.wpaicg_modal_content .wpaicg_chatbot_qdrant_collection').closest('.nice-form-group').show();
             }
            
          
             wpaicgChatInit();
         });
+        
         $(document).on('click', '.wpaicg_chatbox_icon', function (e){
             e.preventDefault();
             $('.wpaicg_modal_content .wpaicg_chatbox_icon_default').prop('checked',false);
@@ -1978,6 +2658,14 @@ $wpaicg_bots = new WP_Query($args);
             let form = $(e.currentTarget);
             let btn = form.find('.wpaicg-chatbot-submit');
             let data = form.serialize();
+            // Collect and append non-empty conversation starters
+            $('.wpaicg_conversation_starter_field').each(function(index) {
+                let value = $(this).val().trim(); // Trim the value to remove any leading or trailing whitespace
+                if (value !== '') { // Check if the value is not empty
+                    let key = `bot[conversation_starters][${index}]`;
+                    data += `&${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
+                }
+            });
             let name = form.find('.wpaicg_chatbot_name').val();
             let has_error = false;
             if(name === ''){
@@ -2028,6 +2716,7 @@ $wpaicg_bots = new WP_Query($args);
         })
         $('.wpaicg-bot-edit').click(function (){
             let fields = $(this).attr('data-content');
+            console.log(fields);
             // fields = fields.replace(/\\/g,'');
             fields = JSON.parse(fields);
             $('.wpaicg_modal_title').html('<?php echo esc_html__('Edit Bot','gpt3-ai-content-generator')?>');
@@ -2040,11 +2729,11 @@ $wpaicg_bots = new WP_Query($args);
             modalContent.find('.wpaicg-chat-shortcode').attr('data-bot-id',fields.id);
             // if vector db is pinecone then show pinecone index and hide qdrant collection and vice versa
             if (fields.vectordb === 'pinecone') {
-                modalContent.find('.wpaicg_chatbot_embedding_index').closest('.wpaicg-mb-10').show();
-                modalContent.find('.wpaicg_chatbot_qdrant_collection').closest('.wpaicg-mb-10').hide();
+                modalContent.find('.wpaicg_chatbot_embedding_index').closest('.nice-form-group').show();
+                modalContent.find('.wpaicg_chatbot_qdrant_collection').closest('.nice-form-group').hide();
             } else if (fields.vectordb === 'qdrant') {
-                modalContent.find('.wpaicg_chatbot_embedding_index').closest('.wpaicg-mb-10').hide();
-                modalContent.find('.wpaicg_chatbot_qdrant_collection').closest('.wpaicg-mb-10').show();
+                modalContent.find('.wpaicg_chatbot_embedding_index').closest('.nice-form-group').hide();
+                modalContent.find('.wpaicg_chatbot_qdrant_collection').closest('.nice-form-group').show();
             }
             $.each(fields, function (key, field){
                 if(key === 'chat_to_speech'){
@@ -2124,11 +2813,13 @@ $wpaicg_bots = new WP_Query($args);
                     if(field === 'widget'){
                         modalContent.find('.wpaicg-chatbot-widget-icon').show();
                         modalContent.find('.wpaicg-widget-icon').show();
+                        modalContent.find('.wpaicg-chatbot-delay-time').show();
                         modalContent.find('.wpaicg-widget-pages').show();
                         modalContent.find('.wpaicg_chatbot_position').show();
                     }
                     else{
                         modalContent.find('.wpaicg-chatbot-widget-icon').hide();
+                        modalContent.find('.wpaicg-chatbot-delay-time').hide();
                     }
                     modalContent.find('.wpaicg_chatbot_type_'+field).prop('checked',true);
                 }
@@ -2265,6 +2956,31 @@ $wpaicg_bots = new WP_Query($args);
                 modalContent.find('.wpaicg_chatbot_audio_enable').attr('disabled', 'disabled');
             }
 
+            // display when .wpaicg_add_conversation_starter is clicked
+            $(document).on('click', '.wpaicg_add_conversation_starter', function() {
+                // Get conversation starters from the bot fields
+                let conversationStarters = fields.conversation_starters;
+
+                // Dynamically create up to 10 input fields (or as many as needed)
+                let html = '';
+
+                for (let i = 0; i < 10; i++) {
+                    let starterValue = conversationStarters[i] || '';
+                    html += `<div style="padding: 5px;display: flex;justify-content: space-between;align-items: center;">
+                                <input class="wpaicg_conversation_starter_field" data-index="${i}" value="${starterValue}" type="text" style="width: 100%;">
+                            </div>`;
+                }
+
+                html += '<div style="padding: 5px"><button class="button button-primary wpaicg_save_conversation_starters" style="width: 100%;margin: 5px 0;">Save</button></div>';
+
+                // Assume .wpaicg_modal_title_second and .wpaicg_modal_content_second are the elements where the title and content of the modal are set
+                $('.wpaicg_modal_title_second').html('Conversation Starters');
+                $('.wpaicg_modal_content_second').html(html);
+                $('.wpaicg-overlay-second').css('display', 'flex');
+                $('.wpaicg_modal_second').show();
+
+            });
+
             $('.wpaicg-overlay').show();
             $('.wpaicg_modal').show();
             if(modalContent.find('.wpaicg_voice_language').length){
@@ -2315,6 +3031,51 @@ $wpaicg_bots = new WP_Query($args);
             $('.wpaicg_modal_close_second').closest('.wpaicg_modal_second').hide();
             $('.wpaicg-overlay-second').hide();
         });
+        $(document).on('click', '.wpaicg_add_conversation_starter', function () {
+            let html = '';
+
+            // Dynamically create up to 10 input fields (or as many as needed)
+            for (let i = 0; i < 10; i++) {
+                let starterValue = $(`input[name="bot[conversation_starters][${i}]"]`).val() || '';
+                html += `<div style="padding: 5px;display: flex;justify-content: space-between;align-items: center;">
+                            <input class="wpaicg_conversation_starter_field" data-index="${i}" value="${starterValue}" type="text" style="width: 100%;">
+                        </div>`;
+            }
+
+            html += '<div style="padding: 5px"><button class="button button-primary wpaicg_save_conversation_starters" style="width: 100%;margin: 5px 0;">Save</button></div>';
+
+            // Assume .wpaicg_modal_title_second and .wpaicg_modal_content_second are the elements where the title and content of the modal are set
+            $('.wpaicg_modal_title_second').html('Conversation Starters');
+            $('.wpaicg_modal_content_second').html(html);
+            $('.wpaicg-overlay-second').css('display', 'flex');
+            $('.wpaicg_modal_second').show();
+        });
+
+        $(document).on('click', '.wpaicg_save_conversation_starters', function () {
+            // Remove all existing hidden inputs for conversation starters to prevent outdated entries
+            $('input[name^="bot[conversation_starters]"]').remove();
+
+            // Iterate over each field to create updated hidden inputs for submission
+            $('.wpaicg_conversation_starter_field').each(function(index) {
+                let value = $(this).val().trim();
+                if (value) {
+                    // Create a new hidden input for this conversation starter
+                    const hiddenInput = $('<input>')
+                        .attr('type', 'hidden')
+                        .attr('name', `bot[conversation_starters][${index}]`)
+                        .val(value);
+
+                    // Append the new hidden input to the form (adjust the selector to target your form specifically)
+                    $('form').append(hiddenInput);
+                }
+            });
+
+            // Close the modal after saving
+            $('.wpaicg_modal_close_second').closest('.wpaicg_modal_second').hide();
+            $('.wpaicg-overlay-second').hide();
+        });
+
+
         $(document).on('click','.wpaicg_chatbot_embedding', function (e){
             $('.wpaicg_modal_content .wpaicg_chatbot_embedding').prop('checked',true);
             $('.wpaicg_modal_content .wpaicg_chatbot_embedding').removeClass('asdisabled');

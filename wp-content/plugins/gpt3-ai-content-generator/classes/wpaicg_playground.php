@@ -18,7 +18,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
         public function __construct()
         {
             add_action('init',[$this,'wpaicg_stream'],1);
-            add_action( 'admin_menu', array( $this, 'wpaicg_playground_menu' ) );
             add_action( 'wp_ajax_wpaicg_comparison', array( $this, 'wpaicg_comparison' ) );
             add_action('wp_ajax_wpaicg_generate_content_google', array($this, 'wpaicg_generate_content_google'));
             add_action('wp_ajax_save_wpaicg_google_api_key', array($this, 'save_wpaicg_google_api_key'));
@@ -221,7 +220,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
         public function wpaicg_comparison()
         {
             $wpaicg_result = array('status' => 'error');
-            if(!current_user_can('wpaicg_single_content_comparison')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -865,9 +864,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
         
         private function prepare_api_params($wpaicg_message, $model) {
             $apiParams = ['input' => $wpaicg_message, 'model' => $model];
-            if ($model === 'text-embedding-3-large') {
-                $apiParams['dimensions'] = 1536;
-            }
             return $apiParams;
         }
         
@@ -953,16 +949,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                 return $cookie_id;
             }
         }
-
-        public function wpaicg_playground_menu()
-        {
-        }
-
-        public function wpaicg_playground_page()
-        {
-            include WPAICG_PLUGIN_DIR . 'admin/extra/wpaicg_playground.php';
-        }
-
     }
     WPAICG_Playground::get_instance();
 }

@@ -73,7 +73,8 @@ class Wp_Ai_Content_Generator_Admin
                 $this->version,
                 'all'
             );
-            if (isset($_GET['page']) && $_GET['page'] == 'wpaicg') {
+            // wpaicg or wpaicg_single_content_beta or wpaicg_bulk_content or wpaicg_embeddings
+            if (isset($_GET['page']) && $_GET['page'] == 'wpaicg' || isset($_GET['page']) && $_GET['page'] == 'wpaicg_single_content' || isset($_GET['page']) && $_GET['page'] == 'wpaicg_bulk_content' || isset($_GET['page']) && $_GET['page'] == 'wpaicg_embeddings') {
                 wp_enqueue_style(
                     'clean-formfull',
                     plugin_dir_url( __FILE__ ) . 'css/clean_extra.css',
@@ -82,8 +83,8 @@ class Wp_Ai_Content_Generator_Admin
                     'all'
                 );
             }
-
-            if (isset($_GET['page']) && $_GET['page'] == 'wpaicg_chatgpt' || isset($_GET['page']) && $_GET['page'] == 'wpaicg') {
+            //or wpaicg_single_content_beta or wpaicg_bulk_content or wpaicg_embeddings
+            if (isset($_GET['page']) && $_GET['page'] == 'wpaicg_chatgpt' || isset($_GET['page']) && $_GET['page'] == 'wpaicg' || isset($_GET['page']) && $_GET['page'] == 'wpaicg_single_content' || isset($_GET['page']) && $_GET['page'] == 'wpaicg_bulk_content' || isset($_GET['page']) && $_GET['page'] == 'wpaicg_embeddings') {
                 wp_enqueue_style(
                     'clean-form',
                     plugin_dir_url( __FILE__ ) . 'css/clean.css',

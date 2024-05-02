@@ -5,14 +5,11 @@ if ( !defined( 'ABSPATH' ) ) {
 }
 $wpaicg_save_setting_success = false;
 $wpaicg_reset_setting_success = false;
-
 if ( isset( $_POST['wpaicg_submit'] ) ) {
     check_admin_referer( 'wpaicg_setting_save' );
-    
     if ( isset( $_POST['wpaicg_provider'] ) ) {
         update_option( 'wpaicg_provider', sanitize_text_field( $_POST['wpaicg_provider'] ) );
         // Check if the provider is Azure or Google
-        
         if ( $_POST['wpaicg_provider'] === 'Azure' || $_POST['wpaicg_provider'] === 'Google' ) {
             // Fetch the current options
             $wpaicg_chat_shortcode_options = get_option( 'wpaicg_chat_shortcode_options', array() );
@@ -31,13 +28,12 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
             update_option( 'wpaicg_chat_shortcode_options', $wpaicg_chat_shortcode_options );
             update_option( 'wpaicg_chat_widget', $wpaicg_chat_widget );
             // Fetch all chatbots from wp_posts
-            global  $wpdb ;
+            global $wpdb;
             $chatbots = $wpdb->get_results( "SELECT ID, post_content FROM {$wpdb->posts} WHERE post_type='wpaicg_chatbot'" );
             // Loop through each chatbot
             foreach ( $chatbots as $chatbot ) {
                 $content = json_decode( $chatbot->post_content, true );
                 // Decode the post_content
-                
                 if ( isset( $content['moderation'] ) ) {
                     $content['moderation'] = "0";
                     // Set moderation to false
@@ -49,9 +45,7 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
                         'ID' => $chatbot->ID,
                     ) );
                 }
-                
                 // set image_enable to false
-                
                 if ( isset( $content['image_enable'] ) ) {
                     $content['image_enable'] = "0";
                     // Set image_enable to false
@@ -63,12 +57,9 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
                         'ID' => $chatbot->ID,
                     ) );
                 }
-            
             }
         }
-    
     }
-    
     $option_mappings = [
         'wpaicg_ai_model'                        => 'wpaicg_ai_model',
         'wpaicg_sleep_time'                      => 'wpaicg_sleep_time',
@@ -118,7 +109,6 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
     ];
     foreach ( $option_mappings as $post_key => $option_key ) {
         if ( isset( $_POST[$post_key] ) ) {
-            
             if ( $post_key === 'wpaicg_content_custom_prompt' ) {
                 update_option( $option_key, wp_kses_post( $_POST[$post_key] ) );
             } elseif ( $post_key === 'wpaicg_custom_image_settings' ) {
@@ -139,22 +129,18 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
             } else {
                 update_option( $option_key, sanitize_text_field( $_POST[$post_key] ) );
             }
-        
         }
     }
     // Check and update the image source option if api keys are not set then revert to dalle3
-    function update_image_source_option( $optionName, $apiName )
-    {
-        
+    function update_image_source_option(  $optionName, $apiName  ) {
         if ( isset( $_POST[$optionName] ) ) {
             $source = $_POST[$optionName];
-            if ( $source === 'pexels' && empty($_POST['wpaicg_pexels_api']) || $source === 'pixabay' && empty($_POST['wpaicg_pixabay_api']) ) {
+            if ( $source === 'pexels' && empty( $_POST['wpaicg_pexels_api'] ) || $source === 'pixabay' && empty( $_POST['wpaicg_pixabay_api'] ) ) {
                 update_option( $optionName, 'dalle3' );
             }
         }
-    
     }
-    
+
     // Check and update the main image source option
     update_image_source_option( 'wpaicg_image_source', 'wpaicg_pexels_api' );
     update_image_source_option( 'wpaicg_image_source', 'wpaicg_pixabay_api' );
@@ -164,19 +150,21 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
     // Define the maximum tokens allowed per model for each provider
     $model_max_tokens = [
         'OpenAI' => [
-        'gpt-4'                  => 8191,
-        'gpt-4-0125-preview'     => 4095,
-        'gpt-4-1106-preview'     => 4095,
-        'gpt-4-turbo-preview'    => 4095,
-        'gpt-4-32k'              => 8191,
-        'gpt-4-vision-preview'   => 4095,
-        'gpt-3.5-turbo'          => 4095,
-        'gpt-3.5-turbo-instruct' => 4095,
-        'gpt-3.5-turbo-16k'      => 16384,
-    ],
+            'gpt-4'                  => 8191,
+            'gpt-4-0125-preview'     => 4095,
+            'gpt-4-turbo'            => 4095,
+            'gpt-4-1106-preview'     => 4095,
+            'gpt-4-turbo-preview'    => 4095,
+            'gpt-4-turbo'            => 4095,
+            'gpt-4-32k'              => 8191,
+            'gpt-4-vision-preview'   => 4095,
+            'gpt-3.5-turbo'          => 4095,
+            'gpt-3.5-turbo-instruct' => 4095,
+            'gpt-3.5-turbo-16k'      => 16384,
+        ],
         'Google' => [
-        'gemini-pro' => 2048,
-    ],
+            'gemini-pro' => 2048,
+        ],
     ];
     // Get the current provider and model
     $current_provider = get_option( 'wpaicg_provider', 'OpenAI' );
@@ -188,66 +176,65 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
     // Default to 1500 if model not found
     $settings_to_update = [
         'wpaicg_temperature'     => [
-        'key'    => 'temperature',
-        'filter' => 'floatval',
-    ],
+            'key'    => 'temperature',
+            'filter' => 'floatval',
+        ],
         'wpaicg_max_tokens'      => [
-        'key'    => 'max_tokens',
-        'filter' => function ( $value ) use( $max_allowed_tokens ) {
-        $value = intval( $value );
-        return max( 1, min( $value, $max_allowed_tokens ) );
-        // Enforce minimum and maximum limits
-    },
-    ],
+            'key'    => 'max_tokens',
+            'filter' => function ( $value ) use($max_allowed_tokens) {
+                $value = intval( $value );
+                return max( 1, min( $value, $max_allowed_tokens ) );
+                // Enforce minimum and maximum limits
+            },
+        ],
         'wpaicg_top_p'           => [
-        'key'    => 'top_p',
-        'filter' => 'floatval',
-    ],
+            'key'    => 'top_p',
+            'filter' => 'floatval',
+        ],
         'wpaicg_frequency'       => [
-        'key'    => 'frequency_penalty',
-        'filter' => 'floatval',
-    ],
+            'key'    => 'frequency_penalty',
+            'filter' => 'floatval',
+        ],
         'wpaicg_presence'        => [
-        'key'    => 'presence_penalty',
-        'filter' => 'floatval',
-    ],
+            'key'    => 'presence_penalty',
+            'filter' => 'floatval',
+        ],
         'wpaicg_best_of'         => [
-        'key'    => 'best_of',
-        'filter' => 'intval',
-    ],
+            'key'    => 'best_of',
+            'filter' => 'intval',
+        ],
         'wpai_language'          => [
-        'key'    => 'wpai_language',
-        'filter' => 'sanitize_text_field',
-    ],
+            'key'    => 'wpai_language',
+            'filter' => 'sanitize_text_field',
+        ],
         'wpai_content_style'     => [
-        'key'    => 'wpai_writing_style',
-        'filter' => 'sanitize_text_field',
-    ],
+            'key'    => 'wpai_writing_style',
+            'filter' => 'sanitize_text_field',
+        ],
         'wpai_content_tone'      => [
-        'key'    => 'wpai_writing_tone',
-        'filter' => 'sanitize_text_field',
-    ],
+            'key'    => 'wpai_writing_tone',
+            'filter' => 'sanitize_text_field',
+        ],
         'wpai_number_of_heading' => [
-        'key'    => 'wpai_number_of_heading',
-        'filter' => 'intval',
-    ],
+            'key'    => 'wpai_number_of_heading',
+            'filter' => 'intval',
+        ],
         'wpai_heading_tag'       => [
-        'key'    => 'wpai_heading_tag',
-        'filter' => 'sanitize_text_field',
-    ],
+            'key'    => 'wpai_heading_tag',
+            'filter' => 'sanitize_text_field',
+        ],
         'wpai_cta_pos'           => [
-        'key'    => 'wpai_cta_pos',
-        'filter' => 'sanitize_text_field',
-    ],
+            'key'    => 'wpai_cta_pos',
+            'filter' => 'sanitize_text_field',
+        ],
         'wpaicg_img_size'        => [
-        'key'    => 'img_size',
-        'filter' => 'sanitize_text_field',
-    ],
+            'key'    => 'img_size',
+            'filter' => 'sanitize_text_field',
+        ],
     ];
-    global  $wpdb ;
+    global $wpdb;
     $table_name = "{$wpdb->prefix}wpaicg";
     foreach ( $settings_to_update as $post_field => $details ) {
-        
         if ( isset( $_POST[$post_field] ) ) {
             // Apply the specified filter function to sanitize/validate the input
             // Adjust for callable to allow use of anonymous function for max_tokens
@@ -258,7 +245,6 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
                 'name' => 'wpaicg_settings',
             ] );
         }
-    
     }
     // List of checkbox fields to update
     $checkboxFields = [
@@ -315,11 +301,9 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
     // If '_wpaicg_gen_title_from_keywords' is not checked, '_wpaicg_original_title_in_prompt' should be false
     $originalTitleInPrompt = ( $genTitleFromKeywords ? ( isset( $_POST['_wpaicg_original_title_in_prompt'] ) ? 1 : 0 ) : 0 );
     update_option( '_wpaicg_original_title_in_prompt', $originalTitleInPrompt );
-    
     if ( isset( $_POST['wpaicg_openai_api_key'] ) ) {
         $submittedApiKey = $_POST['wpaicg_openai_api_key'];
         // Check if the submitted API key is masked. This is just an example condition. Adjust according to your masking logic.
-        
         if ( !preg_match( '/^\\*+/', $submittedApiKey ) ) {
             // The API key is not masked; proceed with updating it
             $sanitizedApiKey = sanitize_text_field( $submittedApiKey );
@@ -329,28 +313,21 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
                 'name' => 'wpaicg_settings',
             ] );
         }
-        
         // If the API key is masked, do nothing to avoid updating with the masked value.
     }
-    
-    function update_api_key_option( $postFieldName, $optionName )
-    {
-        
+    function update_api_key_option(  $postFieldName, $optionName  ) {
         if ( isset( $_POST[$postFieldName] ) ) {
             $submittedApiKey = $_POST[$postFieldName];
             // Check if the submitted API key is masked
-            
             if ( !preg_match( '/^\\*+/', $submittedApiKey ) ) {
                 $sanitizedApiKey = sanitize_text_field( $submittedApiKey );
                 // Update the option with the sanitized API key
                 update_option( $optionName, $sanitizedApiKey );
             }
-            
             // If the API key is masked, do nothing to avoid updating with the masked value
         }
-    
     }
-    
+
     // Now use the function for each API key
     update_api_key_option( 'wpaicg_google_api_key', 'wpaicg_google_model_api_key' );
     update_api_key_option( 'wpaicg_azure_api_key', 'wpaicg_azure_api_key' );
@@ -358,19 +335,15 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
     update_api_key_option( 'wpaicg_pixabay_api', 'wpaicg_pixabay_api' );
     update_api_key_option( 'wpaicg_sd_api_key', 'wpaicg_sd_api_key' );
     // save the google model list
-    
     if ( isset( $_POST['wpaicg_google_model_list'] ) ) {
         $google_model_list = explode( ',', $_POST['wpaicg_google_model_list'] );
         update_option( 'wpaicg_google_model_list', $google_model_list );
     }
-    
     $wpaicg_save_setting_success = true;
 }
-
-
 if ( isset( $_POST['wpaicg_reset'] ) ) {
     check_admin_referer( 'wpaicg_setting_save' );
-    global  $wpdb ;
+    global $wpdb;
     $table_name = $wpdb->prefix . 'wpaicg';
     $wpdb->query( "DROP TABLE IF EXISTS {$table_name}" );
     // Recreate the table
@@ -410,7 +383,7 @@ if ( isset( $_POST['wpaicg_reset'] ) ) {
     update_option( 'wpaicg_provider', 'OpenAI' );
     update_option( 'wpaicg_sleep_time', 1 );
     update_option( 'wpaicg_google_model_api_key', '' );
-    update_option( 'wpaicg_google_model_list', [ 'gemini-pro' ] );
+    update_option( 'wpaicg_google_model_list', ['gemini-pro'] );
     update_option( 'wpaicg_google_default_model', 'gemini-pro' );
     update_option( 'wpaicg_azure_api_key', '' );
     update_option( 'wpaicg_azure_endpoint', '' );
@@ -486,9 +459,8 @@ if ( isset( $_POST['wpaicg_reset'] ) ) {
     update_option( 'wpaicg_search_loading_color', '#cccccc' );
     $wpaicg_reset_setting_success = true;
 }
-
 // Keep this block below the form submission handling
-global  $wpdb ;
+global $wpdb;
 $settings_row = $wpdb->get_row( "SELECT * FROM {$wpdb->prefix}wpaicg WHERE name = 'wpaicg_settings'", ARRAY_A );
 $current_temperature = ( isset( $settings_row['temperature'] ) ? $settings_row['temperature'] : 1 );
 $current_max_tokens = ( isset( $settings_row['max_tokens'] ) ? $settings_row['max_tokens'] : 1500 );
@@ -498,151 +470,15 @@ $current_frequency = ( isset( $settings_row['frequency_penalty'] ) ? $settings_r
 $current_presence = ( isset( $settings_row['presence_penalty'] ) ? $settings_row['presence_penalty'] : 0 );
 $current_best_of = ( isset( $settings_row['best_of'] ) ? $settings_row['best_of'] : 1 );
 $current_img_size = ( isset( $settings_row['img_size'] ) ? $settings_row['img_size'] : '1024x1024' );
-$image_sizes = [
-    '256x256'   => esc_html__( 'Small (256x256)', 'gpt3-ai-content-generator' ),
-    '512x512'   => esc_html__( 'Medium (512x512)', 'gpt3-ai-content-generator' ),
-    '1024x1024' => esc_html__( 'Big (1024x1024)', 'gpt3-ai-content-generator' ),
-    '1792x1024' => esc_html__( 'Wide (1792x1024)', 'gpt3-ai-content-generator' ),
-    '1024x1792' => esc_html__( 'Tall (1024x1792)', 'gpt3-ai-content-generator' ),
-];
+$image_sizes = \WPAICG\WPAICG_Util::get_instance()->wpaicg_image_sizes;
 $currentLanguage = ( isset( $settings_row['wpai_language'] ) ? $settings_row['wpai_language'] : 'en' );
-$languages = [
-    'en'  => 'English',
-    'af'  => 'Afrikaans',
-    'ar'  => 'Arabic',
-    'an'  => 'Armenian',
-    'bs'  => 'Bosnian',
-    'bg'  => 'Bulgarian',
-    'zh'  => 'Chinese (Simplified)',
-    'zt'  => 'Chinese (Traditional)',
-    'hr'  => 'Croatian',
-    'cs'  => 'Czech',
-    'da'  => 'Danish',
-    'nl'  => 'Dutch',
-    'et'  => 'Estonian',
-    'fil' => 'Filipino',
-    'fi'  => 'Finnish',
-    'fr'  => 'French',
-    'de'  => 'German',
-    'el'  => 'Greek',
-    'he'  => 'Hebrew',
-    'hi'  => 'Hindi',
-    'hu'  => 'Hungarian',
-    'id'  => 'Indonesian',
-    'it'  => 'Italian',
-    'ja'  => 'Japanese',
-    'ko'  => 'Korean',
-    'lv'  => 'Latvian',
-    'lt'  => 'Lithuanian',
-    'ms'  => 'Malay',
-    'no'  => 'Norwegian',
-    'fa'  => 'Persian',
-    'pl'  => 'Polish',
-    'pt'  => 'Portuguese',
-    'ro'  => 'Romanian',
-    'ru'  => 'Russian',
-    'sr'  => 'Serbian',
-    'sk'  => 'Slovak',
-    'sl'  => 'Slovenian',
-    'es'  => 'Spanish',
-    'sv'  => 'Swedish',
-    'th'  => 'Thai',
-    'tr'  => 'Turkish',
-    'uk'  => 'Ukrainian',
-    'vi'  => 'Vietnamese',
-];
+$languages = \WPAICG\WPAICG_Util::get_instance()->wpaicg_languages;
 $currentStyle = ( isset( $settings_row['wpai_writing_style'] ) ? $settings_row['wpai_writing_style'] : 'infor' );
-$writing_styles = array(
-    'infor'  => 'Informative',
-    'acade'  => 'Academic',
-    'analy'  => 'Analytical',
-    'anect'  => 'Anecdotal',
-    'argum'  => 'Argumentative',
-    'artic'  => 'Articulate',
-    'biogr'  => 'Biographical',
-    'blog'   => 'Blog',
-    'casua'  => 'Casual',
-    'collo'  => 'Colloquial',
-    'compa'  => 'Comparative',
-    'conci'  => 'Concise',
-    'creat'  => 'Creative',
-    'criti'  => 'Critical',
-    'descr'  => 'Descriptive',
-    'detai'  => 'Detailed',
-    'dialo'  => 'Dialogue',
-    'direct' => 'Direct',
-    'drama'  => 'Dramatic',
-    'evalu'  => 'Evaluative',
-    'emoti'  => 'Emotional',
-    'expos'  => 'Expository',
-    'ficti'  => 'Fiction',
-    'histo'  => 'Historical',
-    'journ'  => 'Journalistic',
-    'lette'  => 'Letter',
-    'lyric'  => 'Lyrical',
-    'metaph' => 'Metaphorical',
-    'monol'  => 'Monologue',
-    'narra'  => 'Narrative',
-    'news'   => 'News',
-    'objec'  => 'Objective',
-    'pasto'  => 'Pastoral',
-    'perso'  => 'Personal',
-    'persu'  => 'Persuasive',
-    'poeti'  => 'Poetic',
-    'refle'  => 'Reflective',
-    'rheto'  => 'Rhetorical',
-    'satir'  => 'Satirical',
-    'senso'  => 'Sensory',
-    'simpl'  => 'Simple',
-    'techn'  => 'Technical',
-    'theore' => 'Theoretical',
-    'vivid'  => 'Vivid',
-    'busin'  => 'Business',
-    'repor'  => 'Report',
-    'resea'  => 'Research',
-);
+$writing_styles = \WPAICG\WPAICG_Util::get_instance()->wpaicg_writing_styles;
 $currentTone = ( isset( $settings_row['wpai_writing_tone'] ) ? $settings_row['wpai_writing_tone'] : 'formal' );
-$writing_tones = array(
-    'formal'        => 'Formal',
-    'asser'         => 'Assertive',
-    'authoritative' => 'Authoritative',
-    'cheer'         => 'Cheerful',
-    'confident'     => 'Confident',
-    'conve'         => 'Conversational',
-    'factual'       => 'Factual',
-    'friendly'      => 'Friendly',
-    'humor'         => 'Humorous',
-    'informal'      => 'Informal',
-    'inspi'         => 'Inspirational',
-    'neutr'         => 'Neutral',
-    'nostalgic'     => 'Nostalgic',
-    'polite'        => 'Polite',
-    'profe'         => 'Professional',
-    'romantic'      => 'Romantic',
-    'sarca'         => 'Sarcastic',
-    'scien'         => 'Scientific',
-    'sensit'        => 'Sensitive',
-    'serious'       => 'Serious',
-    'sincere'       => 'Sincere',
-    'skept'         => 'Skeptical',
-    'suspenseful'   => 'Suspenseful',
-    'sympathetic'   => 'Sympathetic',
-    'curio'         => 'Curious',
-    'disap'         => 'Disappointed',
-    'encou'         => 'Encouraging',
-    'optim'         => 'Optimistic',
-    'surpr'         => 'Surprised',
-    'worry'         => 'Worried',
-);
+$writing_tones = \WPAICG\WPAICG_Util::get_instance()->wpaicg_writing_tones;
 $current_number_of_heading = ( isset( $settings_row['wpai_number_of_heading'] ) ? $settings_row['wpai_number_of_heading'] : 3 );
-$heading_tags = array(
-    'h1',
-    'h2',
-    'h3',
-    'h4',
-    'h5',
-    'h6'
-);
+$heading_tags = \WPAICG\WPAICG_Util::get_instance()->wpaicg_heading_tags;
 $currentTag = ( isset( $settings_row['wpai_heading_tag'] ) ? $settings_row['wpai_heading_tag'] : 'h1' );
 $current_outline_editor = ( isset( $settings_row['wpai_modify_headings'] ) ? $settings_row['wpai_modify_headings'] : 0 );
 $current_tagline = ( isset( $settings_row['wpai_add_tagline'] ) ? $settings_row['wpai_add_tagline'] : 0 );
@@ -663,7 +499,7 @@ $wpaicg_provider = get_option( 'wpaicg_provider', 'OpenAI' );
 // Default to OpenAI
 $wpaicg_google_api_key = get_option( 'wpaicg_google_model_api_key', '' );
 // Get Google API Key
-$wpaicg_google_model_list = get_option( 'wpaicg_google_model_list', [ 'gemini-pro' ] );
+$wpaicg_google_model_list = get_option( 'wpaicg_google_model_list', ['gemini-pro'] );
 // Get Google model list
 $wpaicg_google_default_model = get_option( 'wpaicg_google_default_model', 'gemini-pro' );
 $wpaicg_azure_api_key = get_option( 'wpaicg_azure_api_key', '' );
@@ -672,13 +508,13 @@ $wpaicg_azure_deployment = get_option( 'wpaicg_azure_deployment', '' );
 $wpaicg_azure_embeddings = get_option( 'wpaicg_azure_embeddings', '' );
 $wpaicg_content_custom_prompt_enable = get_option( 'wpaicg_content_custom_prompt_enable', false );
 $wpaicg_content_custom_prompt = get_option( 'wpaicg_content_custom_prompt', '' );
-if ( empty($wpaicg_content_custom_prompt) ) {
+if ( empty( $wpaicg_content_custom_prompt ) ) {
     $wpaicg_content_custom_prompt = \WPAICG\WPAICG_Custom_Prompt::get_instance()->wpaicg_default_custom_prompt;
 }
 // SEO Fields
 $_wpaicg_seo_meta_desc = get_option( '_wpaicg_seo_meta_desc', false );
 $_wpaicg_seo_meta_tag = get_option( '_wpaicg_seo_meta_tag', false );
-$seo_plugins_options = [ [
+$seo_plugins_options = [[
     'plugin'      => 'wordpress-seo/wp-seo.php',
     'option_name' => '_yoast_wpseo_metadesc',
     'label'       => esc_html__( 'Update Yoast Meta', 'gpt3-ai-content-generator' ),
@@ -690,7 +526,7 @@ $seo_plugins_options = [ [
     'plugin'      => 'seo-by-rank-math/rank-math.php',
     'option_name' => 'rank_math_description',
     'label'       => esc_html__( 'Update Rank Math Meta', 'gpt3-ai-content-generator' ),
-] ];
+]];
 $_yoast_wpseo_metadesc = get_option( '_yoast_wpseo_metadesc', false );
 $_aioseo_description = get_option( '_aioseo_description', false );
 $rank_math_description = get_option( 'rank_math_description', false );
@@ -850,8 +686,7 @@ if ( !get_option( 'wpaicg_order_status_token', false ) ) {
     );
 }
 $wpaicg_order_status_token = get_option( 'wpaicg_order_status_token', 'completed' );
-function get_image_source_options( $selected_source, $default = '' )
-{
+function get_image_source_options(  $selected_source, $default = ''  ) {
     $options = array(
         'none'     => esc_html__( 'None', 'gpt3-ai-content-generator' ),
         'dalle3hd' => esc_html__( 'DALL-E 3 HD', 'gpt3-ai-content-generator' ),
@@ -860,7 +695,7 @@ function get_image_source_options( $selected_source, $default = '' )
         'pexels'   => esc_html__( 'Pexels', 'gpt3-ai-content-generator' ),
         'pixabay'  => esc_html__( 'Pixabay', 'gpt3-ai-content-generator' ),
     );
-    if ( empty($selected_source) ) {
+    if ( empty( $selected_source ) ) {
         $selected_source = $default;
     }
     $html_options = '';
@@ -907,18 +742,7 @@ if ( !get_option( '_wpaicg_image_style', false ) ) {
     );
 }
 $_wpaicg_image_style = get_option( '_wpaicg_image_style', '' );
-$image_style_options = [
-    ''              => esc_html__( 'None', 'gpt3-ai-content-generator' ),
-    'abstract'      => esc_html__( 'Abstract', 'gpt3-ai-content-generator' ),
-    'modern'        => esc_html__( 'Modern', 'gpt3-ai-content-generator' ),
-    'impressionist' => esc_html__( 'Impressionist', 'gpt3-ai-content-generator' ),
-    'popart'        => esc_html__( 'Pop Art', 'gpt3-ai-content-generator' ),
-    'cubism'        => esc_html__( 'Cubism', 'gpt3-ai-content-generator' ),
-    'surrealism'    => esc_html__( 'Surrealism', 'gpt3-ai-content-generator' ),
-    'contemporary'  => esc_html__( 'Contemporary', 'gpt3-ai-content-generator' ),
-    'cantasy'       => esc_html__( 'Fantasy', 'gpt3-ai-content-generator' ),
-    'graffiti'      => esc_html__( 'Graffiti', 'gpt3-ai-content-generator' ),
-];
+$image_style_options = \WPAICG\WPAICG_Util::get_instance()->wpaicg_image_styles;
 $wpaicg_art_file = WPAICG_PLUGIN_DIR . 'admin/data/art.json';
 $wpaicg_painter_data = file_get_contents( $wpaicg_art_file );
 $wpaicg_painter_data = json_decode( $wpaicg_painter_data, true );
@@ -1194,24 +1018,20 @@ if ( !get_option( 'wpaicg_search_loading_color', false ) ) {
 }
 $wpaicg_search_loading_color = get_option( 'wpaicg_search_loading_color', '#cccccc' );
 $message = '';
-
 if ( $wpaicg_save_setting_success ) {
     $message = esc_html__( 'Settings saved successfully.', 'gpt3-ai-content-generator' );
 } elseif ( $wpaicg_reset_setting_success ) {
     $message = esc_html__( 'Settings reset successfully.', 'gpt3-ai-content-generator' );
 }
-
-
 if ( $message !== '' ) {
     ?>
     <div class="notice notice-success is-dismissible">
         <p><?php 
-    echo  esc_html( $message ) ;
+    echo esc_html( $message );
     ?></p>
     </div>
 <?php 
 }
-
 ?>
 <div class="demo-page-master">
   <div class="demo-page-master-navigation">
@@ -1223,7 +1043,7 @@ if ( $message !== '' ) {
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
             </svg>
             <?php 
-echo  esc_html__( 'AI Engine', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'AI Engine', 'gpt3-ai-content-generator' );
 ?>
             </a>
         </li>
@@ -1235,7 +1055,7 @@ echo  esc_html__( 'AI Engine', 'gpt3-ai-content-generator' ) ;
               <polyline points="2 12 12 17 22 12" />
             </svg>
             <?php 
-echo  esc_html__( 'Content Writer', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Content Writer', 'gpt3-ai-content-generator' );
 ?>
         </a>
         </li>
@@ -1248,7 +1068,7 @@ echo  esc_html__( 'Content Writer', 'gpt3-ai-content-generator' ) ;
               <line x1="21" y1="18" x2="3" y2="18" />
             </svg>
             <?php 
-echo  esc_html__( 'SEO', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'SEO', 'gpt3-ai-content-generator' );
 ?>
         </a>
         </li>
@@ -1258,7 +1078,7 @@ echo  esc_html__( 'SEO', 'gpt3-ai-content-generator' ) ;
               <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18" />
             </svg>
             <?php 
-echo  esc_html__( 'Image', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Image', 'gpt3-ai-content-generator' );
 ?>
         </a>
         </li>
@@ -1269,7 +1089,7 @@ echo  esc_html__( 'Image', 'gpt3-ai-content-generator' ) ;
               <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
             </svg>
             <?php 
-echo  esc_html__( 'WooCommerce', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'WooCommerce', 'gpt3-ai-content-generator' );
 ?>
             </a>
         </li>
@@ -1281,7 +1101,7 @@ echo  esc_html__( 'WooCommerce', 'gpt3-ai-content-generator' ) ;
               <line x1="17.5" y1="15" x2="9" y2="15" />
             </svg>
             <?php 
-echo  esc_html__( 'AI Assistant', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'AI Assistant', 'gpt3-ai-content-generator' );
 ?>
         </a>
         </li>
@@ -1293,7 +1113,7 @@ echo  esc_html__( 'AI Assistant', 'gpt3-ai-content-generator' ) ;
             <line x1="9" y1="21" x2="9" y2="9"></line>
         </svg>
             <?php 
-echo  esc_html__( 'Tools', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Tools', 'gpt3-ai-content-generator' );
 ?>
         </a>
         </li>
@@ -1314,7 +1134,7 @@ wp_nonce_field( 'wpaicg_setting_save' );
                 <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
                 </svg>
                 <?php 
-echo  esc_html__( 'AI Engine', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'AI Engine', 'gpt3-ai-content-generator' );
 ?>
             </h1>
 
@@ -1322,7 +1142,7 @@ echo  esc_html__( 'AI Engine', 'gpt3-ai-content-generator' ) ;
             <div class="unique-page-container">
                 <div class="nice-form-group">
                     <label for="wpaicg_provider"><?php 
-echo  esc_html__( 'Provider', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Provider', 'gpt3-ai-content-generator' );
 ?></label>
                     <select id="wpaicg_provider" name="wpaicg_provider" class="specific-select">
                         <option value="OpenAI" <?php 
@@ -1345,13 +1165,13 @@ selected( $wpaicg_provider, 'Azure' );
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Api Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Api Key', 'gpt3-ai-content-generator' );
 ?></label>
                         <input id="wpaicg_openai_api_key" name="wpaicg_openai_api_key" type="text" value="<?php 
-echo  esc_attr( $current_openai_api_key ) ;
+echo esc_attr( $current_openai_api_key );
 ?>" onfocus="unmaskValue(this)" onblur="maskValue(this)" class="specific-textfield">
                         <a href="https://beta.openai.com/account/api-keys" target="_blank"><?php 
-echo  esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' );
 ?></a>
                     </div>
                 </div>
@@ -1359,14 +1179,13 @@ echo  esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="wpaicg_ai_model"><?php 
-echo  esc_html__( 'Model', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Model', 'gpt3-ai-content-generator' );
 ?></label>
                         <select id="wpaicg_ai_model" name="wpaicg_ai_model" class="specific-select">
                             <?php 
 $gpt4_models = [
     'gpt-4'                => 'GPT-4',
-    'gpt-4-turbo-preview'  => 'GPT-4 Turbo',
-    'gpt-4-32k'            => 'GPT-4 32K',
+    'gpt-4-turbo'          => 'GPT-4 Turbo',
     'gpt-4-vision-preview' => 'GPT-4 Vision',
 ];
 $gpt35_models = [
@@ -1395,11 +1214,11 @@ $current_model = $wpaicg_ai_model;
 foreach ( $gpt4_models as $value => $name ) {
     ?>
                                     <option value="<?php 
-    echo  esc_attr( $value ) ;
+    echo esc_attr( $value );
     ?>"<?php 
     selected( $value, $current_model );
     ?>><?php 
-    echo  esc_html( $name ) ;
+    echo esc_html( $name );
     ?></option>
                                 <?php 
 }
@@ -1410,11 +1229,11 @@ foreach ( $gpt4_models as $value => $name ) {
 foreach ( $gpt35_models as $value => $name ) {
     ?>
                                     <option value="<?php 
-    echo  esc_attr( $value ) ;
+    echo esc_attr( $value );
     ?>"<?php 
     selected( $value, $current_model );
     ?>><?php 
-    echo  esc_html( $name ) ;
+    echo esc_html( $name );
     ?></option>
                                 <?php 
 }
@@ -1425,12 +1244,12 @@ foreach ( $gpt35_models as $value => $name ) {
 foreach ( $custom_models as $value => $name ) {
     ?>
                                         <option value="<?php 
-    echo  esc_attr( $value ) ;
+    echo esc_attr( $value );
     ?>" <?php 
     selected( $value, $current_model );
     ?>>
                                             <?php 
-    echo  esc_html( $name ) ;
+    echo esc_html( $name );
     ?>
                                         </option>
                                     <?php 
@@ -1439,7 +1258,7 @@ foreach ( $custom_models as $value => $name ) {
                             </optgroup>
                         </select>
                         <a class="wpaicg_sync_finetune" href="javascript:void(0)"><?php 
-echo  esc_html__( 'Sync', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Sync', 'gpt3-ai-content-generator' );
 ?></a>
                     </div>
                 </div>
@@ -1450,13 +1269,13 @@ echo  esc_html__( 'Sync', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Api Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Api Key', 'gpt3-ai-content-generator' );
 ?></label>
                         <input id="wpaicg_google_api_key" name="wpaicg_google_api_key" type="text" value="<?php 
-echo  esc_attr( $wpaicg_google_api_key ) ;
+echo esc_attr( $wpaicg_google_api_key );
 ?>" onfocus="unmaskValue(this)" onblur="maskValue(this)" class="specific-textfield">
                         <a href="https://aistudio.google.com/app/apikey" target="_blank"><?php 
-echo  esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' );
 ?></a>
                     </div>
                 </div>
@@ -1464,19 +1283,19 @@ echo  esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Model', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Model', 'gpt3-ai-content-generator' );
 ?></label>
                         <select id="wpaicg_google_model" name="wpaicg_google_model" class="specific-select">
                             <?php 
 foreach ( $wpaicg_google_model_list as $model ) {
     ?>
                                 <option value="<?php 
-    echo  esc_attr( $model ) ;
+    echo esc_attr( $model );
     ?>" <?php 
     selected( $model, $wpaicg_google_default_model );
     ?>>
                                     <?php 
-    echo  esc_html( ucwords( str_replace( '-', ' ', $model ) ) ) ;
+    echo esc_html( ucwords( str_replace( '-', ' ', $model ) ) );
     // Convert save format to display format
     ?>
                                 </option>
@@ -1486,7 +1305,7 @@ foreach ( $wpaicg_google_model_list as $model ) {
                         </select>
                         <a href="https://docs.aipower.org/docs/ai-engine/google#setting-up-ai-power-plugin" target="_blank">?</a>
                         <input type="hidden" name="wpaicg_google_model_list" value="<?php 
-echo  esc_attr( implode( ',', $wpaicg_google_model_list ) ) ;
+echo esc_attr( implode( ',', $wpaicg_google_model_list ) );
 ?>">
                     </div>
                 </div>
@@ -1497,13 +1316,13 @@ echo  esc_attr( implode( ',', $wpaicg_google_model_list ) ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Api Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Api Key', 'gpt3-ai-content-generator' );
 ?></label>
                         <input type="text" id="wpaicg_azure_api_key" class="specific-textfield" name="wpaicg_azure_api_key" value="<?php 
-echo  esc_attr( $wpaicg_azure_api_key ) ;
+echo esc_attr( $wpaicg_azure_api_key );
 ?>" onfocus="unmaskValue(this)" onblur="maskValue(this)" >
                         <a href="https://azure.microsoft.com/en-us/products/ai-services/openai-service" target="_blank"><?php 
-echo  esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' );
 ?></a>
                     </div>
                 </div>
@@ -1511,10 +1330,10 @@ echo  esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Endpoint', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Endpoint', 'gpt3-ai-content-generator' );
 ?></label>
                         <input type="text" id="wpaicg_azure_endpoint" name="wpaicg_azure_endpoint" value="<?php 
-echo  esc_attr( $wpaicg_azure_endpoint ) ;
+echo esc_attr( $wpaicg_azure_endpoint );
 ?>" class="specific-textfield">
                         <a href="https://docs.aipower.org/docs/ai-engine/azure-openai" target="_blank">?</a>
                     </div>
@@ -1523,10 +1342,10 @@ echo  esc_attr( $wpaicg_azure_endpoint ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Deployment', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Deployment', 'gpt3-ai-content-generator' );
 ?></label>
                         <input type="text" id="wpaicg_azure_deployment" name="wpaicg_azure_deployment" value="<?php 
-echo  esc_attr( $wpaicg_azure_deployment ) ;
+echo esc_attr( $wpaicg_azure_deployment );
 ?>" class="specific-textfield">
                         <a href="https://docs.aipower.org/docs/ai-engine/azure-openai" target="_blank">?</a>
                     </div>
@@ -1535,10 +1354,10 @@ echo  esc_attr( $wpaicg_azure_deployment ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( '  Embeddings', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( '  Embeddings', 'gpt3-ai-content-generator' );
 ?></label>
                         <input type="text" id="wpaicg_azure_embeddings" name="wpaicg_azure_embeddings" value="<?php 
-echo  esc_attr( $wpaicg_azure_embeddings ) ;
+echo esc_attr( $wpaicg_azure_embeddings );
 ?>" class="specific-textfield">
                         <a href="https://docs.aipower.org/docs/ai-engine/azure-openai" target="_blank">?</a>
                     </div>
@@ -1548,7 +1367,7 @@ echo  esc_attr( $wpaicg_azure_embeddings ) ;
             <!-- ADVANCE SETTINGS -->
             <div class="advanced-settings" id="toggleSingleSettings" data-target="single-settings-container">
                 <?php 
-echo  esc_html__( 'Advance Settings', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Advance Settings', 'gpt3-ai-content-generator' );
 ?>
             </div>
 
@@ -1557,10 +1376,10 @@ echo  esc_html__( 'Advance Settings', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Maximum Length', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Maximum Length', 'gpt3-ai-content-generator' );
 ?></label>
                         <input id="wpaicg_max_tokens" name="wpaicg_max_tokens" type="number" class="specific-textfield" value="<?php 
-echo  esc_attr( $current_max_tokens ) ;
+echo esc_attr( $current_max_tokens );
 ?>">
                         <a href="https://docs.aipower.org/docs/ai-engine/openai/max-tokens#adjusting-the-max-tokens-setting" target="_blank">?</a>
                     </div>
@@ -1572,85 +1391,85 @@ $wpaicg_sleep_time = get_option( 'wpaicg_sleep_time', 1 );
 ?>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Rate Limit Buffer (in seconds)', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Rate Limit Buffer (in seconds)', 'gpt3-ai-content-generator' );
 ?></label>
                     <input id="wpaicg_sleep_time_range" name="wpaicg_sleep_time" type="range" min="1" max="30" value="<?php 
-echo  esc_attr( $wpaicg_sleep_time ) ;
+echo esc_attr( $wpaicg_sleep_time );
 ?>" oninput="this.nextElementSibling.value = this.value">
                     <output><?php 
-echo  esc_attr( $wpaicg_sleep_time ) ;
+echo esc_attr( $wpaicg_sleep_time );
 ?></output>
                 </div>
 
                 <!-- TEMPERATURE -->
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Temperature', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Temperature', 'gpt3-ai-content-generator' );
 ?></label>
                     <input id="wpaicg_temperature_range" name="wpaicg_temperature" type="range" step="0.01" min="0" max="2" value="<?php 
-echo  esc_attr( $current_temperature ) ;
+echo esc_attr( $current_temperature );
 ?>" oninput="this.nextElementSibling.value = this.value">
                     <output><?php 
-echo  esc_attr( $current_temperature ) ;
+echo esc_attr( $current_temperature );
 ?></output>
                 </div>
 
                 <!-- FREQUENCY PENALTY -->
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Frequency Penalty', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Frequency Penalty', 'gpt3-ai-content-generator' );
 ?></label>
                     <input id="wpaicg_frequency_range" name="wpaicg_frequency" type="range" step="0.01" min="0" max="2" value="<?php 
-echo  esc_attr( $current_frequency ) ;
+echo esc_attr( $current_frequency );
 ?>" oninput="this.nextElementSibling.value = this.value">
                     <output><?php 
-echo  esc_attr( $current_frequency ) ;
+echo esc_attr( $current_frequency );
 ?></output>
                 </div>
 
                 <!-- PRESENCE PENALTY -->
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Presence Penalty', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Presence Penalty', 'gpt3-ai-content-generator' );
 ?></label>
                     <input id="wpaicg_presence_range" name="wpaicg_presence" type="range" step="0.01" min="0" max="2" value="<?php 
-echo  esc_attr( $current_presence ) ;
+echo esc_attr( $current_presence );
 ?>" oninput="this.nextElementSibling.value = this.value">
                     <output><?php 
-echo  esc_attr( $current_presence ) ;
+echo esc_attr( $current_presence );
 ?></output>
                 </div>
 
                 <!-- TOP_P -->
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Top P', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Top P', 'gpt3-ai-content-generator' );
 ?></label>
                     <input id="wpaicg_top_p_range" name="wpaicg_top_p" type="range" step="0.01" min="0" max="1" value="<?php 
-echo  esc_attr( $current_top_p ) ;
+echo esc_attr( $current_top_p );
 ?>" oninput="this.nextElementSibling.value = this.value">
                     <output><?php 
-echo  esc_attr( $current_top_p ) ;
+echo esc_attr( $current_top_p );
 ?></output>
                 </div>
 
                 <!-- BEST_OF -->
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Best of', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Best of', 'gpt3-ai-content-generator' );
 ?></label>
                     <input id="wpaicg_best_of" name="wpaicg_best_of" type="range" min="1" max="20" value="<?php 
-echo  esc_attr( $current_best_of ) ;
+echo esc_attr( $current_best_of );
 ?>" oninput="this.nextElementSibling.value = this.value">
                     <output><?php 
-echo  esc_attr( $current_best_of ) ;
+echo esc_attr( $current_best_of );
 ?></output>
                 </div>
             </div>
             <details> 
                 <summary>
                     <input type="submit" value="<?php 
-echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
 ?>" name="wpaicg_submit" class="button button-primary button-large">
                     <input type="submit" value="Reset" name="wpaicg_reset" class="button button-secondary button-large">
                 </summary>
@@ -1667,31 +1486,31 @@ echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
                 <polyline points="2 12 12 17 22 12" />
                 </svg>
                 <?php 
-echo  esc_html__( 'Content Writer', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Content Writer', 'gpt3-ai-content-generator' );
 ?>
             </h1>
             <p><?php 
-echo  esc_html__( 'This tab allows you to set and save default values for both Express Mode and Auto Content Writer. Changes made here will be applied to both modules.', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'This tab allows you to set and save default values for both Express Mode and Auto Content Writer. Changes made here will be applied to both modules.', 'gpt3-ai-content-generator' );
 ?></p>
             <h1><?php 
-echo  esc_html__( 'Language, Style and Tone', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Language, Style and Tone', 'gpt3-ai-content-generator' );
 ?></h1>
             <!-- LANGUAGE -->
             <div class="unique-page-container">
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Language', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Language', 'gpt3-ai-content-generator' );
 ?></label>
                     <select class="specific-select" id="wpai_language" name="wpai_language">
                         <?php 
 foreach ( $languages as $code => $displayName ) {
     ?>
                             <option value="<?php 
-    echo  esc_attr( $code ) ;
+    echo esc_attr( $code );
     ?>" <?php 
-    echo  ( esc_attr( $code ) === $currentLanguage ? 'selected' : '' ) ;
+    echo ( esc_attr( $code ) === $currentLanguage ? 'selected' : '' );
     ?>><?php 
-    echo  esc_html( $displayName ) ;
+    echo esc_html( $displayName );
     ?></option>
                         <?php 
 }
@@ -1704,18 +1523,18 @@ foreach ( $languages as $code => $displayName ) {
             <div class="unique-page-container">
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Writing Style', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Writing Style', 'gpt3-ai-content-generator' );
 ?></label>
                     <select class="specific-select" id="wpai_content_style" name="wpai_content_style">
                         <?php 
 foreach ( $writing_styles as $code => $displayName ) {
     ?>
                             <option value="<?php 
-    echo  esc_attr( $code ) ;
+    echo esc_attr( $code );
     ?>" <?php 
-    echo  ( esc_attr( $code ) === $currentStyle ? 'selected' : '' ) ;
+    echo ( esc_attr( $code ) === $currentStyle ? 'selected' : '' );
     ?>><?php 
-    echo  esc_html( $displayName ) ;
+    echo esc_html( $displayName );
     ?></option>
                         <?php 
 }
@@ -1728,18 +1547,18 @@ foreach ( $writing_styles as $code => $displayName ) {
             <div class="unique-page-container">
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Writing Tone', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Writing Tone', 'gpt3-ai-content-generator' );
 ?></label>
                     <select class="specific-select" id="wpai_content_tone" name="wpai_content_tone">
                         <?php 
 foreach ( $writing_tones as $code => $displayName ) {
     ?>
                             <option value="<?php 
-    echo  esc_attr( $code ) ;
+    echo esc_attr( $code );
     ?>" <?php 
-    echo  ( esc_attr( $code ) === $currentTone ? 'selected' : '' ) ;
+    echo ( esc_attr( $code ) === $currentTone ? 'selected' : '' );
     ?>><?php 
-    echo  esc_html( $displayName ) ;
+    echo esc_html( $displayName );
     ?></option>
                         <?php 
 }
@@ -1750,19 +1569,19 @@ foreach ( $writing_tones as $code => $displayName ) {
             </div>
             <p></p>
             <h1><?php 
-echo  esc_html__( 'Headings', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Headings', 'gpt3-ai-content-generator' );
 ?></h1>
             <!-- HEADINGS -->
             <div class="unique-page-container">
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Number of Headings', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Number of Headings', 'gpt3-ai-content-generator' );
 ?></label>
                     <input id="wpai_number_of_heading" name="wpai_number_of_heading" type="range" min="1" max="15" value="<?php 
-echo  esc_attr( $current_number_of_heading ) ;
+echo esc_attr( $current_number_of_heading );
 ?>" oninput="this.nextElementSibling.value = this.value">
                     <output><?php 
-echo  esc_attr( $current_number_of_heading ) ;
+echo esc_attr( $current_number_of_heading );
 ?></output>
                 </div>
             </div>
@@ -1770,19 +1589,19 @@ echo  esc_attr( $current_number_of_heading ) ;
             <div class="unique-page-container">
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Heading Tag', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Heading Tag', 'gpt3-ai-content-generator' );
 ?></label>
                     <select class="specific-select" id="wpai_heading_tag" name="wpai_heading_tag">
                         <?php 
 foreach ( $heading_tags as $tag ) {
     ?>
                             <option value="<?php 
-    echo  esc_attr( $tag ) ;
+    echo esc_attr( $tag );
     ?>" <?php 
-    echo  ( $tag === $currentTag ? 'selected' : '' ) ;
+    echo ( $tag === $currentTag ? 'selected' : '' );
     ?>>
                                 <?php 
-    echo  $tag ;
+    echo $tag;
     ?>
                             </option>
                         <?php 
@@ -1796,7 +1615,7 @@ foreach ( $heading_tags as $tag ) {
             <!-- OPTIONS -->
             <fieldset class="nice-form-group">
                 <legend><?php 
-echo  esc_html__( 'Options', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Options', 'gpt3-ai-content-generator' );
 ?></legend>
                 <!-- TABLE OF CONTENTS -->
                 <div class="nice-form-group">
@@ -1804,7 +1623,7 @@ echo  esc_html__( 'Options', 'gpt3-ai-content-generator' ) ;
 checked( 1, $current_wpaicg_toc );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Table of Contents', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Table of Contents', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/table-of-contents#enable-or-disable-toc" target="_blank">?</a>
                 </div>
@@ -1812,10 +1631,10 @@ echo  esc_html__( 'Table of Contents', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container" id="toc_title_container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'ToC Title', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'ToC Title', 'gpt3-ai-content-generator' );
 ?></label>
                         <input type="text" id="wpaicg_toc_title" name="wpaicg_toc_title" value="<?php 
-echo  esc_attr( $current_toc_title ) ;
+echo esc_attr( $current_toc_title );
 ?>" class="specific-textfield">
                     </div>
                 </div>
@@ -1823,19 +1642,19 @@ echo  esc_attr( $current_toc_title ) ;
                 <div class="unique-page-container" id="toc_title_tag_container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'ToC Tag', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'ToC Tag', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" id="wpaicg_toc_title_tag" name="wpaicg_toc_title_tag">
                             <?php 
 foreach ( $heading_tags as $tag ) {
     ?>
                                 <option value="<?php 
-    echo  esc_attr( $tag ) ;
+    echo esc_attr( $tag );
     ?>" <?php 
-    echo  ( $tag === $current_toc_title_tag ? 'selected' : '' ) ;
+    echo ( $tag === $current_toc_title_tag ? 'selected' : '' );
     ?>>
                                     <?php 
-    echo  $tag ;
+    echo $tag;
     ?>
                                 </option>
                             <?php 
@@ -1850,7 +1669,7 @@ foreach ( $heading_tags as $tag ) {
 checked( 1, $current_wpaicg_intro );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Introduction', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Introduction', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/additional-content#enable-or-disable-introduction" target="_blank">?</a>
                 </div>
@@ -1861,26 +1680,26 @@ echo  esc_html__( 'Introduction', 'gpt3-ai-content-generator' ) ;
 checked( 1, $current_hide_introduction );
 ?> />
                         <label><?php 
-echo  esc_html__( 'Hide Introduction Title', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Hide Introduction Title', 'gpt3-ai-content-generator' );
 ?></label>
                     </div>
                 </div>
                 <div class="unique-page-container" id="intro_title_tag_container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Introduction Tag', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Introduction Tag', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" id="wpaicg_intro_title_tag" name="wpaicg_intro_title_tag">
                             <?php 
 foreach ( $heading_tags as $tag ) {
     ?>
                                 <option value="<?php 
-    echo  esc_attr( $tag ) ;
+    echo esc_attr( $tag );
     ?>" <?php 
-    echo  ( $tag === $current_intro_title_tag ? 'selected' : '' ) ;
+    echo ( $tag === $current_intro_title_tag ? 'selected' : '' );
     ?>>
                                     <?php 
-    echo  $tag ;
+    echo $tag;
     ?>
                                 </option>
                             <?php 
@@ -1895,7 +1714,7 @@ foreach ( $heading_tags as $tag ) {
 checked( 1, $current_wpaicg_conclusion );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Conclusion', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Conclusion', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/additional-content#enable-or-disable-conclusion" target="_blank">?</a>
                 </div>
@@ -1906,26 +1725,26 @@ echo  esc_html__( 'Conclusion', 'gpt3-ai-content-generator' ) ;
 checked( 1, $current_hide_conclusion );
 ?> />
                         <label><?php 
-echo  esc_html__( 'Hide Conclusion Title', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Hide Conclusion Title', 'gpt3-ai-content-generator' );
 ?></label>
                     </div>
                 </div>
                 <div class="unique-page-container" id="conclusion_title_tag_container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Conclusion Tag', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Conclusion Tag', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" id="wpaicg_conclusion_title_tag" name="wpaicg_conclusion_title_tag">
                             <?php 
 foreach ( $heading_tags as $tag ) {
     ?>
                                 <option value="<?php 
-    echo  esc_attr( $tag ) ;
+    echo esc_attr( $tag );
     ?>" <?php 
-    echo  ( $tag === $current_conclusion_title_tag ? 'selected' : '' ) ;
+    echo ( $tag === $current_conclusion_title_tag ? 'selected' : '' );
     ?>>
                                     <?php 
-    echo  $tag ;
+    echo $tag;
     ?>
                                 </option>
                             <?php 
@@ -1939,7 +1758,7 @@ foreach ( $heading_tags as $tag ) {
 checked( 1, $current_tagline );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Tagline', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Tagline', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/additional-content#enable-or-disable-tagline" target="_blank">?</a>
                 </div>
@@ -1948,7 +1767,7 @@ echo  esc_html__( 'Tagline', 'gpt3-ai-content-generator' ) ;
 checked( 1, $current_outline_editor );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Outline Editor', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Outline Editor', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/headings#outline-editor" target="_blank">?</a>
                 </div>
@@ -1957,13 +1776,13 @@ echo  esc_html__( 'Outline Editor', 'gpt3-ai-content-generator' ) ;
 ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-echo  esc_html__( 'Q & A', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Q & A', 'gpt3-ai-content-generator' );
 ?></label>
                         <a href="https://docs.aipower.org/docs/content-writer/express-mode/qa#enable-or-disable-qa" target="_blank">?</a>
                         <a href="<?php 
-echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
 ?>" class="pro-feature-label"><?php 
-echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
 ?></a>
                         <?php 
 ?>
@@ -1973,13 +1792,13 @@ echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
 ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-echo  esc_html__( 'Bold Keywords', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Bold Keywords', 'gpt3-ai-content-generator' );
 ?></label>
                         <a href="https://docs.aipower.org/docs/content-writer/express-mode/keywords#add-keywords" target="_blank">?</a>
                         <a href="<?php 
-echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
 ?>" class="pro-feature-label"><?php 
-echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
 ?></a>
                         <?php 
 ?>
@@ -1988,50 +1807,55 @@ echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
 
             <!-- CTA POSITION -->
             <fieldset class="nice-form-group">
-                <legend>Call-to-Action Position</legend>
+                <legend><?php 
+echo esc_html__( 'Call to Action Position', 'gpt3-ai-content-generator' );
+?></legend>
                 <div class="nice-form-group">
                     <input type="radio" id="cta_pos_beg" name="wpai_cta_pos" value="beg" <?php 
 checked( $current_cta_pos, 'beg' );
 ?>/>
-                    <label>Beginning</label>
+                    <label><?php 
+echo esc_html__( 'Beginning', 'gpt3-ai-content-generator' );
+?></label>
                 </div>
                 <div class="nice-form-group">
                     <input type="radio" id="cta_pos_end" name="wpai_cta_pos" value="end" <?php 
 checked( $current_cta_pos, 'end' );
 ?>/>
-                    <label>End</label>
+                    <label><?php 
+echo esc_html__( 'End', 'gpt3-ai-content-generator' );
+?></label>
                 </div>
             </fieldset>
             
             <!-- CUSTOM PROMPT -->
             <div class="nice-form-group">
                 <input <?php 
-echo  ( $wpaicg_content_custom_prompt_enable ? ' checked' : '' ) ;
+echo ( $wpaicg_content_custom_prompt_enable ? ' checked' : '' );
 ?> type="checkbox" class="wpaicg_meta_custom_prompt_enable" name="wpaicg_content_custom_prompt_enable">
                 <label><?php 
-echo  esc_html__( 'Custom Prompt', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Custom Prompt', 'gpt3-ai-content-generator' );
 ?></label>
                 <a href="https://docs.aipower.org/docs/content-writer/express-mode/custom-prompt" target="_blank">?</a>
             </div>
             <p></p>
             <div class="wpaicg_meta_custom_prompt_box" style="<?php 
-echo  ( isset( $wpaicg_content_custom_prompt_enable ) && $wpaicg_content_custom_prompt_enable ? '' : 'display:none' ) ;
+echo ( isset( $wpaicg_content_custom_prompt_enable ) && $wpaicg_content_custom_prompt_enable ? '' : 'display:none' );
 ?>">
                 <textarea rows="20" class="wpaicg_meta_custom_prompt" name="wpaicg_content_custom_prompt"><?php 
-echo  esc_html( str_replace( "\\", '', $wpaicg_content_custom_prompt ) ) ;
+echo esc_html( str_replace( "\\", '', $wpaicg_content_custom_prompt ) );
 ?></textarea>
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <div>
                         <?php 
-    echo  sprintf(
+    echo sprintf(
         esc_html__( 'Make sure to include %s in your prompt. You can also incorporate %s and %s to further customize your prompt.', 'gpt3-ai-content-generator' ),
         '<code>[title]</code>',
         '<code>[keywords_to_include]</code>',
         '<code>[keywords_to_avoid]</code>'
-    ) ;
+    );
     ?>
                     </div>
                 <?php 
@@ -2039,24 +1863,23 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <div>
                         <?php 
-    echo  sprintf( esc_html__( 'Ensure %s is included in your prompt.', 'gpt3-ai-content-generator' ), '<code>[title]</code>' ) ;
+    echo sprintf( esc_html__( 'Ensure %s is included in your prompt.', 'gpt3-ai-content-generator' ), '<code>[title]</code>' );
     ?>
                     </div>
                 <?php 
 }
-
 ?>
                 <button style="color: #fff;background: #df0707;border-color: #df0707;" data-prompt="<?php 
-echo  esc_html( \WPAICG\WPAICG_Custom_Prompt::get_instance()->wpaicg_default_custom_prompt ) ;
+echo esc_html( \WPAICG\WPAICG_Custom_Prompt::get_instance()->wpaicg_default_custom_prompt );
 ?>" class="button wpaicg_meta_custom_prompt_reset" type="button"><?php 
-echo  esc_html__( 'Reset', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Reset', 'gpt3-ai-content-generator' );
 ?></button>
                 <div class="wpaicg_meta_custom_prompt_auto_error"></div>
             </div>
             <details> 
                 <summary>
                     <input type="submit" value="<?php 
-echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
 ?>" name="wpaicg_submit" class="button button-primary button-large">
                     <input type="submit" value="Reset" name="wpaicg_reset" class="button button-secondary button-large">
                 </summary>
@@ -2074,20 +1897,20 @@ echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
                 <line x1="21" y1="18" x2="3" y2="18" />
                 </svg>
                 <?php 
-echo  esc_html__( 'SEO', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'SEO', 'gpt3-ai-content-generator' );
 ?>
             </h1>
             <!-- SEO -->
             <fieldset class="nice-form-group">
                 <legend><?php 
-echo  esc_html__( 'Meta Description', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Meta Description', 'gpt3-ai-content-generator' );
 ?></legend>
                 <div class="nice-form-group">
                     <input type="checkbox" id="_wpaicg_seo_meta_desc" name="_wpaicg_seo_meta_desc" value="1" <?php 
 checked( 1, $_wpaicg_seo_meta_desc );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Generate Meta Description', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Generate Meta Description', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#enable-or-disable-meta-description-generation" target="_blank">?</a>
                 </div>
@@ -2096,13 +1919,12 @@ echo  esc_html__( 'Generate Meta Description', 'gpt3-ai-content-generator' ) ;
 checked( 1, $_wpaicg_seo_meta_tag );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Include Meta in the Header', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Include Meta in the Header', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#meta-description-in-html" target="_blank">?</a>
                 </div>
                 <?php 
 foreach ( $seo_plugins_options as $seo_plugin ) {
-    
     if ( is_plugin_active( $seo_plugin['plugin'] ) ) {
         $option_value = get_option( $seo_plugin['option_name'], false );
         ?>
@@ -2110,35 +1932,33 @@ foreach ( $seo_plugins_options as $seo_plugin ) {
                             <input <?php 
         checked( $option_value, true );
         ?> id="<?php 
-        echo  esc_attr( $seo_plugin['option_name'] ) ;
+        echo esc_attr( $seo_plugin['option_name'] );
         ?>" type="checkbox" name="<?php 
-        echo  esc_attr( $seo_plugin['option_name'] ) ;
+        echo esc_attr( $seo_plugin['option_name'] );
         ?>" value="1">
                             <label><?php 
-        echo  esc_html( $seo_plugin['label'] ) ;
+        echo esc_html( $seo_plugin['label'] );
         ?></label>
                             <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#integrations" target="_blank">?</a>
                         </div>
                         <?php 
     }
-
 }
 ?>
             </fieldset>
             <fieldset class="nice-form-group">
                 <legend><?php 
-echo  esc_html__( 'SEO Optimization', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'SEO Optimization', 'gpt3-ai-content-generator' );
 ?></legend>
                 <div class="nice-form-group">
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <input type="checkbox" id="_wpaicg_shorten_url" name="_wpaicg_shorten_url" value="1" <?php 
     checked( 1, $_wpaicg_shorten_url );
     ?> />
                     <label><?php 
-    echo  esc_html__( 'Shorten URL', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Shorten URL', 'gpt3-ai-content-generator' );
     ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                     <?php 
@@ -2146,29 +1966,27 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-    echo  esc_html__( 'Shorten URL', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Shorten URL', 'gpt3-ai-content-generator' );
     ?></label>
                         <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                         <a href="<?php 
-    echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+    echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
     ?>" class="pro-feature-label"><?php 
-    echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
     ?></a>
                         <?php 
 }
-
 ?>
                 </div>
                 <div class="nice-form-group">
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <input type="checkbox" id="_wpaicg_gen_title_from_keywords" name="_wpaicg_gen_title_from_keywords" value="1" <?php 
     checked( 1, $_wpaicg_gen_title_from_keywords );
     ?> onchange="handleTitleFromKeywordsChange(this)" />
                     <label><?php 
-    echo  esc_html__( 'Generate Title from Keywords', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Generate Title from Keywords', 'gpt3-ai-content-generator' );
     ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                     <?php 
@@ -2176,33 +1994,31 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-    echo  esc_html__( 'Generate Title from Keywords', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Generate Title from Keywords', 'gpt3-ai-content-generator' );
     ?></label>
                         <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                         <a href="<?php 
-    echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+    echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
     ?>" class="pro-feature-label"><?php 
-    echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
     ?></a>
                         <?php 
 }
-
 ?>
                 </div>
                 <div class="nice-form-group">
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <input type="checkbox" id="_wpaicg_original_title_in_prompt" name="_wpaicg_original_title_in_prompt" value="1" <?php 
     checked( 1, $_wpaicg_original_title_in_prompt );
     ?> <?php 
     if ( !$_wpaicg_gen_title_from_keywords ) {
-        echo  'disabled' ;
+        echo 'disabled';
     }
     ?> />
                     <label><?php 
-    echo  esc_html__( 'Include Original Title in the Prompt', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Include Original Title in the Prompt', 'gpt3-ai-content-generator' );
     ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                     <?php 
@@ -2210,29 +2026,27 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-    echo  esc_html__( 'Include Original Title in the Prompt', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Include Original Title in the Prompt', 'gpt3-ai-content-generator' );
     ?></label>
                         <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                         <a href="<?php 
-    echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+    echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
     ?>" class="pro-feature-label"><?php 
-    echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
     ?></a>
                         <?php 
 }
-
 ?>
                 </div>
                 <div class="nice-form-group">
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <input type="checkbox" id="_wpaicg_focus_keyword_in_url" name="_wpaicg_focus_keyword_in_url" value="1" <?php 
     checked( 1, $_wpaicg_focus_keyword_in_url );
     ?> />
                     <label><?php 
-    echo  esc_html__( 'Enforce Focus Keyword in URL', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Enforce Focus Keyword in URL', 'gpt3-ai-content-generator' );
     ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                     <?php 
@@ -2240,29 +2054,27 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-    echo  esc_html__( 'Enforce Focus Keyword in URL', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Enforce Focus Keyword in URL', 'gpt3-ai-content-generator' );
     ?></label>
                         <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                         <a href="<?php 
-    echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+    echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
     ?>" class="pro-feature-label"><?php 
-    echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
     ?></a>
                         <?php 
 }
-
 ?>
                 </div>
                 <div class="nice-form-group">
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <input type="checkbox" id="_wpaicg_sentiment_in_title" name="_wpaicg_sentiment_in_title" value="1" <?php 
     checked( 1, $_wpaicg_sentiment_in_title );
     ?> />
                     <label><?php 
-    echo  esc_html__( 'Use Sentiment in Title', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Use Sentiment in Title', 'gpt3-ai-content-generator' );
     ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                     <?php 
@@ -2270,29 +2082,27 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-    echo  esc_html__( 'Use Sentiment in Title', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Use Sentiment in Title', 'gpt3-ai-content-generator' );
     ?></label>
                         <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                         <a href="<?php 
-    echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+    echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
     ?>" class="pro-feature-label"><?php 
-    echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
     ?></a>
                         <?php 
 }
-
 ?>
                 </div>
                 <div class="nice-form-group">
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <input type="checkbox" id="_wpaicg_power_word_in_title" name="_wpaicg_power_word_in_title" value="1" <?php 
     checked( 1, $_wpaicg_power_word_in_title );
     ?> />
                     <label><?php 
-    echo  esc_html__( 'Use Power Word in Title', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Use Power Word in Title', 'gpt3-ai-content-generator' );
     ?></label>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                     <?php 
@@ -2300,24 +2110,23 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-    echo  esc_html__( 'Use Power Word in Title', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Use Power Word in Title', 'gpt3-ai-content-generator' );
     ?></label>
                         <a href="https://docs.aipower.org/docs/content-writer/express-mode/seo#seo-optimization" target="_blank">?</a>
                         <a href="<?php 
-    echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+    echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
     ?>" class="pro-feature-label"><?php 
-    echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
     ?></a>
                         <?php 
 }
-
 ?>
                 </div>
             </fieldset>
             <details> 
                 <summary>
                     <input type="submit" value="<?php 
-echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
 ?>" name="wpaicg_submit" class="button button-primary button-large">
                     <input type="submit" value="Reset" name="wpaicg_reset" class="button button-secondary button-large">
                 </summary>
@@ -2333,20 +2142,20 @@ echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                 </svg>
                 <?php 
-echo  esc_html__( 'WooCommerce', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'WooCommerce', 'gpt3-ai-content-generator' );
 ?>
             </h1>
 
             <fieldset class="nice-form-group">
                 <legend><?php 
-echo  esc_html__( 'Product Writer', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Product Writer', 'gpt3-ai-content-generator' );
 ?></legend>
                 <div class="nice-form-group">
                     <input type="checkbox" id="wpaicg_woo_generate_title" name="wpaicg_woo_generate_title" value="1" <?php 
 checked( 1, $wpaicg_woo_generate_title );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Product Title', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Product Title', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
                 </div>
@@ -2355,7 +2164,7 @@ echo  esc_html__( 'Product Title', 'gpt3-ai-content-generator' ) ;
 checked( 1, $wpaicg_woo_generate_description );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Full Product Description', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Full Product Description', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
                 </div>
@@ -2364,7 +2173,7 @@ echo  esc_html__( 'Full Product Description', 'gpt3-ai-content-generator' ) ;
 checked( 1, $wpaicg_woo_generate_short );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Short Product Description', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Short Product Description', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
                 </div>
@@ -2373,7 +2182,7 @@ echo  esc_html__( 'Short Product Description', 'gpt3-ai-content-generator' ) ;
 checked( 1, $wpaicg_woo_generate_tags );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Product Tags', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Product Tags', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
                 </div>
@@ -2381,27 +2190,26 @@ echo  esc_html__( 'Product Tags', 'gpt3-ai-content-generator' ) ;
 
             <fieldset class="nice-form-group">
                 <legend><?php 
-echo  esc_html__( 'SEO Optimization', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'SEO Optimization', 'gpt3-ai-content-generator' );
 ?></legend>
                 <div class="nice-form-group">
                     <input type="checkbox" id="wpaicg_woo_meta_description" name="wpaicg_woo_meta_description" value="1" <?php 
 checked( 1, $wpaicg_woo_meta_description );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Meta Description', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Meta Description', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
                 </div>
                 <div class="nice-form-group">
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <input type="checkbox" id="_wpaicg_shorten_woo_url" name="_wpaicg_shorten_woo_url" value="1" <?php 
     checked( 1, $_wpaicg_shorten_woo_url );
     ?> />
                     <label><?php 
-    echo  esc_html__( 'Shorten Product URL', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Shorten Product URL', 'gpt3-ai-content-generator' );
     ?></label>
                     <a href="https://docs.aipower.org/docs/woocommerce#shorten-url" target="_blank">?</a>
                     <?php 
@@ -2409,29 +2217,27 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-    echo  esc_html__( 'Shorten Product URL', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Shorten Product URL', 'gpt3-ai-content-generator' );
     ?></label>
                         <a href="https://docs.aipower.org/docs/woocommerce#shorten-url" target="_blank">?</a>
                         <a href="<?php 
-    echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+    echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
     ?>" class="pro-feature-label"><?php 
-    echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
     ?></a>
                         <?php 
 }
-
 ?>
                 </div>
                 <div class="nice-form-group">
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <input type="checkbox" id="wpaicg_generate_woo_focus_keyword" name="wpaicg_generate_woo_focus_keyword" value="1" <?php 
     checked( 1, $wpaicg_generate_woo_focus_keyword );
     ?> />
                     <label><?php 
-    echo  esc_html__( 'Generate Focus Keyword', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Generate Focus Keyword', 'gpt3-ai-content-generator' );
     ?></label>
                     <a href="https://docs.aipower.org/docs/woocommerce#focus-keyword" target="_blank">?</a>
                     <?php 
@@ -2439,29 +2245,27 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-    echo  esc_html__( 'Generate Focus Keyword', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Generate Focus Keyword', 'gpt3-ai-content-generator' );
     ?></label>
                         <a href="https://docs.aipower.org/docs/woocommerce#focus-keyword" target="_blank">?</a>
                         <a href="<?php 
-    echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+    echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
     ?>" class="pro-feature-label"><?php 
-    echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
     ?></a>
                         <?php 
 }
-
 ?>
                 </div>
                 <div class="nice-form-group">
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                     <input type="checkbox" id="wpaicg_enforce_woo_keyword_in_url" name="wpaicg_enforce_woo_keyword_in_url" value="1" <?php 
     checked( 1, $wpaicg_enforce_woo_keyword_in_url );
     ?> />
                     <label><?php 
-    echo  esc_html__( 'Enforce Focus Keyword in URL', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Enforce Focus Keyword in URL', 'gpt3-ai-content-generator' );
     ?></label>
                     <a href="https://docs.aipower.org/docs/woocommerce#enforce-focus-keyword-in-url" target="_blank">?</a>
                     <?php 
@@ -2469,42 +2273,41 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                         <input type="checkbox" value="0" disabled>
                         <label><?php 
-    echo  esc_html__( 'Enforce Focus Keyword in URL', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Enforce Focus Keyword in URL', 'gpt3-ai-content-generator' );
     ?></label>
                         <a href="https://docs.aipower.org/docs/woocommerce#enforce-focus-keyword-in-url" target="_blank">?</a>
                         <a href="<?php 
-    echo  esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) ) ;
+    echo esc_url( admin_url( 'admin.php?page=wpaicg-pricing' ) );
     ?>" class="pro-feature-label"><?php 
-    echo  esc_html__( 'Pro', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Pro', 'gpt3-ai-content-generator' );
     ?></a>
                         <?php 
 }
-
 ?>
                 </div>
             </fieldset>
 
             <fieldset class="nice-form-group">
             <legend><?php 
-echo  esc_html__( 'Prompt Design', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Prompt Design', 'gpt3-ai-content-generator' );
 ?></legend>
                 <div class="nice-form-group">
                     <input type="checkbox" id="wpaicg_woo_custom_prompt" name="wpaicg_woo_custom_prompt" class="wpaicg_woo_custom_prompt" value="1" <?php 
 checked( 1, $wpaicg_woo_custom_prompt );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Use Custom Prompt', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Use Custom Prompt', 'gpt3-ai-content-generator' );
 ?></label>
                     <a href="https://docs.aipower.org/docs/woocommerce#customizing-prompts" target="_blank">?</a>
                 </div>
             </fieldset>
 
             <div <?php 
-echo  ( $wpaicg_woo_custom_prompt ? '' : ' style="display:none"' ) ;
+echo ( $wpaicg_woo_custom_prompt ? '' : ' style="display:none"' );
 ?> class="wpaicg_woo_custom_prompts">
                 <div class="nice-form-group">
                     <p><?php 
-echo  esc_html__( 'You can use these shortcodes in your custom prompts:', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'You can use these shortcodes in your custom prompts:', 'gpt3-ai-content-generator' );
 ?> </p>
                     <div class="toggle-shortcode-small">[current_short_description]</div>
                     <div class="toggle-shortcode-small">[current_full_description]</div>
@@ -2521,7 +2324,7 @@ echo  esc_html__( 'You can use these shortcodes in your custom prompts:', 'gpt3-
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Title Prompt Template', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Title Prompt Template', 'gpt3-ai-content-generator' );
 ?></label>
                     <select id="titlePromptTemplates">
                         <option value="0">--Select a Template--</option>
@@ -2535,16 +2338,16 @@ echo  esc_html__( 'Title Prompt Template', 'gpt3-ai-content-generator' ) ;
                 <p></p>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Title Prompt', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Title Prompt', 'gpt3-ai-content-generator' );
 ?></label>
                     <textarea rows="5" type="text" name="wpaicg_woo_custom_prompt_title"><?php 
-echo  esc_html( $wpaicg_woo_custom_prompt_title ) ;
+echo esc_html( $wpaicg_woo_custom_prompt_title );
 ?></textarea>
                 </div>
                 <!-- Added Short Description Prompt Templates Dropdown -->
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Short Description Prompt Template', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Short Description Prompt Template', 'gpt3-ai-content-generator' );
 ?></label>
                     <select id="ShortDescriptionPromptTemplates">
                         <option value="0">--Select a Template--</option>
@@ -2558,16 +2361,16 @@ echo  esc_html__( 'Short Description Prompt Template', 'gpt3-ai-content-generato
                 <p></p>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Short Description Prompt', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Short Description Prompt', 'gpt3-ai-content-generator' );
 ?></label>
                     <textarea rows="10" type="text" name="wpaicg_woo_custom_prompt_short"><?php 
-echo  esc_html( $wpaicg_woo_custom_prompt_short ) ;
+echo esc_html( $wpaicg_woo_custom_prompt_short );
 ?></textarea>
                 </div>
                 <p></p>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Description Prompt Template', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Description Prompt Template', 'gpt3-ai-content-generator' );
 ?></label>
                     <select id="DescriptionPromptTemplates">
                         <option value="0">--Select a Template--</option>
@@ -2580,16 +2383,16 @@ echo  esc_html__( 'Description Prompt Template', 'gpt3-ai-content-generator' ) ;
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Description Prompt', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Description Prompt', 'gpt3-ai-content-generator' );
 ?></label>
                     <textarea rows="10" type="text" name="wpaicg_woo_custom_prompt_description"><?php 
-echo  esc_html( $wpaicg_woo_custom_prompt_description ) ;
+echo esc_html( $wpaicg_woo_custom_prompt_description );
 ?></textarea>
                 </div>
                 <p></p>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Meta Description Prompt Template', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Meta Description Prompt Template', 'gpt3-ai-content-generator' );
 ?></label>
                     <select id="MetaDescriptionPromptTemplates">
                         <option value="0">--Select a Template--</option>
@@ -2602,16 +2405,16 @@ echo  esc_html__( 'Meta Description Prompt Template', 'gpt3-ai-content-generator
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Meta Description Prompt', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Meta Description Prompt', 'gpt3-ai-content-generator' );
 ?></label>
                     <textarea rows="5" type="text" name="wpaicg_woo_custom_prompt_meta"><?php 
-echo  esc_html( $wpaicg_woo_custom_prompt_meta ) ;
+echo esc_html( $wpaicg_woo_custom_prompt_meta );
 ?></textarea>
                 </div>
                 <p></p>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Tag Prompt Template', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Tag Prompt Template', 'gpt3-ai-content-generator' );
 ?></label>
                     <select id="TagsPromptTemplates">
                         <option value="0">--Select a Template--</option>
@@ -2624,21 +2427,20 @@ echo  esc_html__( 'Tag Prompt Template', 'gpt3-ai-content-generator' ) ;
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Tag Prompt', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Tag Prompt', 'gpt3-ai-content-generator' );
 ?></label>
                     <textarea rows="5" type="text" name="wpaicg_woo_custom_prompt_keywords"><?php 
-echo  esc_html( $wpaicg_woo_custom_prompt_keywords ) ;
+echo esc_html( $wpaicg_woo_custom_prompt_keywords );
 ?></textarea>
                 </div>
                 <p></p>
                 <?php 
-
 if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
     ?>
                 <!-- Added Focus Keyword Prompt Templates Dropdown -->
                 <div class="nice-form-group">
                     <label><?php 
-    echo  esc_html__( 'Focus Keyword Prompt Template', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Focus Keyword Prompt Template', 'gpt3-ai-content-generator' );
     ?></label>
                     <select id="FocusKeywordPromptTemplates">
                         <option value="0">--Select a Template--</option>
@@ -2651,31 +2453,30 @@ if ( \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ) {
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-    echo  esc_html__( 'Focus Keyword Prompt', 'gpt3-ai-content-generator' ) ;
+    echo esc_html__( 'Focus Keyword Prompt', 'gpt3-ai-content-generator' );
     ?></label>
                     <textarea rows="5" type="text" name="wpaicg_woo_custom_prompt_focus_keyword"><?php 
-    echo  esc_html( $wpaicg_woo_custom_prompt_focus_keyword ) ;
+    echo esc_html( $wpaicg_woo_custom_prompt_focus_keyword );
     ?></textarea>
                 </div>
                 <?php 
 }
-
 ?>
             </div>
             
             <fieldset class="nice-form-group">
                 <legend><?php 
-echo  esc_html__( 'Token Sale', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Token Sale', 'gpt3-ai-content-generator' );
 ?></legend>
                 <small><?php 
-echo  esc_html__( "Automatically credit tokens to the user's account based on the order status.", 'gpt3-ai-content-generator' ) ;
+echo esc_html__( "Automatically credit tokens to the user's account based on the order status.", 'gpt3-ai-content-generator' );
 ?></small>
                 <div class="nice-form-group">
                     <input type="radio" id="order_status_completed" name="wpaicg_order_status_token" value="completed" <?php 
 checked( $wpaicg_order_status_token, 'completed' );
 ?>/>
                     <label for="order_status_completed"><?php 
-echo  esc_html__( 'Completed', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Completed', 'gpt3-ai-content-generator' );
 ?></label>
                 </div>
                 <div class="nice-form-group">
@@ -2683,7 +2484,7 @@ echo  esc_html__( 'Completed', 'gpt3-ai-content-generator' ) ;
 checked( $wpaicg_order_status_token, 'processing' );
 ?>/>
                     <label for="order_status_processing"><?php 
-echo  esc_html__( 'Processing', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Processing', 'gpt3-ai-content-generator' );
 ?></label>
                 </div>
             </fieldset>
@@ -2691,7 +2492,7 @@ echo  esc_html__( 'Processing', 'gpt3-ai-content-generator' ) ;
             <details> 
                 <summary>
                     <input type="submit" value="<?php 
-echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
 ?>" name="wpaicg_submit" class="button button-primary button-large">
                     <input type="submit" value="Reset" name="wpaicg_reset" class="button button-secondary button-large">
                 </summary>
@@ -2706,16 +2507,16 @@ echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
                 <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18" />
                 </svg>
                 <?php 
-echo  esc_html__( 'Image', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Image', 'gpt3-ai-content-generator' );
 ?>
             </h1>
             <div class="unique-page-container">
                 <div class="nice-form-group">
                     <label for="image_source"><?php 
-echo  esc_html__( 'Image Source', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Image Source', 'gpt3-ai-content-generator' );
 ?></label>
                     <select id="image_source" name="wpaicg_image_source" class="specific-select"><?php 
-echo  get_image_source_options( $wpaicg_image_source, 'dalle3' ) ;
+echo get_image_source_options( $wpaicg_image_source, 'dalle3' );
 ?></select>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/images#adding-an-image" target="_blank">?</a>
                 </div>
@@ -2723,10 +2524,10 @@ echo  get_image_source_options( $wpaicg_image_source, 'dalle3' ) ;
             <div class="unique-page-container">
                 <div class="nice-form-group">
                     <label for="featured_image_source" ><?php 
-echo  esc_html__( 'Featured Image Source', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Featured Image Source', 'gpt3-ai-content-generator' );
 ?></label>
                     <select id="featured_image_source" name="wpaicg_featured_image_source" class="specific-select"><?php 
-echo  get_image_source_options( $wpaicg_featured_image_source, 'dalle3' ) ;
+echo get_image_source_options( $wpaicg_featured_image_source, 'dalle3' );
 ?></select>
                     <a href="https://docs.aipower.org/docs/content-writer/express-mode/images#setting-featured-image" target="_blank">?</a>
                 </div>
@@ -2735,25 +2536,25 @@ echo  get_image_source_options( $wpaicg_featured_image_source, 'dalle3' ) ;
             <!-- Dall-E Settings Button -->
             <div class="advanced-settings" id="toggleDallESettings" data-target="dalle-settings-container">
                 <?php 
-echo  esc_html__( 'Dall-E', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Dall-E', 'gpt3-ai-content-generator' );
 ?>
             </div>
             <!-- Pexel Settings Button -->
             <div class="advanced-settings" id="togglePexelSettings" data-target="pexel-settings-container">
                 <?php 
-echo  esc_html__( 'Pexels', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Pexels', 'gpt3-ai-content-generator' );
 ?>
             </div>
             <!-- Pixabay Settings Button -->
             <div class="advanced-settings" id="togglePixabaySettings" data-target="pixabay-settings-container">
                 <?php 
-echo  esc_html__( 'Pixabay', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Pixabay', 'gpt3-ai-content-generator' );
 ?>
             </div>
             <!-- Stable Diffusion Settings Button -->
             <div class="advanced-settings" id="toggleSDSettings" data-target="sd-settings-container">
                 <?php 
-echo  esc_html__( 'Stable Diffusion', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Stable Diffusion', 'gpt3-ai-content-generator' );
 ?>
             </div>
             <!-- Dall-E Settings Container -->
@@ -2762,18 +2563,18 @@ echo  esc_html__( 'Stable Diffusion', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="wpaicg_img_size"><?php 
-echo  esc_html__( 'Size', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Size', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" id="wpaicg_img_size" name="wpaicg_img_size">
                             <?php 
 foreach ( $image_sizes as $code => $displayName ) {
     ?>
                                 <option value="<?php 
-    echo  esc_attr( $code ) ;
+    echo esc_attr( $code );
     ?>" <?php 
-    echo  ( esc_attr( $code ) === $current_img_size ? 'selected' : '' ) ;
+    echo ( esc_attr( $code ) === $current_img_size ? 'selected' : '' );
     ?>><?php 
-    echo  esc_html( $displayName ) ;
+    echo esc_html( $displayName );
     ?></option>
                             <?php 
 }
@@ -2784,18 +2585,18 @@ foreach ( $image_sizes as $code => $displayName ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="wpaicg_dalle_type"><?php 
-echo  esc_html__( 'Type', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Type', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" id="wpaicg_dalle_type" name="wpaicg_dalle_type">
                             <option value="vivid" <?php 
 selected( $wpaicg_dalle_type, 'vivid' );
 ?>><?php 
-echo  esc_html__( 'Vivid', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Vivid', 'gpt3-ai-content-generator' );
 ?></option>
                             <option value="natural" <?php 
 selected( $wpaicg_dalle_type, 'natural' );
 ?>><?php 
-echo  esc_html__( 'Natural', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Natural', 'gpt3-ai-content-generator' );
 ?></option>
                         </select>
                     </div>
@@ -2803,13 +2604,13 @@ echo  esc_html__( 'Natural', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="_wpaicg_image_style"><?php 
-echo  esc_html__( 'Style', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Style', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" id="label_img_style" name="_wpaicg_image_style" >
                             <?php 
 foreach ( $image_style_options as $value => $label ) {
     $selected = ( esc_html( $_wpaicg_image_style ) == $value ? ' selected' : '' );
-    echo  "<option value=\"{$value}\"{$selected}>{$label}</option>" ;
+    echo "<option value=\"{$value}\"{$selected}>{$label}</option>";
 }
 ?>
                         </select>
@@ -2818,12 +2619,12 @@ foreach ( $image_style_options as $value => $label ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="artist"><?php 
-echo  esc_html__( 'Artist', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Artist', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" name="wpaicg_custom_image_settings[artist]" id="artist">
                             <?php 
 foreach ( $wpaicg_painter_data['painters'] as $key => $value ) {
-    echo  '<option' . (( isset( $wpaicg_custom_image_settings['artist'] ) && $wpaicg_custom_image_settings['artist'] == $value || (!isset( $wpaicg_custom_image_settings['artist'] ) && $value) == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>' ;
+    echo '<option' . (( isset( $wpaicg_custom_image_settings['artist'] ) && $wpaicg_custom_image_settings['artist'] == $value || (!isset( $wpaicg_custom_image_settings['artist'] ) && $value) == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>';
 }
 ?>
                         </select>
@@ -2832,12 +2633,12 @@ foreach ( $wpaicg_painter_data['painters'] as $key => $value ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="photography_style"><?php 
-echo  esc_html__( 'Photography', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Photography', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" name="wpaicg_custom_image_settings[photography_style]" id="photography_style">
                             <?php 
 foreach ( $wpaicg_photo_data['photography_style'] as $key => $value ) {
-    echo  '<option' . (( isset( $wpaicg_custom_image_settings['photography_style'] ) && $wpaicg_custom_image_settings['photography_style'] == $value || !isset( $wpaicg_custom_image_settings['photography_style'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>' ;
+    echo '<option' . (( isset( $wpaicg_custom_image_settings['photography_style'] ) && $wpaicg_custom_image_settings['photography_style'] == $value || !isset( $wpaicg_custom_image_settings['photography_style'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>';
 }
 ?>
                         </select>
@@ -2846,12 +2647,12 @@ foreach ( $wpaicg_photo_data['photography_style'] as $key => $value ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="lighting"><?php 
-echo  esc_html__( 'Lighting', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Lighting', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" name="wpaicg_custom_image_settings[lighting]" id="lighting">
                             <?php 
 foreach ( $wpaicg_photo_data['lighting'] as $key => $value ) {
-    echo  '<option' . (( isset( $wpaicg_custom_image_settings['lighting'] ) && $wpaicg_custom_image_settings['lighting'] == $value || !isset( $wpaicg_custom_image_settings['lighting'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>' ;
+    echo '<option' . (( isset( $wpaicg_custom_image_settings['lighting'] ) && $wpaicg_custom_image_settings['lighting'] == $value || !isset( $wpaicg_custom_image_settings['lighting'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>';
 }
 ?>
                         </select>
@@ -2860,12 +2661,12 @@ foreach ( $wpaicg_photo_data['lighting'] as $key => $value ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="subject"><?php 
-echo  esc_html__( 'Subject', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Subject', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" name="wpaicg_custom_image_settings[subject]" id="subject">
                             <?php 
 foreach ( $wpaicg_photo_data['subject'] as $key => $value ) {
-    echo  '<option' . (( isset( $wpaicg_custom_image_settings['subject'] ) && $wpaicg_custom_image_settings['subject'] == $value || !isset( $wpaicg_custom_image_settings['subject'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>' ;
+    echo '<option' . (( isset( $wpaicg_custom_image_settings['subject'] ) && $wpaicg_custom_image_settings['subject'] == $value || !isset( $wpaicg_custom_image_settings['subject'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>';
 }
 ?>
                         </select>
@@ -2874,12 +2675,12 @@ foreach ( $wpaicg_photo_data['subject'] as $key => $value ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="camera_settings"><?php 
-echo  esc_html__( 'Camera', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Camera', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" name="wpaicg_custom_image_settings[camera_settings]" id="camera_settings">
                             <?php 
 foreach ( $wpaicg_photo_data['camera_settings'] as $key => $value ) {
-    echo  '<option' . (( isset( $wpaicg_custom_image_settings['camera_settings'] ) && $wpaicg_custom_image_settings['camera_settings'] == $value || !isset( $wpaicg_custom_image_settings['camera_settings'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>' ;
+    echo '<option' . (( isset( $wpaicg_custom_image_settings['camera_settings'] ) && $wpaicg_custom_image_settings['camera_settings'] == $value || !isset( $wpaicg_custom_image_settings['camera_settings'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>';
 }
 ?>
                         </select>
@@ -2888,12 +2689,12 @@ foreach ( $wpaicg_photo_data['camera_settings'] as $key => $value ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="composition"><?php 
-echo  esc_html__( 'Composition', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Composition', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" name="wpaicg_custom_image_settings[composition]" id="composition">
                             <?php 
 foreach ( $wpaicg_photo_data['composition'] as $key => $value ) {
-    echo  '<option' . (( isset( $wpaicg_custom_image_settings['composition'] ) && $wpaicg_custom_image_settings['composition'] == $value || !isset( $wpaicg_custom_image_settings['composition'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>' ;
+    echo '<option' . (( isset( $wpaicg_custom_image_settings['composition'] ) && $wpaicg_custom_image_settings['composition'] == $value || !isset( $wpaicg_custom_image_settings['composition'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>';
 }
 ?>
                         </select>
@@ -2902,12 +2703,12 @@ foreach ( $wpaicg_photo_data['composition'] as $key => $value ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="resolution"><?php 
-echo  esc_html__( 'Resolution', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Resolution', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" name="wpaicg_custom_image_settings[resolution]" id="resolution">
                             <?php 
 foreach ( $wpaicg_photo_data['resolution'] as $key => $value ) {
-    echo  '<option' . (( isset( $wpaicg_custom_image_settings['resolution'] ) && $wpaicg_custom_image_settings['resolution'] == $value || !isset( $wpaicg_custom_image_settings['resolution'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>' ;
+    echo '<option' . (( isset( $wpaicg_custom_image_settings['resolution'] ) && $wpaicg_custom_image_settings['resolution'] == $value || !isset( $wpaicg_custom_image_settings['resolution'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>';
 }
 ?>
                         </select>
@@ -2916,12 +2717,12 @@ foreach ( $wpaicg_photo_data['resolution'] as $key => $value ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="color"><?php 
-echo  esc_html__( 'Color', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Color', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" name="wpaicg_custom_image_settings[color]" id="color">
                             <?php 
 foreach ( $wpaicg_photo_data['color'] as $key => $value ) {
-    echo  '<option' . (( isset( $wpaicg_custom_image_settings['color'] ) && $wpaicg_custom_image_settings['color'] == $value || !isset( $wpaicg_custom_image_settings['color'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>' ;
+    echo '<option' . (( isset( $wpaicg_custom_image_settings['color'] ) && $wpaicg_custom_image_settings['color'] == $value || !isset( $wpaicg_custom_image_settings['color'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>';
 }
 ?>
                         </select>
@@ -2930,12 +2731,12 @@ foreach ( $wpaicg_photo_data['color'] as $key => $value ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label for="special_effects"><?php 
-echo  esc_html__( 'Special Effects', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Special Effects', 'gpt3-ai-content-generator' );
 ?></label>
                         <select class="specific-select" name="wpaicg_custom_image_settings[special_effects]" id="special_effects">
                             <?php 
 foreach ( $wpaicg_photo_data['special_effects'] as $key => $value ) {
-    echo  '<option' . (( isset( $wpaicg_custom_image_settings['special_effects'] ) && $wpaicg_custom_image_settings['special_effects'] == $value || !isset( $wpaicg_custom_image_settings['special_effects'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>' ;
+    echo '<option' . (( isset( $wpaicg_custom_image_settings['special_effects'] ) && $wpaicg_custom_image_settings['special_effects'] == $value || !isset( $wpaicg_custom_image_settings['special_effects'] ) && $value == 'None' ? ' selected' : '' )) . ' value="' . esc_html( $value ) . '">' . esc_html( $value ) . '</option>';
 }
 ?>
                         </select>
@@ -2948,39 +2749,39 @@ foreach ( $wpaicg_photo_data['special_effects'] as $key => $value ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Api Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Api Key', 'gpt3-ai-content-generator' );
 ?></label>
                         <input value="<?php 
-echo  esc_html( $wpaicg_pexels_api ) ;
+echo esc_html( $wpaicg_pexels_api );
 ?>" type="text" name="wpaicg_pexels_api" id="wpaicg_pexels_api" class="specific-textfield" onfocus="unmaskValue(this)" onblur="maskValue(this)">
                         <a href="https://www.pexels.com/api/new/" target="_blank"><?php 
-echo  esc_html__( 'Get API Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Get API Key', 'gpt3-ai-content-generator' );
 ?></a>
                     </div>
                 </div>
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Orientation', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Orientation', 'gpt3-ai-content-generator' );
 ?></label>
                         <select id="wpaicg_pexels_orientation" name="wpaicg_pexels_orientation" class="specific-select">
                             <option value=""><?php 
-echo  esc_html__( 'None', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'None', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pexels_orientation == 'landscape' ? ' selected' : '' ) ;
+echo ( $wpaicg_pexels_orientation == 'landscape' ? ' selected' : '' );
 ?> value="landscape"><?php 
-echo  esc_html__( 'Landscape', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Landscape', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pexels_orientation == 'portrait' ? ' selected' : '' ) ;
+echo ( $wpaicg_pexels_orientation == 'portrait' ? ' selected' : '' );
 ?> value="portrait"><?php 
-echo  esc_html__( 'Portrait', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Portrait', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pexels_orientation == 'square' ? ' selected' : '' ) ;
+echo ( $wpaicg_pexels_orientation == 'square' ? ' selected' : '' );
 ?> value="square"><?php 
-echo  esc_html__( 'Square', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Square', 'gpt3-ai-content-generator' );
 ?></option>
                         </select>
                     </div>
@@ -2988,26 +2789,26 @@ echo  esc_html__( 'Square', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Size', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Size', 'gpt3-ai-content-generator' );
 ?></label>
                         <select id="wpaicg_pexels_size" name="wpaicg_pexels_size" class="specific-select">
                             <option value=""><?php 
-echo  esc_html__( 'None', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'None', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pexels_size == 'large' ? ' selected' : '' ) ;
+echo ( $wpaicg_pexels_size == 'large' ? ' selected' : '' );
 ?> value="large"><?php 
-echo  esc_html__( 'Large', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Large', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pexels_size == 'medium' ? ' selected' : '' ) ;
+echo ( $wpaicg_pexels_size == 'medium' ? ' selected' : '' );
 ?> value="medium"><?php 
-echo  esc_html__( 'Medium', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Medium', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pexels_size == 'small' ? ' selected' : '' ) ;
+echo ( $wpaicg_pexels_size == 'small' ? ' selected' : '' );
 ?> value="small"><?php 
-echo  esc_html__( 'Small', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Small', 'gpt3-ai-content-generator' );
 ?></option>
                         </select>
                     </div>
@@ -3017,18 +2818,18 @@ echo  esc_html__( 'Small', 'gpt3-ai-content-generator' ) ;
 checked( 1, $wpaicg_pexels_enable_prompt );
 ?> />
                     <label><?php 
-echo  esc_html__( 'Use Keyword', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Use Keyword', 'gpt3-ai-content-generator' );
 ?></label>
                    <p>
                     <small><?php 
-echo  esc_html__( 'When enabled, AI picks the main keyword from the title to find relevant images.', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'When enabled, AI picks the main keyword from the title to find relevant images.', 'gpt3-ai-content-generator' );
 ?></small>
                     </p>
                 </div>
                 <div class="wpcgai_form_row wpaicg_pexels_custom_prompt" style="display:none">
                     <div class="nice-form-group">
                         <textarea id="wpaicg_pexels_custom_prompt" rows="5" name="wpaicg_pexels_custom_prompt"><?php 
-echo  esc_html( $wpaicg_pexels_custom_prompt ) ;
+echo esc_html( $wpaicg_pexels_custom_prompt );
 ?></textarea>
                     </div>
                 </div>
@@ -3039,25 +2840,25 @@ echo  esc_html( $wpaicg_pexels_custom_prompt ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Api Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Api Key', 'gpt3-ai-content-generator' );
 ?></label>
                         <input value="<?php 
-echo  esc_html( $wpaicg_pixabay_api ) ;
+echo esc_html( $wpaicg_pixabay_api );
 ?>" type="text" name="wpaicg_pixabay_api" id="wpaicg_pixabay_api" class="specific-textfield" onfocus="unmaskValue(this)" onblur="maskValue(this)">
                         <a href="https://pixabay.com/api/docs/" target="_blank"><?php 
-echo  esc_html__( 'Get API Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Get API Key', 'gpt3-ai-content-generator' );
 ?></a>
                     </div>
                 </div>
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Language', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Language', 'gpt3-ai-content-generator' );
 ?></label>
                         <select name="wpaicg_pixabay_language" id="wpaicg_pixabay_language" class="specific-select">
                             <?php 
 foreach ( \WPAICG\WPAICG_Generator::get_instance()->pixabay_languages as $key => $pixabay_language ) {
-    echo  '<option' . (( $wpaicg_pixabay_language == $key ? ' selected' : '' )) . ' value="' . esc_html( $key ) . '">' . esc_html( $pixabay_language ) . '</option>' ;
+    echo '<option' . (( $wpaicg_pixabay_language == $key ? ' selected' : '' )) . ' value="' . esc_html( $key ) . '">' . esc_html( $pixabay_language ) . '</option>';
 }
 ?>
                         </select>
@@ -3066,28 +2867,28 @@ foreach ( \WPAICG\WPAICG_Generator::get_instance()->pixabay_languages as $key =>
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Type', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Type', 'gpt3-ai-content-generator' );
 ?></label>
                         <select name="wpaicg_pixabay_type" id="wpaicg_pixabay_type" class="specific-select">
                             <option <?php 
-echo  ( $wpaicg_pixabay_type == 'all' ? ' selected' : '' ) ;
+echo ( $wpaicg_pixabay_type == 'all' ? ' selected' : '' );
 ?> value="all"><?php 
-echo  esc_html__( 'All', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'All', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pixabay_type == 'photo' ? ' selected' : '' ) ;
+echo ( $wpaicg_pixabay_type == 'photo' ? ' selected' : '' );
 ?> value="photo"><?php 
-echo  esc_html__( 'Photo', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Photo', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pixabay_type == 'illustration' ? ' selected' : '' ) ;
+echo ( $wpaicg_pixabay_type == 'illustration' ? ' selected' : '' );
 ?> value="illustration"><?php 
-echo  esc_html__( 'Illustration', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Illustration', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pixabay_type == 'vector' ? ' selected' : '' ) ;
+echo ( $wpaicg_pixabay_type == 'vector' ? ' selected' : '' );
 ?> value="vector"><?php 
-echo  esc_html__( 'Vector', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Vector', 'gpt3-ai-content-generator' );
 ?></option>
                         </select>
                     </div>
@@ -3095,23 +2896,23 @@ echo  esc_html__( 'Vector', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Orientation', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Orientation', 'gpt3-ai-content-generator' );
 ?></label>
                         <select name="wpaicg_pixabay_orientation" id="wpaicg_pixabay_orientation" class="specific-select">
                             <option <?php 
-echo  ( $wpaicg_pixabay_orientation == 'all' ? ' selected' : '' ) ;
+echo ( $wpaicg_pixabay_orientation == 'all' ? ' selected' : '' );
 ?> value="all"><?php 
-echo  esc_html__( 'All', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'All', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pixabay_orientation == 'horizontal' ? ' selected' : '' ) ;
+echo ( $wpaicg_pixabay_orientation == 'horizontal' ? ' selected' : '' );
 ?> value="horizontal"><?php 
-echo  esc_html__( 'Horizontal', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Horizontal', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pixabay_orientation == 'vertical' ? ' selected' : '' ) ;
+echo ( $wpaicg_pixabay_orientation == 'vertical' ? ' selected' : '' );
 ?> value="vertical"><?php 
-echo  esc_html__( 'Vertical', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Vertical', 'gpt3-ai-content-generator' );
 ?></option>
                         </select>
                     </div>
@@ -3119,39 +2920,39 @@ echo  esc_html__( 'Vertical', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Order', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Order', 'gpt3-ai-content-generator' );
 ?></label>
                         <select name="wpaicg_pixabay_order" id="wpaicg_pixabay_order" class="specific-select">
                             <option <?php 
-echo  ( $wpaicg_pixabay_order == 'popular' ? ' selected' : '' ) ;
+echo ( $wpaicg_pixabay_order == 'popular' ? ' selected' : '' );
 ?> value="popular"><?php 
-echo  esc_html__( 'Popular', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Popular', 'gpt3-ai-content-generator' );
 ?></option>
                             <option <?php 
-echo  ( $wpaicg_pixabay_order == 'latest' ? ' selected' : '' ) ;
+echo ( $wpaicg_pixabay_order == 'latest' ? ' selected' : '' );
 ?> value="latest"><?php 
-echo  esc_html__( 'Latest', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Latest', 'gpt3-ai-content-generator' );
 ?></option>
                         </select>
                     </div>
                 </div>
                 <div class="nice-form-group">
                     <input <?php 
-echo  ( $wpaicg_pixabay_enable_prompt ? ' checked' : '' ) ;
+echo ( $wpaicg_pixabay_enable_prompt ? ' checked' : '' );
 ?> type="checkbox" name="wpaicg_pixabay_enable_prompt" value="1" id="wpaicg_pixabay_enable_prompt">
                     <label><?php 
-echo  esc_html__( 'Use Keyword', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Use Keyword', 'gpt3-ai-content-generator' );
 ?></label>
                    <p>
                     <small><?php 
-echo  esc_html__( 'When enabled, AI picks the main keyword from the title to find relevant images.', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'When enabled, AI picks the main keyword from the title to find relevant images.', 'gpt3-ai-content-generator' );
 ?></small>
                     </p>
                 </div>
                 <div class="wpcgai_form_row wpaicg_pixabay_custom_prompt" style="display:none">
                     <div class="nice-form-group">
                         <textarea id="wpaicg_pixabay_custom_prompt" rows="5" name="wpaicg_pixabay_custom_prompt"><?php 
-echo  esc_html( $wpaicg_pixabay_custom_prompt ) ;
+echo esc_html( $wpaicg_pixabay_custom_prompt );
 ?></textarea>
                     </div>
                 </div>
@@ -3162,25 +2963,25 @@ echo  esc_html( $wpaicg_pixabay_custom_prompt ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Api Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Api Key', 'gpt3-ai-content-generator' );
 ?></label>
                         <input value="<?php 
-echo  esc_html( $wpaicg_sd_api_key ) ;
+echo esc_html( $wpaicg_sd_api_key );
 ?>" type="text" name="wpaicg_sd_api_key" id="wpaicg_sd_api_key" class="specific-textfield" onfocus="unmaskValue(this)" onblur="maskValue(this)">
                         <a href="https://replicate.com/account" target="_blank"><?php 
-echo  esc_html__( 'Get API Key', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Get API Key', 'gpt3-ai-content-generator' );
 ?></a>
                     </div>
                 </div>
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Version', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Version', 'gpt3-ai-content-generator' );
 ?></label>
                         <input value="<?php 
-echo  esc_html( $wpaicg_sd_api_version ) ;
+echo esc_html( $wpaicg_sd_api_version );
 ?>" type="text" name="wpaicg_sd_api_version" class="specific-textfield" placeholder="<?php 
-echo  esc_html__( 'Leave blank for default', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Leave blank for default', 'gpt3-ai-content-generator' );
 ?>">
                     </div>
                 </div>
@@ -3189,7 +2990,7 @@ echo  esc_html__( 'Leave blank for default', 'gpt3-ai-content-generator' ) ;
             <details> 
                 <summary>
                     <input type="submit" value="<?php 
-echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
 ?>" name="wpaicg_submit" class="button button-primary button-large">
                     <input type="submit" value="Reset" name="wpaicg_reset" class="button button-secondary button-large">
                 </summary>
@@ -3206,39 +3007,39 @@ echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
                 <line x1="17.5" y1="15" x2="9" y2="15" />
                 </svg>
                 <?php 
-echo  esc_html__( 'AI Assistant', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'AI Assistant', 'gpt3-ai-content-generator' );
 ?>
             </h1>
             <p><?php 
-echo  esc_html__( 'AI Assistant is a feature that allows you to add a button to the WordPress editor that will help you to create content. It is compatible with both Gutenberg and Classic Editor.', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'AI Assistant is a feature that allows you to add a button to the WordPress editor that will help you to create content. It is compatible with both Gutenberg and Classic Editor.', 'gpt3-ai-content-generator' );
 ?></p>
             <p><?php 
-echo  esc_html__( 'Use the form below to add, modify, or remove menus as needed.', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Use the form below to add, modify, or remove menus as needed.', 'gpt3-ai-content-generator' );
 ?></p>
             <div class="nice-form-group editor-button-group">
                 <?php 
 foreach ( $wpaicg_editor_button_menus as $index => $menu ) {
     ?>
                     <a href="#" class="editor-settings editor-settings-link" data-index="<?php 
-    echo  esc_attr( $index ) ;
+    echo esc_attr( $index );
     ?>">
                         <?php 
-    echo  esc_html__( 'Menu', 'gpt3-ai-content-generator' ) . ' ' . esc_html( $index + 1 ) ;
+    echo esc_html__( 'Menu', 'gpt3-ai-content-generator' ) . ' ' . esc_html( $index + 1 );
     ?>
                     </a>
                     <div class="assistant-delete-menu-item" data-index="<?php 
-    echo  esc_attr( $index ) ;
+    echo esc_attr( $index );
     ?>">x</div>
                     <!-- Hidden inputs to ensure all data is submitted -->
                     <input type="hidden" name="wpaicg_editor_button_menus[<?php 
-    echo  $index ;
+    echo $index;
     ?>][name]" value="<?php 
-    echo  esc_attr( $menu['name'] ) ;
+    echo esc_attr( $menu['name'] );
     ?>">
                     <input type="hidden" name="wpaicg_editor_button_menus[<?php 
-    echo  $index ;
+    echo $index;
     ?>][prompt]" value="<?php 
-    echo  esc_attr( $menu['prompt'] ) ;
+    echo esc_attr( $menu['prompt'] );
     ?>">
                 <?php 
 }
@@ -3246,22 +3047,22 @@ foreach ( $wpaicg_editor_button_menus as $index => $menu ) {
             </div>
             <div class="nice-form-group newitem">
                 <button type="button" class="button button-primary button-large" id="add-assistant-menu-item"><?php 
-echo  esc_html__( 'Add Item', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Add Item', 'gpt3-ai-content-generator' );
 ?></button>
                 <button type="button" class="button button-primary button-large" id="toggle-delete-menu-item"><?php 
-echo  esc_html__( 'Delete Item', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Delete Item', 'gpt3-ai-content-generator' );
 ?></button>
             </div>
             <div id="assistant-menu-details" style="display:none;">
                 <div class="nice-form-group">
                     <label for="assistant-menu-name"><?php 
-echo  esc_html__( 'Menu Name', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Menu Name', 'gpt3-ai-content-generator' );
 ?></label>
                     <input type="text" id="assistant-menu-name" name="" value="">
                 </div>
                 <div class="nice-form-group">
                     <label for="assistant-menu-prompt"><?php 
-echo  esc_html__( 'Menu Prompt', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Menu Prompt', 'gpt3-ai-content-generator' );
 ?></label>
                     <input type="text" id="assistant-menu-prompt" name="" value="">
                     <small>Make sure to include <code>[text]</code> in your prompt.</small>
@@ -3269,25 +3070,25 @@ echo  esc_html__( 'Menu Prompt', 'gpt3-ai-content-generator' ) ;
             </div>
             <div class="nice-form-group">
                 <label><?php 
-echo  esc_html__( 'Content Position', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Content Position', 'gpt3-ai-content-generator' );
 ?></label>
                 <select class="regular-text" name="wpaicg_editor_change_action">
                     <option <?php 
-echo  ( $wpaicg_editor_change_action == 'below' ? ' selected' : '' ) ;
+echo ( $wpaicg_editor_change_action == 'below' ? ' selected' : '' );
 ?> value="below"><?php 
-echo  esc_html__( 'Below', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Below', 'gpt3-ai-content-generator' );
 ?></option>
                     <option <?php 
-echo  ( $wpaicg_editor_change_action == 'above' ? ' selected' : '' ) ;
+echo ( $wpaicg_editor_change_action == 'above' ? ' selected' : '' );
 ?> value="above"><?php 
-echo  esc_html__( 'Above', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Above', 'gpt3-ai-content-generator' );
 ?></option>
                 </select>
             </div>
             <details> 
                 <summary>
                     <input type="submit" value="<?php 
-echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
 ?>" name="wpaicg_submit" class="button button-primary button-large">
                     <input type="submit" value="Reset" name="wpaicg_reset" class="button button-secondary button-large">
                 </summary>
@@ -3304,20 +3105,20 @@ echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
                 <line x1="9" y1="21" x2="9" y2="9"></line>
             </svg>
                 <?php 
-echo  esc_html__( 'Tools', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Tools', 'gpt3-ai-content-generator' );
 ?>
             </h1>
             <p></p>
             <!-- Comment Settings -->
             <div class="advanced-settings" data-target="comment-settings-container">
                 <?php 
-echo  esc_html__( 'Comment Replier', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Comment Replier', 'gpt3-ai-content-generator' );
 ?>
             </div>
             <!-- Search Settings -->
             <div class="advanced-settings" data-target="search-settings-container">
                 <?php 
-echo  esc_html__( 'Semantic Search', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Semantic Search', 'gpt3-ai-content-generator' );
 ?>
             </div>
 
@@ -3326,20 +3127,20 @@ echo  esc_html__( 'Semantic Search', 'gpt3-ai-content-generator' ) ;
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Prompt for Comment Replier ', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Prompt for Comment Replier ', 'gpt3-ai-content-generator' );
 ?><a href="https://docs.aipower.org/docs/content-writer/comment-replier" target="_blank">?</a></label>
                         <textarea rows="10" type="text" name="wpaicg_comment_prompt"><?php 
-echo  esc_html( str_replace( "\\", '', $wpaicg_comment_prompt ) ) ;
+echo esc_html( str_replace( "\\", '', $wpaicg_comment_prompt ) );
 ?></textarea>
                         <p><?php 
-echo  sprintf(
+echo sprintf(
     esc_html__( 'Ensure %s and %s and %s and %s and %s is included in your prompt.', 'gpt3-ai-content-generator' ),
     '<code>[username]</code>',
     '<code>[post_title]</code>',
     '<code>[post_excerpt]</code>',
     '<code>[last_comment]</code>',
     '<code>[parent_comments]</code>'
-) ;
+);
 ?></p>
                     </div>
                 </div>
@@ -3349,20 +3150,20 @@ echo  sprintf(
             <div class="search-settings-container" style="display: none;">
                 <p></p>
                 <p><?php 
-echo  sprintf( esc_html__( 'Copy the following code and paste it in your page or post where you want to show the search box: %s', 'gpt3-ai-content-generator' ), '<code>[wpaicg_search]</code>' ) ;
+echo sprintf( esc_html__( 'Copy the following code and paste it in your page or post where you want to show the search box: %s', 'gpt3-ai-content-generator' ), '<code>[wpaicg_search]</code>' );
 ?></p>
                 <h1><?php 
-echo  esc_html__( 'Search Box Style', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Search Box Style', 'gpt3-ai-content-generator' );
 ?></h1>
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Font Size', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Font Size', 'gpt3-ai-content-generator' );
 ?></label>
                         <select name="wpaicg_search_font_size" class="specific-select">
                             <?php 
-for ( $i = 10 ;  $i <= 30 ;  $i++ ) {
-    echo  '<option' . (( $wpaicg_search_font_size == $i ? ' selected' : '' )) . ' value="' . esc_html( $i ) . '">' . esc_html( $i ) . '</option>' ;
+for ($i = 10; $i <= 30; $i++) {
+    echo '<option' . (( $wpaicg_search_font_size == $i ? ' selected' : '' )) . ' value="' . esc_html( $i ) . '">' . esc_html( $i ) . '</option>';
 }
 ?>
                         </select>
@@ -3371,70 +3172,70 @@ for ( $i = 10 ;  $i <= 30 ;  $i++ ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Placeholder', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Placeholder', 'gpt3-ai-content-generator' );
 ?></label>
                         <input type="text" name="wpaicg_search_placeholder" value="<?php 
-echo  esc_html( get_option( 'wpaicg_search_placeholder', 'Search anything..' ) ) ;
+echo esc_html( get_option( 'wpaicg_search_placeholder', 'Search anything..' ) );
 ?>" class="specific-textfield">
                     </div>
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Font Color', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Font Color', 'gpt3-ai-content-generator' );
 ?></label>
                     <input value="<?php 
-echo  esc_html( $wpaicg_search_font_color ) ;
+echo esc_html( $wpaicg_search_font_color );
 ?>" type="color" name="wpaicg_search_font_color">
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Border Color', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Border Color', 'gpt3-ai-content-generator' );
 ?></label>
                     <input value="<?php 
-echo  esc_html( $wpaicg_search_border_color ) ;
+echo esc_html( $wpaicg_search_border_color );
 ?>" type="color" name="wpaicg_search_border_color">
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Background Color', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Background Color', 'gpt3-ai-content-generator' );
 ?></label>
                     <input value="<?php 
-echo  esc_html( $wpaicg_search_bg_color ) ;
+echo esc_html( $wpaicg_search_bg_color );
 ?>" type="color" name="wpaicg_search_bg_color">
                 </div>
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Width', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Width', 'gpt3-ai-content-generator' );
 ?></label>
                         <input value="<?php 
-echo  esc_html( $wpaicg_search_width ) ;
+echo esc_html( $wpaicg_search_width );
 ?>" min="100" type="text" name="wpaicg_search_width" class="specific-textfield">
                     </div>
                 </div>
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Height', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Height', 'gpt3-ai-content-generator' );
 ?></label>
                         <input value="<?php 
-echo  esc_html( $wpaicg_search_height ) ;
+echo esc_html( $wpaicg_search_height );
 ?>" min="100" type="text" name="wpaicg_search_height" class="specific-textfield"> 
                     </div>
                 </div>
                 <p></p>
                 <h1><?php 
-echo  esc_html__( 'Search Results', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Search Results', 'gpt3-ai-content-generator' );
 ?></h1>
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Number of Results', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Number of Results', 'gpt3-ai-content-generator' );
 ?></label>
                         <select name="wpaicg_search_no_result" class="specific-select">
                             <?php 
-for ( $i = 1 ;  $i <= 5 ;  $i++ ) {
-    echo  '<option' . (( $wpaicg_search_no_result == $i ? ' selected' : '' )) . ' value="' . esc_html( $i ) . '">' . esc_html( $i ) . '</option>' ;
+for ($i = 1; $i <= 5; $i++) {
+    echo '<option' . (( $wpaicg_search_no_result == $i ? ' selected' : '' )) . ' value="' . esc_html( $i ) . '">' . esc_html( $i ) . '</option>';
 }
 ?>
                         </select>
@@ -3443,12 +3244,12 @@ for ( $i = 1 ;  $i <= 5 ;  $i++ ) {
                 <div class="unique-page-container">
                     <div class="nice-form-group">
                         <label><?php 
-echo  esc_html__( 'Font Size', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Font Size', 'gpt3-ai-content-generator' );
 ?></label>
                         <select name="wpaicg_search_result_font_size" class="specific-select">
                             <?php 
-for ( $i = 10 ;  $i <= 30 ;  $i++ ) {
-    echo  '<option' . (( $wpaicg_search_result_font_size == $i ? ' selected' : '' )) . ' value="' . esc_html( $i ) . '">' . esc_html( $i ) . '</option>' ;
+for ($i = 10; $i <= 30; $i++) {
+    echo '<option' . (( $wpaicg_search_result_font_size == $i ? ' selected' : '' )) . ' value="' . esc_html( $i ) . '">' . esc_html( $i ) . '</option>';
 }
 ?>
                         </select>
@@ -3456,26 +3257,26 @@ for ( $i = 10 ;  $i <= 30 ;  $i++ ) {
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Font Color', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Font Color', 'gpt3-ai-content-generator' );
 ?></label>
                     <input value="<?php 
-echo  esc_html( $wpaicg_search_result_font_color ) ;
+echo esc_html( $wpaicg_search_result_font_color );
 ?>" type="color" name="wpaicg_search_result_font_color">
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Background Color', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Background Color', 'gpt3-ai-content-generator' );
 ?></label>
                     <input value="<?php 
-echo  esc_html( $wpaicg_search_result_bg_color ) ;
+echo esc_html( $wpaicg_search_result_bg_color );
 ?>" type="color" name="wpaicg_search_result_bg_color">
                 </div>
                 <div class="nice-form-group">
                     <label><?php 
-echo  esc_html__( 'Progress Color', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Progress Color', 'gpt3-ai-content-generator' );
 ?></label>
                     <input value="<?php 
-echo  esc_html( $wpaicg_search_loading_color ) ;
+echo esc_html( $wpaicg_search_loading_color );
 ?>" type="color" name="wpaicg_search_loading_color">
                 </div>
             </div>
@@ -3483,7 +3284,7 @@ echo  esc_html( $wpaicg_search_loading_color ) ;
             <details> 
                 <summary>
                     <input type="submit" value="<?php 
-echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
+echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
 ?>" name="wpaicg_submit" class="button button-primary button-large">
                     <input type="submit" value="Reset" name="wpaicg_reset" class="button button-secondary button-large">
                 </summary>
@@ -3651,7 +3452,7 @@ echo  esc_html__( 'Save', 'gpt3-ai-content-generator' ) ;
 
                 if (!apiKey || !endpoint || !deployment) {
                     alert('<?php 
-echo  esc_js( __( 'Please fill in all the mandatory fields for Azure.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( __( 'Please fill in all the mandatory fields for Azure.', 'gpt3-ai-content-generator' ) );
 ?>');
                     e.preventDefault();
                 }
@@ -3793,19 +3594,19 @@ echo  esc_js( __( 'Please fill in all the mandatory fields for Azure.', 'gpt3-ai
             // Prompt templates
             var templates = {
                 '1': "<?php 
-echo  esc_js( esc_html__( 'Create an SEO-friendly and eye-catching title for the product: %s. The title should emphasize its key features. Use the following for context: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Create an SEO-friendly and eye-catching title for the product: %s. The title should emphasize its key features. Use the following for context: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>",
                 '2': "<?php 
-echo  esc_js( esc_html__( 'Devise a captivating and SEO-optimized title for the following product: %s that highlights its unique selling points. Use these details for reference: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Devise a captivating and SEO-optimized title for the following product: %s that highlights its unique selling points. Use these details for reference: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>",
                 '3': "<?php 
-echo  esc_js( esc_html__( 'Craft a product title for %s that is not only SEO-optimized but also engages the customer and informs them why this is the product they’ve been looking for. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Craft a product title for %s that is not only SEO-optimized but also engages the customer and informs them why this is the product they’ve been looking for. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '4': "<?php 
-echo  esc_js( esc_html__( 'Construct an SEO-optimized title for the product: %s that is rich in keywords relevant to the product. Use the following for additional context: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Construct an SEO-optimized title for the product: %s that is rich in keywords relevant to the product. Use the following for additional context: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>",
                 '5': "<?php 
-echo  esc_js( esc_html__( 'Generate a concise yet comprehensive title for the product: %s that covers all the essential points customers are interested in. Make sure to utilize Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for a better context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Generate a concise yet comprehensive title for the product: %s that covers all the essential points customers are interested in. Make sure to utilize Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for a better context.', 'gpt3-ai-content-generator' ) );
 ?>"
             };
 
@@ -3836,19 +3637,19 @@ echo  esc_js( esc_html__( 'Generate a concise yet comprehensive title for the pr
             // Description prompt templates
             var DescriptionTemplates = {
                 '1': "<?php 
-echo  esc_js( esc_html__( 'Craft an extensive and captivating narrative around the product: %s. Dive deep into its key features, benefits, and value proposition. Use its Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories] to enrich the narrative.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Craft an extensive and captivating narrative around the product: %s. Dive deep into its key features, benefits, and value proposition. Use its Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories] to enrich the narrative.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '2': "<?php 
-echo  esc_js( esc_html__( 'Develop a comprehensive and detailed description for the product: %s that serves as a complete guide for the customer, detailing its functionality, features, and use-cases. Make sure to incorporate its Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Develop a comprehensive and detailed description for the product: %s that serves as a complete guide for the customer, detailing its functionality, features, and use-cases. Make sure to incorporate its Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>",
                 '3': "<?php 
-echo  esc_js( esc_html__( 'Write a compelling product description for %s that evokes an emotional connection, inspiring the customer to visualize themselves using the product. Leverage its Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories] to add depth and context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Write a compelling product description for %s that evokes an emotional connection, inspiring the customer to visualize themselves using the product. Leverage its Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories] to add depth and context.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '4': "<?php 
-echo  esc_js( esc_html__( 'Construct an in-depth description for the product: %s that focuses on its unique selling propositions. Distinguish it from competitors and highlight what makes it a must-have. Use Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories] for a more detailed context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Construct an in-depth description for the product: %s that focuses on its unique selling propositions. Distinguish it from competitors and highlight what makes it a must-have. Use Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories] for a more detailed context.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '5': "<?php 
-echo  esc_js( esc_html__( 'Compose an SEO-optimized, yet customer-centric, description for the product: %s. Include relevant keywords naturally, and focus on answering any questions a customer might have about the product. Utilize Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories] for richer context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Compose an SEO-optimized, yet customer-centric, description for the product: %s. Include relevant keywords naturally, and focus on answering any questions a customer might have about the product. Utilize Attributes: [current_attributes], Short Description: [current_short_description] and Product Categories: [current_categories] for richer context.', 'gpt3-ai-content-generator' ) );
 ?>"
             };
 
@@ -3870,19 +3671,19 @@ echo  esc_js( esc_html__( 'Compose an SEO-optimized, yet customer-centric, descr
             // Short Description prompt templates
             var ShortDescriptionTemplates = {
                 '1': "<?php 
-echo  esc_js( esc_html__( 'Compose a short description for the product: %s that succinctly highlights its key features and benefits. Use the following attributes and description for context: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Compose a short description for the product: %s that succinctly highlights its key features and benefits. Use the following attributes and description for context: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>",
                 '2': "<?php 
-echo  esc_js( esc_html__( 'Write a short description for the product: %s that clearly outlines how it solves a specific problem for the customer. Reference these details for a better understanding: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Write a short description for the product: %s that clearly outlines how it solves a specific problem for the customer. Reference these details for a better understanding: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>",
                 '3': "<?php 
-echo  esc_js( esc_html__( 'Craft a compelling short description for the product: %s that emphasizes what sets it apart from competitors. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Craft a compelling short description for the product: %s that emphasizes what sets it apart from competitors. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '4': "<?php 
-echo  esc_js( esc_html__( 'Create an emotive short description for the product: %s that aims to establish an emotional connection with potential buyers. Use the following for context: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Create an emotive short description for the product: %s that aims to establish an emotional connection with potential buyers. Use the following for context: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>",
                 '5': "<?php 
-echo  esc_js( esc_html__( 'Devise an SEO-optimized short description for the product: %s, incorporating relevant keywords without sacrificing readability. Use these details for reference: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Devise an SEO-optimized short description for the product: %s, incorporating relevant keywords without sacrificing readability. Use these details for reference: Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>"
             };
 
@@ -3904,19 +3705,19 @@ echo  esc_js( esc_html__( 'Devise an SEO-optimized short description for the pro
             // Meta Description prompt templates
             var MetaDescriptionTemplates = {
                 '1': "<?php 
-echo  esc_js( esc_html__( 'Craft a meta description for the product: %s that succinctly highlights its key features and benefits. Aim to stay within 155 characters. Use Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Craft a meta description for the product: %s that succinctly highlights its key features and benefits. Aim to stay within 155 characters. Use Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '2': "<?php 
-echo  esc_js( esc_html__( 'Compose a compelling 155-character meta description for the product: %s that illustrates how it solves a specific problem for the customer. Reference these details: Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Compose a compelling 155-character meta description for the product: %s that illustrates how it solves a specific problem for the customer. Reference these details: Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>",
                 '3': "<?php 
-echo  esc_js( esc_html__( 'Write a meta description for the product: %s that emotionally engages the potential customer, inspiring them to click and learn more. Limit to 155 characters. Use Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description] and Product Categories: [current_categories] for added depth.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Write a meta description for the product: %s that emotionally engages the potential customer, inspiring them to click and learn more. Limit to 155 characters. Use Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description] and Product Categories: [current_categories] for added depth.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '4': "<?php 
-echo  esc_js( esc_html__( 'Create an SEO-optimized meta description for the product: %s that is rich in keywords, yet readable and engaging. Keep it under 155 characters. Refer to these details: Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Create an SEO-optimized meta description for the product: %s that is rich in keywords, yet readable and engaging. Keep it under 155 characters. Refer to these details: Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description], Product Categories: [current_categories].', 'gpt3-ai-content-generator' ) );
 ?>",
                 '5': "<?php 
-echo  esc_js( esc_html__( 'Devise a straightforward, 155-character meta description for the product: %s that provides just the facts, appealing to a no-nonsense customer base. Use Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Devise a straightforward, 155-character meta description for the product: %s that provides just the facts, appealing to a no-nonsense customer base. Use Attributes: [current_attributes], Full Description: [current_full_description], Short Description: [current_short_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) );
 ?>"
             };
 
@@ -3937,19 +3738,19 @@ echo  esc_js( esc_html__( 'Devise a straightforward, 155-character meta descript
             // Tags prompt templates
             var TagsTemplates = {
                 '1': "<?php 
-echo  esc_js( esc_html__( 'Generate a set of highly relevant and SEO-optimized tags for the product: %s. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Generate a set of highly relevant and SEO-optimized tags for the product: %s. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '2': "<?php 
-echo  esc_js( esc_html__( 'Create a list of tags for the product: %s that will increase its discoverability. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Create a list of tags for the product: %s that will increase its discoverability. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '3': "<?php 
-echo  esc_js( esc_html__( 'Craft a set of tags for the product: %s that describe its features and benefits. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Craft a set of tags for the product: %s that describe its features and benefits. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '4': "<?php 
-echo  esc_js( esc_html__( 'Compile a group of keywords as tags for the product: %s that encompass its functionality and use-cases. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Compile a group of keywords as tags for the product: %s that encompass its functionality and use-cases. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '5': "<?php 
-echo  esc_js( esc_html__( 'Develop an SEO-optimized list of tags for the product: %s, focusing on high-search-volume keywords. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Develop an SEO-optimized list of tags for the product: %s, focusing on high-search-volume keywords. Use Attributes: [current_attributes], Short Description: [current_short_description], Full Description: [current_full_description] and Product Categories: [current_categories] for context.', 'gpt3-ai-content-generator' ) );
 ?>"
             };
 
@@ -3970,19 +3771,19 @@ echo  esc_js( esc_html__( 'Develop an SEO-optimized list of tags for the product
             // Focus Keyword prompt templates
             var FocusKeywordTemplates = {
                 '1': "<?php 
-echo  esc_js( esc_html__( 'Identify the primary keyword for the following product: %s. Please respond in English. No additional comments, just the keyword.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Identify the primary keyword for the following product: %s. Please respond in English. No additional comments, just the keyword.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '2': "<?php 
-echo  esc_js( esc_html__( 'Generate SEO-optimized and high-volume focus keywords in English for the following product: %s. Keywords should be the main terms you aim to rank for. Avoid using symbols like -, #, etc. Results must be comma-separated.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Generate SEO-optimized and high-volume focus keywords in English for the following product: %s. Keywords should be the main terms you aim to rank for. Avoid using symbols like -, #, etc. Results must be comma-separated.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '3': "<?php 
-echo  esc_js( esc_html__( 'Generate niche-specific and unique focus keywords in English for the product: %s. Keywords should closely align with the product unique features or niche. Avoid using symbols like -, #, etc. Results must be comma-separated.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Generate niche-specific and unique focus keywords in English for the product: %s. Keywords should closely align with the product unique features or niche. Avoid using symbols like -, #, etc. Results must be comma-separated.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '4': "<?php 
-echo  esc_js( esc_html__( 'Generate trending or seasonally relevant focus keywords in English for the following product: %s. Ensure they directly relate to the product and its features. Avoid using symbols like -, #, etc. Results must be comma-separated.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Generate trending or seasonally relevant focus keywords in English for the following product: %s. Ensure they directly relate to the product and its features. Avoid using symbols like -, #, etc. Results must be comma-separated.', 'gpt3-ai-content-generator' ) );
 ?>",
                 '5': "<?php 
-echo  esc_js( esc_html__( 'Generate focus keywords in English for the product: %s. Keywords should fill a gap or seize an opportunity that competitors might have missed but are still highly relevant to the product. Avoid using symbols like -, #, etc. Results must be comma-separated.', 'gpt3-ai-content-generator' ) ) ;
+echo esc_js( esc_html__( 'Generate focus keywords in English for the product: %s. Keywords should fill a gap or seize an opportunity that competitors might have missed but are still highly relevant to the product. Avoid using symbols like -, #, etc. Results must be comma-separated.', 'gpt3-ai-content-generator' ) );
 ?>"
             };
 

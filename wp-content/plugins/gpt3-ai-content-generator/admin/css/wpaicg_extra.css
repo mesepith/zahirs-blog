@@ -49,7 +49,6 @@
 }
 .wpaicg-bulk-title{
     display: inline-block;
-    width: 27em;
 }
 .wpaicg-bulk-item{
     margin-bottom: 5px;
@@ -62,7 +61,6 @@
 }
 .wpaicg-bulk-button{
     display: block;
-    width: 100%;
 }
 .wpaicg-bulk-track-title{
     padding: 6px 12px;
@@ -241,6 +239,7 @@ div.wpcgai_lds-ellipsis{
 }
 .wpaicg-generating-process div p{
     margin: 0;
+    font-size: 14px;
 }
 .wpaicg-generating-process-finished p{
     font-size: 20px;
@@ -384,7 +383,6 @@ div.wpcgai_lds-ellipsis{
 }
 .wpaicg_modal_close{
     position: absolute;
-    top: 10px;
     right: 10px;
     font-size: 30px;
     font-weight: bold;

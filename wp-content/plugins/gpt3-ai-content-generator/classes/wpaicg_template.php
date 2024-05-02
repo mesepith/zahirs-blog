@@ -25,7 +25,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
         public function wpaicg_template_delete()
         {
             $wpaicg_result = array('status' => 'error', 'msg'=>'Missing request');
-            if(!current_user_can('wpaicg_single_content_custom')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -47,7 +47,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
         public function wpaicg_save_template()
         {
             $wpaicg_result = array('status' => 'error', 'msg'=>esc_html__('Missing request','gpt3-ai-content-generator'));
-            if(!current_user_can('wpaicg_single_content_custom')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -96,7 +96,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
                 }
                 $selected_template = $template_id;
                 ob_start();
-                include WPAICG_PLUGIN_DIR.'admin/extra/wpaicg_custom_model_template.php';
+                include WPAICG_PLUGIN_DIR.'admin/extra/wpaicg_single.php';
                 $wpaicg_result['setting'] = ob_get_clean();
                 $wpaicg_result['status'] = 'success';
             }
@@ -106,7 +106,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
         public function wpaicg_template_post()
         {
             $wpaicg_result = array('status' => 'error', 'msg'=>esc_html__('Missing request','gpt3-ai-content-generator'));
-            if(!current_user_can('wpaicg_single_content_custom')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -194,7 +194,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
         public function wpaicg_template_generator()
         {
             $wpaicg_result = array('status' => 'error', 'msg'=>esc_html__('Missing request','gpt3-ai-content-generator'));
-            if(!current_user_can('wpaicg_single_content_custom')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);

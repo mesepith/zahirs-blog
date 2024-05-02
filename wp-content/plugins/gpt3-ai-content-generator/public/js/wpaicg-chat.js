@@ -1,7 +1,120 @@
-// Declare global variables at the top of your script
-var globalChatbotIdentity = '';
-var globalClientID = '';
+function loadConversations() {
+    var clientId = localStorage.getItem('wpaicg_chat_client_id');
+    if (!clientId) {
+        console.log("No previous conversations found.");
+        // Show conversation starters for each chat interface when there are no conversations
+        showAllConversationStarters();
+        return;
+    }
 
+    // Load conversations for both chat interfaces
+    loadChatInterface('.wpaicg-chat-shortcode', 'shortcode', clientId);
+    loadChatInterface('.wpaicg-chatbox', 'widget', clientId);
+}
+
+function showAllConversationStarters() {
+    // Target both interfaces
+    var containers = ['.wpaicg-chat-shortcode', '.wpaicg-chatbox'];
+    containers.forEach(containerSelector => {
+        var chatContainers = document.querySelectorAll(containerSelector);
+        chatContainers.forEach(chatContainer => {
+            showConversationStarters(chatContainer);
+        });
+    });
+}
+
+function loadChatInterface(containerSelector, type, clientId) {
+    var chatContainers = document.querySelectorAll(containerSelector);
+    console.log(`Found ${chatContainers.length} ${type} containers`);
+
+    chatContainers.forEach(chatContainer => {
+        console.log('Current chat container:', chatContainer);  // Detailed log of the container
+
+        // Fetch the bot ID based on the type
+        var botId = chatContainer.getAttribute('data-bot-id') || '0';
+        console.log(`Loading chat history for ${type} chat interface with bot ID ${botId} and client ID ${clientId}...`);
+
+        // Determine the history key based on whether it's a custom bot or not
+        var historyKey = botId !== '0' 
+            ? `wpaicg_chat_history_custom_bot_${botId}_${clientId}` 
+            : `wpaicg_chat_history_${type}_${clientId}`;
+
+        // Retrieve and display the chat history
+        var chatHistory = localStorage.getItem(historyKey);
+        if (chatHistory) {
+            chatHistory = JSON.parse(chatHistory);
+            var chatBox = chatContainer.querySelector('.wpaicg-chatbox-messages, .wpaicg-chat-shortcode-messages'); // Generalized selector
+            if (!chatBox) {
+                console.error(`No chat box found within the ${type} container.`);
+                return;
+            }
+            chatBox.innerHTML = '';  // Clears the chat box
+            chatHistory.forEach(message => {
+                reconstructMessage(chatBox, message, chatContainer);
+            });
+            chatBox.appendChild(document.createElement('br'));
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    chatBox.scrollTop = chatBox.scrollHeight; // Scrolls to the bottom
+                });
+            });
+            hideConversationStarter(chatContainer);
+
+        } else {
+            console.log('No chat history found for key:', historyKey);
+            showConversationStarters(chatContainer);
+        }
+    });
+}
+
+function reconstructMessage(chatBox, message, chatContainer) {
+    var messageElement = document.createElement('li');
+    var isUserMessage = message.startsWith('Human:');
+    var isWidget = chatContainer.classList.contains('wpaicg-chatbox');
+
+    // Apply the correct class based on message source and container type
+    if (isUserMessage) {
+        messageElement.className = isWidget ? 'wpaicg-chat-user-message' : 'wpaicg-user-message';
+    } else {
+        messageElement.className = isWidget ? 'wpaicg-chat-ai-message' : 'wpaicg-ai-message';
+    }
+    
+    // Format the message content
+    message = message.replace('Human:', '').replace('AI:', '').replace(/\n/g, '<br>');
+    var userBgColor = chatContainer.getAttribute('data-user-bg-color');
+    var aiBgColor = chatContainer.getAttribute('data-ai-bg-color');
+    var fontSize = chatContainer.getAttribute('data-fontsize');
+    var fontColor = chatContainer.getAttribute('data-color');
+    var useAvatar = parseInt(chatContainer.getAttribute('data-use-avatar')) || 0;
+    var userAvatar = chatContainer.getAttribute('data-user-avatar');
+    var aiAvatar = chatContainer.getAttribute('data-ai-avatar');
+    var displayName = isUserMessage ? (useAvatar ? `<img src="${userAvatar}" height="40" width="40">` : 'You:') : (useAvatar ? `<img src="${aiAvatar}" height="40" width="40">` : 'AI:');
+
+    messageElement.style.backgroundColor = isUserMessage ? userBgColor : aiBgColor;
+    messageElement.style.color = fontColor;
+    messageElement.style.fontSize = fontSize;
+    messageElement.innerHTML = `<p style="width:100%"><strong class="wpaicg-chat-avatar">${displayName}</strong> <span class="wpaicg-chat-message">${message}</span></p>`;
+
+    chatBox.appendChild(messageElement);
+}
+function hideConversationStarter(chatContainer) {
+    var starters = chatContainer.querySelectorAll('.wpaicg-conversation-starters');
+    starters.forEach(starter => starter.style.display = 'none');
+}
+
+function showConversationStarters(chatContainer) {
+    const startersContainer = chatContainer.querySelector('.wpaicg-conversation-starters');
+    if (startersContainer) {  // Check if the container exists
+        startersContainer.style.visibility = 'visible'; // Make the container visible if it exists
+        const starters = startersContainer.querySelectorAll('.wpaicg-conversation-starter');
+        starters.forEach((starter, index) => {
+            setTimeout(() => {
+                starter.style.opacity = "1";
+                starter.style.transform = "translateY(0)";
+            }, index * 150); // Staggered appearance
+        });
+    }
+}
 function wpaicgChatShortcodeSize(){
     var wpaicgWindowWidth = window.innerWidth;
     var wpaicgWindowHeight = window.innerHeight;
@@ -75,110 +188,70 @@ function wpaicgChatShortcodeSize(){
             else{
                 chatShortcode.style.marginTop = '';
             }
-            var deduceHeight = 69;
-            if(chatFooter === 'true'){
-                deduceHeight += 18;
-            }
-            if(chatBar){
-                deduceHeight += 30;
-            }
-            chatShortcode.getElementsByClassName('wpaicg-chat-shortcode-messages')[0].style.height = (chatHeight-deduceHeight)+'px';
+            chatShortcode.getElementsByClassName('wpaicg-chat-shortcode-messages')[0].style.height = chatHeight+'px';
         }
     }
 }
-function wpaicgChatBoxSize(){
+function wpaicgChatBoxSize() {
     var wpaicgWindowWidth = window.innerWidth;
     var wpaicgWindowHeight = window.innerHeight;
     var chatWidgets = document.getElementsByClassName('wpaicg_chat_widget_content');
-    if(chatWidgets !== null && chatWidgets.length){
-        var chatPreviewBox = document.getElementsByClassName('wpaicg-chatbox-preview-box');
-        for(var i=0;i<chatWidgets.length;i++){
+    var chatPreviewBox = document.getElementsByClassName('wpaicg-chatbox-preview-box');
+
+    if (chatWidgets.length) {
+        for (var i = 0; i < chatWidgets.length; i++) {
             var chatWidget = chatWidgets[i];
             var chatbox = chatWidget.getElementsByClassName('wpaicg-chatbox')[0];
-            var chatWidth = chatbox.getAttribute('data-width');
-            var chatHeight = chatbox.getAttribute('data-height');
+            var chatWidth = chatbox.getAttribute('data-width') || '350';
+            var chatHeight = chatbox.getAttribute('data-height') || '400';
             var chatFooter = chatbox.getAttribute('data-footer');
             var chatboxBar = chatbox.getElementsByClassName('wpaicg-chatbox-action-bar');
-            var chatRounded = parseFloat(chatbox.getAttribute('data-chat_rounded'));
-            var textRounded = parseFloat(chatbox.getAttribute('data-text_rounded'));
-            var textHeight= parseFloat(chatbox.getAttribute('data-text_height'));
-            var textInput = chatbox.getElementsByClassName('wpaicg-chatbox-typing')[0];
-            textInput.style.height =  textHeight+'px';
-            textInput.style.borderRadius =  textRounded+'px';
-            chatbox.style.borderRadius = chatRounded+'px';
-            chatbox.style.overflow = 'hidden';
-            chatWidth = chatWidth !== null ? chatWidth : '350';
-            chatHeight = chatHeight !== null ? chatHeight : '400';
-            if(chatPreviewBox.length){
+            var textHeight = parseFloat(chatbox.getAttribute('data-text_height'));
+
+            // Adjust dimensions for the preview box if present
+            if (chatPreviewBox.length && chatPreviewBox[0].offsetWidth) {
                 wpaicgWindowWidth = chatPreviewBox[0].offsetWidth;
             }
-            if(chatWidth.indexOf('%') < 0){
-                if(chatWidth.indexOf('px') < 0){
-                    chatWidth = parseFloat(chatWidth);
-                }
-                else{
-                    chatWidth = parseFloat(chatWidth.replace(/px/g,''));
-                }
+
+            // Calculate dimensions dynamically
+            chatWidth = resolveDimension(chatWidth, wpaicgWindowWidth);
+            chatHeight = resolveDimension(chatHeight, wpaicgWindowHeight);
+
+            chatbox.style.width = chatWidth + 'px';
+            chatbox.style.height = chatHeight + 'px';
+            chatWidget.style.width = chatWidth + 'px';
+            chatWidget.style.height = chatHeight + 'px';
+
+            if (chatPreviewBox.length) {
+                chatPreviewBox[0].style.height = (chatHeight + 125) + 'px'; // Adjusting preview box height
             }
-            else{
-                chatWidth = parseFloat(chatWidth.replace(/%/g,''));
-                var positionChatbox = 45;
-                if(!chatPreviewBox.length){
-                    if(wpaicgWindowWidth < 480){
-                        positionChatbox = 20;
-                    }
-                    chatWidth = (chatWidth*wpaicgWindowWidth/100) - positionChatbox;
-                }
-                else{
-                    chatWidth = chatWidth*wpaicgWindowWidth/100;
-                }
-            }
-            if(wpaicgWindowWidth < 480 && chatWidth < 350){
-                chatWidth = wpaicgWindowWidth - 20;
-            }
-            if(chatHeight.indexOf('%') < 0){
-                if(chatHeight.indexOf('px') < 0){
-                    chatHeight = parseFloat(chatHeight);
-                }
-                else{
-                    chatHeight = parseFloat(chatHeight.replace(/px/g,''));
-                }
-            }
-            else{
-                chatHeight = parseFloat(chatHeight.replace(/%/g,''));
-                chatHeight = chatHeight*wpaicgWindowHeight/100;
-            }
-            if(chatPreviewBox.length){
-                chatPreviewBox[0].style.height = (chatHeight+125)+'px';
-            }
-            chatbox.style.width = chatWidth+'px';
-            chatbox.style.height = chatHeight+'px';
-            chatWidget.style.width = chatWidth+'px';
-            chatWidget.style.height = chatHeight+'px';
-            var chatboxContentHeight,chatboxMessagesHeight;
-            if(chatboxBar && chatboxBar.length){
-                chatboxContentHeight = chatHeight - 40 - textHeight;
-                chatboxMessagesHeight = chatHeight - 64 - textHeight;
-            }
-            else{
-                chatboxContentHeight = chatHeight - 10 - textHeight;
-                chatboxMessagesHeight = chatHeight - 34 - textHeight;
-            }
-            if(chatFooter === 'true'){
-                if(chatboxBar && chatboxBar.length) {
-                    chatboxContentHeight = chatHeight - 53 - textHeight;
-                    chatboxMessagesHeight = chatHeight - 77 - textHeight;
-                }
-                else{
-                    chatboxContentHeight = chatHeight - 23 - textHeight;
-                    chatboxMessagesHeight = chatHeight - 47 - textHeight;
-                }
-            }
-            chatWidget.getElementsByClassName('wpaicg-chatbox-content')[0].style.height = chatboxContentHeight+'px';
-            chatWidget.getElementsByClassName('wpaicg-chatbox-messages')[0].style.height = chatboxMessagesHeight+'px';
+
+            // Adjusting heights for content and message areas
+            var actionBarHeight = chatboxBar.length ? 40 : 0; // Assuming action bar height is 40
+            var footerHeight = chatFooter ? 60 : 0; // Adjusting footer height if enabled
+            var contentHeight = chatHeight - textHeight - actionBarHeight - footerHeight - 20; // Including some padding
+            var messagesHeight = contentHeight - 20; // Additional space for inner padding or margins
+
+            var chatboxContent = chatWidget.getElementsByClassName('wpaicg-chatbox-content')[0];
+            var chatboxMessages = chatWidget.getElementsByClassName('wpaicg-chatbox-messages')[0];
+            chatboxContent.style.height = contentHeight + 'px';
+            chatboxMessages.style.height = messagesHeight + 'px';
+
+            // Ensure last message is visible
+            chatboxMessages.scrollTop = chatboxMessages.scrollHeight;
         }
     }
 }
+
+function resolveDimension(value, totalSize) {
+    if (value.includes('%')) {
+        return parseFloat(value) / 100 * totalSize;
+    } else if (value.includes('px')) {
+        return parseFloat(value.replace('px', ''));
+    }
+    return parseFloat(value); // Default to parsing the value as pixels if no units are specified
+}
+
 function wpaicgChatInit() {
     let wpaicgMicIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M176 0C123 0 80 43 80 96V256c0 53 43 96 96 96s96-43 96-96V96c0-53-43-96-96-96zM48 216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 89.1 66.2 162.7 152 174.4V464H104c-13.3 0-24 10.7-24 24s10.7 24 24 24h72 72c13.3 0 24-10.7 24-24s-10.7-24-24-24H200V430.4c85.8-11.7 152-85.3 152-174.4V216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 70.7-57.3 128-128 128s-128-57.3-128-128V216z"/></svg>';
     let wpaicgStopIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm256-96a96 96 0 1 1 0 192 96 96 0 1 1 0-192zm0 224a128 128 0 1 0 0-256 128 128 0 1 0 0 256zm0-96a32 32 0 1 0 0-64 32 32 0 1 0 0 64z"/></svg>';
@@ -197,6 +270,28 @@ function wpaicgChatInit() {
     var wpaicgChatDownloadButtons = document.getElementsByClassName('wpaicg-chatbox-download-btn');
     var wpaicg_chat_widget_toggles = document.getElementsByClassName('wpaicg_toggle');
     var wpaicg_chat_widgets = document.getElementsByClassName('wpaicg_chat_widget');
+    function setupConversationStarters() {
+        const starters = document.querySelectorAll('.wpaicg-conversation-starter');
+        starters.forEach(starter => {
+            starter.addEventListener('click', function() {
+                const messageText = starter.innerText || starter.textContent;
+                const chatContainer = starter.closest('.wpaicg-chat-shortcode') || starter.closest('.wpaicg-chatbox');
+                const type = chatContainer.classList.contains('wpaicg-chat-shortcode') ? 'shortcode' : 'widget';
+                const typingInput = type === 'shortcode' ? chatContainer.querySelector('.wpaicg-chat-shortcode-typing') : chatContainer.querySelector('.wpaicg-chatbox-typing');
+    
+                typingInput.value = messageText;
+                wpaicgSendChatMessage(chatContainer, typingInput, type);
+    
+                // Hide all starters
+                starters.forEach(starter => {
+                    starter.style.display = 'none';
+                });
+            });
+        });
+    }
+    
+    setupConversationStarters();
+
 
     var imageIcon = document.querySelector('.wpaicg-img-icon');
     
@@ -216,15 +311,44 @@ function wpaicgChatInit() {
         });
     }
 
-    var wpaicgChatClearButtons = document.getElementsByClassName('wpaicg-chatbox-clear-btn');
-    if (wpaicgChatClearButtons.length) {
-        for (var i = 0; i < wpaicgChatClearButtons.length; i++) {
-            var wpaicgChatClearButton = wpaicgChatClearButtons[i];
-            wpaicgChatClearButton.addEventListener('click', function() {
-                clearChatHistory();
+    // Function to set up event listeners on all clear chat buttons
+    function setupClearChatButtons() {
+        var wpaicgChatClearButtons = document.querySelectorAll('.wpaicg-chatbox-clear-btn');
+        wpaicgChatClearButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                var chatContainer = button.closest('[data-bot-id]'); // Finds the nearest parent with 'data-bot-id'
+                if (chatContainer) {
+                    var botId = chatContainer.getAttribute('data-bot-id') || '0';
+                    var clientId = localStorage.getItem('wpaicg_chat_client_id');
+                    clearChatHistory(botId, clientId, chatContainer);
+                }
             });
+        });
+    }
+
+    // Function to clear the chat history from local storage and the display
+    function clearChatHistory(botId, clientId, chatContainer) {
+        var isCustomBot = botId !== '0';
+        var type = chatContainer.classList.contains('wpaicg-chat-shortcode') ? 'shortcode' : 'widget'; // Determine the type based on class
+        var historyKey = isCustomBot 
+            ? `wpaicg_chat_history_custom_bot_${botId}_${clientId}` 
+            : `wpaicg_chat_history_${type}_${clientId}`; // Adjust history key based on type
+
+        // Remove the item from local storage
+        localStorage.removeItem(historyKey);
+        console.log(`Chat history cleared for bot ID ${botId} and client ID ${clientId}.`);
+
+        // Clear the chat display
+        var chatBoxSelector = '.wpaicg-chatbox-messages, .wpaicg-chat-shortcode-messages'; // Generalized selector for both types
+        var chatBox = chatContainer.querySelector(chatBoxSelector);
+        if (chatBox) {
+            chatBox.innerHTML = ''; // Clear the chat box visually
         }
     }
+
+    // Call this function once your DOM is fully loaded or at the end of your script
+    setupClearChatButtons();
+
 
     if(wpaicg_chat_widget_toggles !== null && wpaicg_chat_widget_toggles.length){
         for(var i=0;i<wpaicg_chat_widget_toggles.length;i++){
@@ -297,44 +421,6 @@ function wpaicgChatInit() {
                 chatbox.getElementsByClassName('wpaicg_toggle')[0].click();
 
             })
-        }
-    }
-    
-    function clearChatHistory() {
-        let chatHistoryKey = 'wpaicg_chat_history_' + globalChatbotIdentity + '_' + globalClientID;
-        localStorage.removeItem(chatHistoryKey);
-    
-        // Function to clear messages except the first one
-        function clearMessagesExceptFirst(messagesBox) {
-            if (messagesBox) {
-                // Select all the <li> elements (chat messages) in the messages box
-                let messages = messagesBox.querySelectorAll('li');
-    
-                // Loop through all messages, remove each except the first one
-                for (let i = messages.length - 1; i > 0; i--) {
-                    messagesBox.removeChild(messages[i]);
-                }
-            }
-        }
-    
-        // Clear messages for chat widgets
-        var chatWidgets = document.getElementsByClassName('wpaicg_chat_widget_content');
-        if (chatWidgets !== null && chatWidgets.length) {
-            for (var i = 0; i < chatWidgets.length; i++) {
-                var chatWidget = chatWidgets[i];
-                var messagesBox = chatWidget.getElementsByClassName('wpaicg-chatbox-messages')[0];
-                clearMessagesExceptFirst(messagesBox);
-            }
-        }
-    
-        // Clear messages for chat shortcodes
-        var chatShortcodes = document.getElementsByClassName('wpaicg-chat-shortcode');
-        if (chatShortcodes !== null && chatShortcodes.length) {
-            for (var i = 0; i < chatShortcodes.length; i++) {
-                var chatShortcode = chatShortcodes[i];
-                var messagesBox = chatShortcode.getElementsByClassName('wpaicg-chat-shortcode-messages')[0];
-                clearMessagesExceptFirst(messagesBox);
-            }
         }
     }
     
@@ -486,6 +572,7 @@ function wpaicgChatInit() {
     
 
     function wpaicgSendChatMessage(chat, typing, type, blob) {
+        hideConversationStarters();
         let wpaicg_box_typing = typing;
         let wpaicg_ai_thinking, wpaicg_messages_box, class_user_item, class_ai_item;
         let wpaicgMessage = '';
@@ -554,6 +641,12 @@ function wpaicgChatInit() {
             wpaicg_messages_box = chat.getElementsByClassName('wpaicg-chatbox-messages')[0];
             class_user_item = 'wpaicg-chat-user-message';
             class_ai_item = 'wpaicg-chat-ai-message';
+            wpaicg_messages_box.scrollTop = wpaicg_messages_box.scrollHeight;
+            // Retrieve all message elements
+            const messages = wpaicg_messages_box.querySelectorAll('li');
+            // scroll to the last message
+            messages[messages.length - 1].scrollIntoView();
+            
         } else {
             wpaicg_ai_thinking = chat.getElementsByClassName('wpaicg-bot-thinking')[0];
             wpaicg_messages_box = chat.getElementsByClassName('wpaicg-chat-shortcode-messages')[0];
@@ -642,10 +735,6 @@ function wpaicgChatInit() {
         //append client_id to wpaicgData
         wpaicgData.append('wpaicg_chat_client_id', clientID);
 
-        // Inside wpaicgSendChatMessage function
-        globalChatbotIdentity = chatbot_identity; // Set the global variable
-        globalClientID = clientID; // Set the global variable
-
 
         // Function to update chat history in local storage for a specific bot identity
         function updateChatHistory(message, sender) {
@@ -654,12 +743,12 @@ function wpaicgChatInit() {
             chatHistory = chatHistory ? JSON.parse(chatHistory) : [];
         
             // Format and add the new message
-            let formattedMessage = (sender === 'user' ? "Human: " : "AI: ") + message.replace(/\n/g, ' ').trim();
+            let formattedMessage = (sender === 'user' ? "Human: " : "AI: ") + message.trim();
             chatHistory.push(formattedMessage);
         
             // Keep only the last 5 messages if there are more than 5
-            if (chatHistory.length > 5) {
-                chatHistory = chatHistory.slice(-5);
+            if (chatHistory.length > 6) {
+                chatHistory = chatHistory.slice(-6);
             }
         
             // Calculate total character count
@@ -710,7 +799,8 @@ function wpaicgChatInit() {
                     } else {
                         wpaicg_message = '<li class="' + class_ai_item + '" style="background-color:' + wpaicg_ai_bg + ';font-size: ' + wpaicg_font_size + 'px;color: ' + wpaicg_font_color + '"><p style="width:100%"><strong class="wpaicg-chat-avatar">' + wpaicg_ai_name + '</strong><span class="wpaicg-chat-message wpaicg-chat-message-error" id="wpaicg-chat-message-' + wpaicg_randomnum + '"></span>';
                         wpaicg_response_text = 'Something went wrong. Please clear your cache and try again.';
-                        clearChatHistory();
+                        // clear chat history
+                        localStorage.removeItem('wpaicg_chat_history_' + chatbot_identity + '_' + clientID);
                     }
                     if (wpaicg_response_text === 'null' || wpaicg_response_text === null) {
                         wpaicg_response_text = 'Empty response from api. Check your server logs for more details.';
@@ -898,6 +988,13 @@ function wpaicgChatInit() {
         }
     }
 
+    // Function to hide all conversation starters
+    function hideConversationStarters() {
+        const starters = document.querySelectorAll('.wpaicg-conversation-starters');
+        starters.forEach(starter => {
+            starter.style.display = 'none';
+        });
+    }
     function wpaicgFormatter(inputText) {
 
         inputText = inputText !== '' ? inputText.trim() : '';
@@ -1001,7 +1098,7 @@ function wpaicgChatInit() {
             let chatHistory = localStorage.getItem(chatHistoryKey);
             chatHistory = chatHistory ? JSON.parse(chatHistory) : [];
         
-            let formattedMessage = (sender === 'user' ? "Human: " : "AI: ") + message.replace(/\n/g, ' ').trim();
+            let formattedMessage = (sender === 'user' ? "Human: " : "AI: ") + message.trim();
             chatHistory.push(formattedMessage);
         
             localStorage.setItem(chatHistoryKey, JSON.stringify(chatHistory));
@@ -1176,9 +1273,12 @@ function wpaicgChatInit() {
         };
 
         eventSource.onerror = function(error) {
-            clearChatHistory();
             console.log("EventSource failed: ", error);
             toggleBlinkingCursor(false);
+            // stop the typing indicator
+            wpaicg_ai_thinking.style.display = 'none';
+            // stop the event source
+            eventSource.close();
         };
 
         // Function to format content, replacing newlines appropriately
@@ -1315,6 +1415,8 @@ function wpaicgChatInit() {
     }
 }
 wpaicgChatInit();
+// Call the init function when the document is ready
+document.addEventListener('DOMContentLoaded', loadConversations);
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Recorder = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
         "use strict";
 

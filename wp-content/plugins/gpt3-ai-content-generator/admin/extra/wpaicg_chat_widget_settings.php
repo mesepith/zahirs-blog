@@ -17,6 +17,24 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
         update_option('wpaicg_widget_qdrant_collection', $selectedCollection);
     }
 
+    if (isset($_POST['wpaicg_conversation_starters_widget'])) {
+        $starters = $_POST['wpaicg_conversation_starters_widget'];
+        $sanitized_starters = array();
+    
+        foreach ($starters as $index => $starter) {
+            if (!empty($starter)) { // Only save non-empty starters
+                $sanitized_starters[] = array(
+                    'index' => $index,
+                    'text' => sanitize_text_field($starter)
+                );
+            }
+        }
+    
+        // Save the structured array as a JSON string
+        update_option('wpaicg_conversation_starters_widget', json_encode($sanitized_starters));
+    }
+    
+
     if ( isset($_POST['wpaicg_chat_temperature']) && (!is_numeric( $_POST['wpaicg_chat_temperature'] ) || floatval( $_POST['wpaicg_chat_temperature'] ) < 0 || floatval( $_POST['wpaicg_chat_temperature'] ) > 1 )) {
         $errors = sprintf(
             /* translators: 1: minimum temperature, 2: maximum temperature */
@@ -111,8 +129,7 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
         $message = esc_html__('Setting saved successfully','gpt3-ai-content-generator');
     }
 }
-wp_enqueue_script('wp-color-picker');
-wp_enqueue_style('wp-color-picker');
+
 $wpaicg_custom_models = get_option('wpaicg_custom_models',array());
 $table = $wpdb->prefix . 'wpaicg';
 $existingValue = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE name = %s", 'wpaicg_settings' ), ARRAY_A );
@@ -126,15 +143,18 @@ $wpaicg_chat_widget = get_option('wpaicg_chat_widget',[]);
 $wpaicg_chat_icon = isset($wpaicg_chat_widget['icon']) && !empty($wpaicg_chat_widget['icon']) ? $wpaicg_chat_widget['icon'] : 'default';
 $wpaicg_chat_status = isset($wpaicg_chat_widget['status']) && !empty($wpaicg_chat_widget['status']) ? $wpaicg_chat_widget['status'] : '';
 $wpaicg_chat_fontsize = isset($wpaicg_chat_widget['fontsize']) && !empty($wpaicg_chat_widget['fontsize']) ? $wpaicg_chat_widget['fontsize'] : '13';
-$wpaicg_chat_fontcolor = isset($wpaicg_chat_widget['fontcolor']) && !empty($wpaicg_chat_widget['fontcolor']) ? $wpaicg_chat_widget['fontcolor'] : '#fff';
-$wpaicg_chat_bgcolor = isset($wpaicg_chat_widget['bgcolor']) && !empty($wpaicg_chat_widget['bgcolor']) ? $wpaicg_chat_widget['bgcolor'] : '#343540';
-$wpaicg_bg_text_field = isset($wpaicg_chat_widget['bg_text_field']) && !empty($wpaicg_chat_widget['bg_text_field']) ? $wpaicg_chat_widget['bg_text_field'] : '#fff';
-$wpaicg_send_color = isset($wpaicg_chat_widget['send_color']) && !empty($wpaicg_chat_widget['send_color']) ? $wpaicg_chat_widget['send_color'] : '#fff';
-$wpaicg_border_text_field = isset($wpaicg_chat_widget['border_text_field']) && !empty($wpaicg_chat_widget['border_text_field']) ? $wpaicg_chat_widget['border_text_field'] : '#ccc';
+$wpaicg_chat_fontcolor = isset($wpaicg_chat_widget['fontcolor']) && !empty($wpaicg_chat_widget['fontcolor']) ? $wpaicg_chat_widget['fontcolor'] : '#495057';
+$wpaicg_chat_bgcolor = isset($wpaicg_chat_widget['bgcolor']) && !empty($wpaicg_chat_widget['bgcolor']) ? $wpaicg_chat_widget['bgcolor'] : '#f8f9fa';
+$wpaicg_bg_text_field = isset($wpaicg_chat_widget['bg_text_field']) && !empty($wpaicg_chat_widget['bg_text_field']) ? $wpaicg_chat_widget['bg_text_field'] : '#ffffff';
+$wpaicg_send_color = isset($wpaicg_chat_widget['send_color']) && !empty($wpaicg_chat_widget['send_color']) ? $wpaicg_chat_widget['send_color'] : '#d1e8ff';
+$wpaicg_footer_color = isset($wpaicg_chat_widget['footer_color']) && !empty($wpaicg_chat_widget['footer_color']) ? $wpaicg_chat_widget['footer_color'] : '#ffffff';
+$wpaicg_footer_font_color = isset($wpaicg_chat_widget['footer_font_color']) && !empty($wpaicg_chat_widget['footer_font_color']) ? $wpaicg_chat_widget['footer_font_color'] : '#495057';
+$wpaicg_input_font_color = isset($wpaicg_chat_widget['input_font_color']) && !empty($wpaicg_chat_widget['input_font_color']) ? $wpaicg_chat_widget['input_font_color'] : '#495057';
+$wpaicg_border_text_field = isset($wpaicg_chat_widget['border_text_field']) && !empty($wpaicg_chat_widget['border_text_field']) ? $wpaicg_chat_widget['border_text_field'] : '#cccccc';
 $wpaicg_footer_text = isset($wpaicg_chat_widget['footer_text']) && !empty($wpaicg_chat_widget['footer_text']) ? $wpaicg_chat_widget['footer_text'] : '';
-$wpaicg_user_bg_color = isset($wpaicg_chat_widget['user_bg_color']) && !empty($wpaicg_chat_widget['user_bg_color']) ? $wpaicg_chat_widget['user_bg_color'] : '#444654';
-$wpaicg_ai_bg_color = isset($wpaicg_chat_widget['ai_bg_color']) && !empty($wpaicg_chat_widget['ai_bg_color']) ? $wpaicg_chat_widget['ai_bg_color'] : '#343541';
-$wpaicg_bar_color = isset($wpaicg_chat_widget['bar_color']) && !empty($wpaicg_chat_widget['bar_color']) ? $wpaicg_chat_widget['bar_color'] : '#fff';
+$wpaicg_user_bg_color = isset($wpaicg_chat_widget['user_bg_color']) && !empty($wpaicg_chat_widget['user_bg_color']) ? $wpaicg_chat_widget['user_bg_color'] : '#ccf5e1';
+$wpaicg_ai_bg_color = isset($wpaicg_chat_widget['ai_bg_color']) && !empty($wpaicg_chat_widget['ai_bg_color']) ? $wpaicg_chat_widget['ai_bg_color'] : '#d1e8ff';
+$wpaicg_bar_color = isset($wpaicg_chat_widget['bar_color']) && !empty($wpaicg_chat_widget['bar_color']) ? $wpaicg_chat_widget['bar_color'] : '#495057';
 $wpaicg_use_avatar = isset($wpaicg_chat_widget['use_avatar']) && !empty($wpaicg_chat_widget['use_avatar']) ? $wpaicg_chat_widget['use_avatar'] : false;
 $wpaicg_ai_avatar = isset($wpaicg_chat_widget['ai_avatar']) && !empty($wpaicg_chat_widget['ai_avatar']) ? $wpaicg_chat_widget['ai_avatar'] : 'default';
 $wpaicg_ai_avatar_id = isset($wpaicg_chat_widget['ai_avatar_id']) && !empty($wpaicg_chat_widget['ai_avatar_id']) ? $wpaicg_chat_widget['ai_avatar_id'] : '';
@@ -160,8 +180,8 @@ $wpaicg_chat_embedding_type = get_option('wpaicg_chat_embedding_type',false);
 $wpaicg_chat_embedding_top = get_option('wpaicg_chat_embedding_top',false);
 $wpaicg_audio_enable = isset($wpaicg_chat_widget['audio_enable']) ? $wpaicg_chat_widget['audio_enable'] : false;
 $wpaicg_image_enable = isset($wpaicg_chat_widget['image_enable']) ? $wpaicg_chat_widget['image_enable'] : false;
-$wpaicg_mic_color = isset($wpaicg_chat_widget['mic_color']) ? $wpaicg_chat_widget['mic_color'] : '#222';
-$wpaicg_stop_color = isset($wpaicg_chat_widget['stop_color']) ? $wpaicg_chat_widget['stop_color'] : '#f00';
+$wpaicg_mic_color = isset($wpaicg_chat_widget['mic_color']) ? $wpaicg_chat_widget['mic_color'] : '#d1e8ff';
+$wpaicg_stop_color = isset($wpaicg_chat_widget['stop_color']) ? $wpaicg_chat_widget['stop_color'] : '#d1e8ff';
 $wpaicg_user_limited = isset($wpaicg_chat_widget['user_limited']) ? $wpaicg_chat_widget['user_limited'] : false;
 $wpaicg_guest_limited = isset($wpaicg_chat_widget['guest_limited']) ? $wpaicg_chat_widget['guest_limited'] : false;
 $wpaicg_user_tokens = isset($wpaicg_chat_widget['user_tokens']) ? $wpaicg_chat_widget['user_tokens'] : 0;
@@ -175,7 +195,7 @@ $wpaicg_chat_fullscreen = isset($wpaicg_chat_widget['fullscreen']) && !empty($wp
 $wpaicg_chat_close_btn = isset($wpaicg_chat_widget['close_btn']) && !empty($wpaicg_chat_widget['close_btn']) ? $wpaicg_chat_widget['close_btn'] : false;
 $wpaicg_chat_download_btn = isset($wpaicg_chat_widget['download_btn']) && !empty($wpaicg_chat_widget['download_btn']) ? $wpaicg_chat_widget['download_btn'] : false;
 $wpaicg_chat_clear_btn = isset($wpaicg_chat_widget['clear_btn']) && !empty($wpaicg_chat_widget['clear_btn']) ? $wpaicg_chat_widget['clear_btn'] : false;
-$wpaicg_thinking_color = isset($wpaicg_chat_widget['thinking_color']) && !empty($wpaicg_chat_widget['thinking_color']) ? $wpaicg_chat_widget['thinking_color'] : '#fff';
+$wpaicg_thinking_color = isset($wpaicg_chat_widget['thinking_color']) && !empty($wpaicg_chat_widget['thinking_color']) ? $wpaicg_chat_widget['thinking_color'] : '#495057';
 $wpaicg_delay_time = isset($wpaicg_chat_widget['delay_time']) && !empty($wpaicg_chat_widget['delay_time']) ? $wpaicg_chat_widget['delay_time'] : '';
 $wpaicg_chat_to_speech = isset($wpaicg_chat_widget['chat_to_speech']) ? $wpaicg_chat_widget['chat_to_speech'] : false;
 $wpaicg_elevenlabs_voice = isset($wpaicg_chat_widget['elevenlabs_voice']) ? $wpaicg_chat_widget['elevenlabs_voice'] : '';
@@ -202,7 +222,69 @@ $wpaicg_qdrant_collections = get_option('wpaicg_qdrant_collections',[]);
 $wpaicg_qdrant_collections = empty($wpaicg_qdrant_collections) ? array() : $wpaicg_qdrant_collections;
 // Retrieve the currently selected Qdrant collection
 $wpaicg_widget_qdrant_collection = get_option('wpaicg_widget_qdrant_collection', '');
+$wpaicg_conversation_starters_widget = get_option('wpaicg_conversation_starters_widget', '');
+$wpaicg_conversation_starters_widget = empty($wpaicg_conversation_starters_widget) ? array() : json_decode($wpaicg_conversation_starters_widget, true);
 ?>
+<style>
+    .wpaicg_chat_widget_content {
+        /* Initial state of the chat window - hidden */
+        opacity: 0;
+        transform: scale(0.9);
+        visibility: hidden;
+        transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
+    }
+
+    .wpaicg_widget_open .wpaicg_chat_widget_content {
+        /* Visible state of the chat window */
+        opacity: 1;
+        transform: scale(1);
+        visibility: visible;
+        transition-delay: 0s;
+    }
+    /* Updated shining light effect for hover without background */
+    @keyframes shine {
+        0% {
+            background-position: -150px;
+        }
+        50% {
+            background-position: 150px;
+        }
+        100% {
+            background-position: -150px;
+        }
+    }
+
+    .wpaicg_chat_widget .wpaicg_toggle {
+        position: relative;
+        overflow: hidden;
+        transition: box-shadow 0.3s ease;
+    }
+
+    .wpaicg_chat_widget .wpaicg_toggle::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        /* Ensure gradient is completely transparent except for the shine */
+        background: linear-gradient(to right, transparent, rgba(255,255,255,0.8) 50%, transparent) no-repeat;
+        transform: rotate(30deg);
+        /* Start with the shine outside of the visible area */
+        background-position: -150px;
+    }
+
+    .wpaicg_chat_widget .wpaicg_toggle:hover::before {
+        /* Apply the animation only on hover */
+        animation: shine 2s infinite;
+    }
+
+    .wpaicg_chat_widget .wpaicg_toggle img {
+        display: block;
+        transition: opacity 0.3s ease;
+    }
+</style>
+
 <style>
     .asdisabled{
         background: #ebebeb!important;
@@ -218,26 +300,47 @@ $wpaicg_widget_qdrant_collection = get_option('wpaicg_widget_qdrant_collection',
     }
     .wpaicg_chatbox_icon svg{
     }
-    .wpaicg_chat_widget_content .wpaicg-chatbox{
-        height: 100%;
-        background-color: <?php echo esc_html($wpaicg_chat_bgcolor)?>;
-        border-radius: 5px;
-    }
-    .wpaicg_widget_open .wpaicg_chat_widget_content{
-        height: <?php echo esc_html($wpaicg_chat_height)?>px;
-    }
-    .wpaicg_chat_widget_content{
-        position: absolute;
-        bottom: calc(100% + 15px);
-        width: <?php echo esc_html($wpaicg_chat_width)?>px;
-
-    }
     .wpaicg-collapse-content textarea{
         display: inline-block!important;
         width: 48%!important;
     }
     .wpaicg_widget_open .wpaicg_chat_widget_content .wpaicg-chatbox{
         top: 0;
+    }
+    .wpaicg_chat_widget .wpaicg_toggle{
+        cursor: pointer;
+    }
+    .wpaicg_chat_widget .wpaicg_toggle img{
+        width: 75px;
+        height: 75px;
+    }
+    .wpaicg-chatbox-preview{
+        position: relative;
+    }
+
+    .wpaicg_toggle{}
+    .wpaicg_chat_widget{
+        position: absolute;
+        bottom: 0;
+    }
+    .wpaicg_widget_open .wpaicg_chat_widget_content{
+        height: <?php echo esc_html($wpaicg_chat_height)?>px;
+    }
+
+</style>
+<style>
+    .wpaicg_chat_widget_content .wpaicg-chatbox{
+        height: 100%;
+        background-color: <?php echo esc_html($wpaicg_chat_bgcolor)?>;
+        border-radius: 5px;
+        border: none;
+    }
+
+    .wpaicg_chat_widget_content{
+        position: absolute;
+        bottom: calc(100% + 15px);
+        width: <?php echo esc_html($wpaicg_chat_width)?>px;
+
     }
     .wpaicg_chat_widget_content .wpaicg-chatbox{
         position: absolute;
@@ -247,61 +350,32 @@ $wpaicg_widget_qdrant_collection = get_option('wpaicg_widget_qdrant_collection',
         height: <?php echo esc_html($wpaicg_chat_height)?>px;
         transition: top 300ms cubic-bezier(0.17, 0.04, 0.03, 0.94);
     }
-    .wpaicg_chat_widget_content .wpaicg-chatbox-content ul{
-        box-sizing: border-box;
-        background: <?php echo esc_html($wpaicg_chat_bgcolor)?>;
-    }
-    .wpaicg_chat_widget_content .wpaicg-chatbox-content ul li{
-        color: <?php echo esc_html($wpaicg_chat_fontcolor)?>;
-        font-size: <?php echo esc_html($wpaicg_chat_fontsize)?>px;
-    }
+
     .wpaicg_chat_widget_content .wpaicg-bot-thinking{
         color: <?php echo esc_html($wpaicg_chat_fontcolor)?>;
     }
     .wpaicg_chat_widget_content .wpaicg-chatbox-type{
-    <?php
-    if($wpaicg_include_footer):
-    ?>
-        padding: 5px 5px 0 5px;
-    <?php
-    endif;
-    ?>
         border-top: 0;
-        background: rgb(0 0 0 / 19%);
     }
     .wpaicg_chat_widget_content .wpaicg-chat-message{
         color: <?php echo esc_html($wpaicg_chat_fontcolor)?>;
     }
-    .wpaicg_chat_widget_content textarea.wpaicg-chatbox-typing{
-        background-color: <?php echo esc_html($wpaicg_bg_text_field)?>;
-        border-color: <?php echo esc_html($wpaicg_border_text_field)?>;
-    }
+
     .wpaicg_chat_widget_content .wpaicg-chatbox-send{
         color: <?php echo esc_html($wpaicg_send_color)?>;
     }
     .wpaicg-chatbox-footer{
-        height: 18px;
-        font-size: 11px;
-        padding: 0 5px;
-        color: <?php echo esc_html($wpaicg_send_color)?>;
-        background: rgb(0 0 0 / 19%);
-        margin-top:2px;
-        margin-bottom: 2px;
+        color: <?php echo esc_html($wpaicg_chat_fontcolor)?>;
+        background: <?php echo esc_html($wpaicg_footer_color)?>;
+        font-size: 0.75rem;
+        padding: 12px 20px;
+        border-top: 1px solid <?php echo esc_html($wpaicg_footer_color)?>;
     }
     /* inherit for hyperlink */
     .wpaicg-chatbox-footer a{
         color: inherit;
     }
-    .wpaicg_chat_widget_content textarea.wpaicg-chatbox-typing:focus{
-        outline: none;
-    }
-    .wpaicg_chat_widget .wpaicg_toggle{
-        cursor: pointer;
-    }
-    .wpaicg_chat_widget .wpaicg_toggle img{
-        width: 75px;
-        height: 75px;
-    }
+
     .wpaicg-chat-shortcode-type,.wpaicg-chatbox-type{
         position: relative;
     }
@@ -316,38 +390,11 @@ $wpaicg_widget_qdrant_collection = get_option('wpaicg_widget_qdrant_collection',
         height: 16px;
         fill: currentColor;
     }
-    .wpaicg-img-icon{
-        cursor: pointer;
-    }
-    .wpaicg-img-icon svg{
-        width: 16px;
-        height: 16px;
-        fill: currentColor;
-    }
-    .wpaicg-chatbox-preview{
-        position: relative;
-    }
-    /*.wpaicg_chat_widget_content{*/
-    /*    position: relative;*/
-    /*    overflow: unset;*/
-    /*}*/
-    /*.wpaicg_chat_widget_content .wpaicg-chatbox{*/
-    /*    position: relative;*/
-    /*}*/
-    .wpaicg_toggle{}
-    .wpaicg_chat_widget{
-        position: absolute;
-        bottom: 0;
-    }
-    .wpaicg_chat_widget_content .wpaicg-chat-ai-message *, .wpaicg_chat_widget_content .wpaicg-chat-user-message *, .wpaicg_chat_widget_content .wpaicg-chat-user-message .wpaicg-chat-message, .wpaicg_chat_widget_content .wpaicg-chat-ai-message .wpaicg-chat-message, .wpaicg_chat_widget_content .wpaicg-chat-ai-message a, .wpaicg_chat_widget_content .wpaicg-chat-user-message a{
-        color: inherit!important;
-        font-size: inherit!important;
-    }
     .wpaicg_chat_widget_content{
         overflow: hidden;
     }
     .wpaicg_widget_open .wpaicg_chat_widget_content{
-        overflow: unset;
+        overflow: visible;
     }
     .wpaicg-notice {
     color: #d9534f;
@@ -496,15 +543,6 @@ $profession_options = array(
             Knowledge</a>
         </li>
         <li>
-          <a href="javascript:void(0);" data-tab="customtext">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-layers">
-              <polygon points="12 2 2 7 12 12 22 7 12 2" />
-              <polyline points="2 17 12 22 22 17" />
-              <polyline points="2 12 12 17 22 12" />
-            </svg>
-            Interface</a>
-        </li>
-        <li>
         <a href="javascript:void(0);" data-tab="style">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-feather">
               <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
@@ -512,6 +550,15 @@ $profession_options = array(
               <line x1="17.5" y1="15" x2="9" y2="15" />
             </svg>
             Style</a>
+        </li>
+        <li>
+          <a href="javascript:void(0);" data-tab="customtext">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-layers">
+              <polygon points="12 2 2 7 12 12 22 7 12 2" />
+              <polyline points="2 17 12 22 22 17" />
+              <polyline points="2 12 12 17 22 12" />
+            </svg>
+            Interface</a>
         </li>
         <li>
         <a href="javascript:void(0);" data-tab="speech">
@@ -553,12 +600,7 @@ $profession_options = array(
             <?php wp_nonce_field('wpaicg_chat_widget_save'); ?>
             <!-- AI SETTINGS -->
             <section id="aisettings" class="tab-content">
-                <h1>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tool">
-                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                    </svg>
-                    Settings
-                </h1>
+                <h3 style="margin-top: -1em;"><?php echo esc_html__('AI Settings','gpt3-ai-content-generator')?></h3>
                 <div class="nice-form-group">
                     <label for="wpaicg_chat_widget_activate"><?php echo esc_html__('Enable Widget','gpt3-ai-content-generator')?></label>
                     <select name="wpaicg_chat_widget[status]" id="wpaicg_chat_widget_activate">
@@ -587,8 +629,7 @@ $profession_options = array(
                         <?php
                         $gpt4_models = [
                             'gpt-4' => 'GPT-4',
-                            'gpt-4-32k' => 'GPT-4 32K',
-                            'gpt-4-1106-preview' => 'GPT-4 Turbo',
+                            'gpt-4-turbo' => 'GPT-4 Turbo',
                             'gpt-4-vision-preview' => 'GPT-4 Vision'
                         ];
                         $gpt35_models = [
@@ -714,14 +755,7 @@ $profession_options = array(
             </section>
             <!-- INTERFACE -->
             <section id="customtext" class="tab-content" style="display: none;">
-                <h1>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-layers">
-                    <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                    <polyline points="2 17 12 22 22 17" />
-                    <polyline points="2 12 12 17 22 12" />
-                    </svg>
-                    Interface
-                </h1>
+                <h3 style="margin-top: -1em;"><?php echo esc_html__('Interface','gpt3-ai-content-generator')?></h3>        
                 <div class="nice-form-group">
                     <label><?php echo esc_html__('Widget Icon (75x75)','gpt3-ai-content-generator')?></label>
                     <div style="display: inline-flex; align-items: center">
@@ -763,60 +797,7 @@ $profession_options = array(
                     <label><?php echo esc_html__('Display After','gpt3-ai-content-generator')?></label>
                     <input placeholder="<?php echo esc_html__('in seconds. eg. 5','gpt3-ai-content-generator')?>" value="<?php echo esc_html($wpaicg_delay_time)?>" type="text" class="wpaicgchat_delay_time" name="wpaicg_chat_widget[delay_time]">
                 </div>
-                <div class="nice-form-group">
-                    <input <?php echo $wpaicg_use_avatar ? ' checked':''?> value="1" type="checkbox" class="wpaicgchat_use_avatar" name="wpaicg_chat_widget[use_avatar]">
-                    <label><?php echo esc_html__('Use Avatar (40x40)','gpt3-ai-content-generator')?></label>
-                </div>
-                <div class="nice-form-group">
-                    <input value="<?php echo esc_html($wpaicg_chat_icon_url)?>" type="hidden" name="wpaicg_chat_widget[icon_url]" class="wpaicg_chat_icon_url">
-                    <input value="<?php echo esc_html($wpaicg_ai_avatar_id)?>" type="hidden" name="wpaicg_chat_widget[ai_avatar_id]" class="wpaicg_ai_avatar_id">
-                    <div style="display: inline-flex; align-items: center">
-                        <input <?php echo $wpaicg_ai_avatar == 'default' ? ' checked': ''?> class="wpaicg_chatbox_avatar_default" type="radio" value="default" name="wpaicg_chat_widget[ai_avatar]">
-                        <div>
-                            <img style="display: block;width: 40px; height: 40px" src="<?php echo esc_html(WPAICG_PLUGIN_URL).'admin/images/chatbot.png'?>">
-                            <label><?php echo esc_html__('Default','gpt3-ai-content-generator')?></label>
-                        </div>
-                        <input <?php echo $wpaicg_ai_avatar == 'custom' ? ' checked': ''?> type="radio" class="wpaicg_chatbox_avatar_custom" value="custom" name="wpaicg_chat_widget[ai_avatar]">
-                        <div>
-                            <div class="wpaicg_chatbox_avatar">
-                                <?php
-                                if(!empty($wpaicg_ai_avatar_id) && $wpaicg_ai_avatar == 'custom'):
-                                    $wpaicg_ai_avatar_url = wp_get_attachment_url($wpaicg_ai_avatar_id);
-                                    ?>
-                                    <img src="<?php echo esc_html($wpaicg_ai_avatar_url)?>" width="40" height="40">
-                                <?php else: ?>
-                                    <svg width="40px" height="40px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M246.6 9.4c-12.5-12.5-32.8-12.5-45.3 0l-128 128c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 109.3V320c0 17.7 14.3 32 32 32s32-14.3 32-32V109.3l73.4 73.4c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-128-128zM64 352c0-17.7-14.3-32-32-32s-32 14.3-32 32v64c0 53 43 96 96 96H352c53 0 96-43 96-96V352c0-17.7-14.3-32-32-32s-32 14.3-32 32v64c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V352z"/></svg><br>
-                                <?php
-                                endif;
-                                ?>
-                            </div>
-                            <label><?php echo esc_html__('Custom','gpt3-ai-content-generator')?></label>
-                        </div>
-                    </div>
-                </div>
-                <fieldset class="nice-form-group">
-                <legend><?php echo esc_html__('Top Bar Options', 'gpt3-ai-content-generator'); ?></legend>
-                    <div class="nice-form-group">
-                        <input <?php echo $wpaicg_chat_fullscreen ? ' checked':''?> value="1" type="checkbox" class="wpaicgchat_fullscreen" name="wpaicg_chat_widget[fullscreen]">
-                        <label><?php echo esc_html__('Fullscreen','gpt3-ai-content-generator')?></label>
-                    </div>
-                    <div class="nice-form-group">
-                        <input <?php echo $wpaicg_chat_download_btn ? ' checked':''?> value="1" type="checkbox" class="wpaicgchat_download_btn" name="wpaicg_chat_widget[download_btn]">
-                        <label><?php echo esc_html__('Download','gpt3-ai-content-generator')?></label>
-                    </div>
-                    <div class="nice-form-group">
-                        <input <?php echo $wpaicg_chat_close_btn ? ' checked':''?> value="1" type="checkbox" class="wpaicgchat_close_btn" name="wpaicg_chat_widget[close_btn]">
-                        <label><?php echo esc_html__('Close','gpt3-ai-content-generator')?></label>
-                    </div>
-                    <div class="nice-form-group">
-                        <input <?php echo $wpaicg_chat_clear_btn ? ' checked':''?> value="1" type="checkbox" class="wpaicgchat_clear_btn" name="wpaicg_chat_widget[clear_btn]">
-                        <label><?php echo esc_html__('Clear','gpt3-ai-content-generator')?></label>
-                    </div>
-                </fieldset>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Icon Color','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_bar_color)?>" type="text" class="wpaicgchat_color wpaicgchat_bar_color" name="wpaicg_chat_widget[bar_color]">
-                </div>
+
                 <div class="nice-form-group">
                     <label><?php echo esc_html__('AI Name','gpt3-ai-content-generator')?></label>
                     <input type="text" name="_wpaicg_chatbox_ai_name" value="<?php echo esc_html( get_option( '_wpaicg_chatbox_ai_name', 'AI' ) ) ; ?>" >
@@ -861,15 +842,7 @@ $profession_options = array(
             </section>
             <!-- Knowledge -->
             <section id="knowledge" class="tab-content" style="display: none;">
-                <h1>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-align-justify">
-                    <line x1="21" y1="10" x2="3" y2="10" />
-                    <line x1="21" y1="6" x2="3" y2="6" />
-                    <line x1="21" y1="14" x2="3" y2="14" />
-                    <line x1="21" y1="18" x2="3" y2="18" />
-                    </svg>
-                Knowledge
-                </h1>
+                <h3 style="margin-top: -1em;"><?php echo esc_html__('Knowledge','gpt3-ai-content-generator')?></h3>
                 <div class="nice-form-group">
                     <label for="remember_conversation_label"><?php echo esc_html__('Conversational Memory','gpt3-ai-content-generator')?></label>
                     <select name="wpaicg_chat_widget[remember_conversation]" id="remember_conversation_label">
@@ -932,6 +905,25 @@ $profession_options = array(
                             ?>
                         </select>
                 </div>
+                <!-- Conversation Starters Section -->
+                <div class="nice-form-group" id="wpaicg_conversation_starters_wrapper">
+                    <label><?php echo esc_html__('Conversation Starters', 'gpt3-ai-content-generator'); ?></label>
+                    <div id="wpaicg_conversation_starters_widget_container">
+                        <?php foreach ($wpaicg_conversation_starters_widget as $starter): ?>
+                            <div class="nice-form-group">
+                                <input type="text" name="wpaicg_conversation_starters_widget[]" oninput="handleInputWidget(event)" value="<?php echo esc_attr($starter['text']); ?>">
+                                <?php if ($starter['index'] > 0): // Assuming the first starter should not have a delete button ?>
+                                    <button type="button" class="wpaicg-delete-starter" onclick="removeStarter(this)">X</button>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                        <?php if (empty($wpaicg_conversation_starters_widget)): // Show one empty input if no starters are saved ?>
+                            <div class="nice-form-group">
+                                <input type="text" name="wpaicg_conversation_starters_widget[]" oninput="handleInputWidget(event)">
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
                 <?php if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()): ?>
                 <div class="nice-form-group">
                     <input <?php echo empty($wpaicg_chat_embedding) || $wpaicg_chat_content_aware == 'no' ? ' disabled':''?><?php echo isset($wpaicg_chat_widget['embedding_pdf']) && $wpaicg_chat_widget['embedding_pdf'] ? ' checked':''?> type="checkbox" value="1" name="wpaicg_chat_widget[embedding_pdf]" class="<?php echo !$wpaicg_chat_embedding && $wpaicg_chat_content_aware == 'yes' ? 'asdisabled' : ''?>" id="wpaicg_chat_embedding_pdf">
@@ -953,8 +945,8 @@ $profession_options = array(
                     <textarea <?php echo empty($wpaicg_chat_embedding) || $wpaicg_chat_content_aware == 'no' ? ' disabled':''?> rows="8" name="wpaicg_chat_widget[embedding_pdf_message]" class="<?php echo !$wpaicg_chat_embedding && $wpaicg_chat_content_aware == 'yes' ? 'asdisabled' : ''?>" id="wpaicg_chat_embedding_pdf_message"><?php echo isset($wpaicg_chat_widget['embedding_pdf_message']) && !empty($wpaicg_chat_widget['embedding_pdf_message']) ? esc_html(str_replace("\\",'',$wpaicg_chat_widget['embedding_pdf_message'])):"Congrats! Your PDF is uploaded now! You can ask questions about your document.\nExample Questions:[questions]"?></textarea>
                 </div>
                 <div class="nice-form-group">
-                    <label for="wpaicg_pdf_color"><?php echo esc_html__('PDF Icon Color','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo isset($wpaicg_chat_widget['pdf_color']) ? esc_html($wpaicg_chat_widget['pdf_color']): '#222'?>" type="text" class="wpaicgchat_color wpaicg_pdf_color" name="wpaicg_chat_widget[pdf_color]" id="wpaicg_pdf_color">
+                    <label><?php echo esc_html__('PDF Icon','gpt3-ai-content-generator')?></label>
+                    <input style="width: 55px;" value="<?php echo isset($wpaicg_chat_widget['pdf_color']) ? esc_html($wpaicg_chat_widget['pdf_color']): '#d1e8ff'?>" type="color" class="wpaicg_pdf_color" name="wpaicg_chat_widget[pdf_color]" id="wpaicg_pdf_color">
                 </div>
                 <?php else: ?>
                 <div class="nice-form-group">
@@ -1054,37 +1046,14 @@ $profession_options = array(
             </section>
             <!-- SPEECH -->
             <section id="speech" class="tab-content" style="display: none;">
-                <h1>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sliders">
-                    <line x1="4" y1="21" x2="4" y2="14" />
-                    <line x1="4" y1="10" x2="4" y2="3" />
-                    <line x1="12" y1="21" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12" y2="3" />
-                    <line x1="20" y1="21" x2="20" y2="16" />
-                    <line x1="20" y1="12" x2="20" y2="3" />
-                    <line x1="1" y1="14" x2="7" y2="14" />
-                    <line x1="9" y1="8" x2="15" y2="8" />
-                    <line x1="17" y1="16" x2="23" y2="16" />
-                </svg>
-                Speech
-                </h1>
+            <h3 style="margin-top: -1em;"><?php echo esc_html__('Speech','gpt3-ai-content-generator')?></h3>
                 <?php
                 if ($wpaicg_provider !== 'Azure' && $wpaicg_provider !== 'Google') {
                     $wpaicg_audio_enable = isset($wpaicg_chat_widget['audio_enable']) && $wpaicg_chat_widget['audio_enable'];
-                    $wpaicg_mic_color = isset($wpaicg_chat_widget['mic_color']) ? esc_html($wpaicg_chat_widget['mic_color']) : '';
-                    $wpaicg_stop_color = isset($wpaicg_chat_widget['stop_color']) ? esc_html($wpaicg_chat_widget['stop_color']) : '';
                 ?>
                 <div class="nice-form-group">
                     <input <?php echo $wpaicg_audio_enable ? ' checked' : '' ?> value="1" class="wpaicg_chat_widget_audio" type="checkbox" name="wpaicg_chat_widget[audio_enable]">
                     <label><?php echo esc_html__('Speech to Text', 'gpt3-ai-content-generator'); ?></label>
-                </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Mic Color', 'gpt3-ai-content-generator'); ?></label>
-                    <input value="<?php echo $wpaicg_mic_color; ?>" type="text" class="wpaicgchat_color wpaicg_chat_widget_mic_color" name="wpaicg_chat_widget[mic_color]">
-                </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Stop Button Color', 'gpt3-ai-content-generator'); ?></label>
-                    <input value="<?php echo $wpaicg_stop_color; ?>" type="text" name="wpaicg_chat_widget[stop_color]" class="wpaicgchat_color">
                 </div>
                 <?php
                     } else {
@@ -1234,12 +1203,7 @@ $profession_options = array(
             </section>
             <!-- QUOTA -->
             <section id="quota" class="tab-content" style="display: none;">
-                <h1>
-                    <svg xmlns="http://www.w3.org/2000/svg" style="transform: rotate(90deg)" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-columns">
-                    <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18" />
-                    </svg>
-                    Quotas
-                </h1>
+                <h3 style="margin-top: -1em;"><?php echo esc_html__('Quotas','gpt3-ai-content-generator')?></h3>
                 <div class="nice-form-group">
                     <input <?php echo $wpaicg_user_limited ? ' checked': ''?> class="wpaicg_user_token_limit" type="checkbox" value="1" name="wpaicg_chat_widget[user_limited]">
                     <label><?php echo esc_html__('Limit Registered Users','gpt3-ai-content-generator')?></label>
@@ -1300,13 +1264,7 @@ $profession_options = array(
             </section>
             <!-- SECURITY -->
             <section id="security" class="tab-content" style="display: none;">
-                <h1>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check-square">
-                    <polyline points="9 11 12 14 22 4" />
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                </svg>
-                    Security
-                </h1>
+                <h3 style="margin-top: -1em;"><?php echo esc_html__('Security','gpt3-ai-content-generator')?></h3>
                 <fieldset class="nice-form-group">
                 <legend><?php echo esc_html__('Logs', 'gpt3-ai-content-generator'); ?></legend>
                     <div class="nice-form-group">
@@ -1326,16 +1284,16 @@ $profession_options = array(
                     <label><?php echo esc_html__('Notice Text','gpt3-ai-content-generator')?></label>
                     <input <?php echo $wpaicg_save_logs ? '': ' disabled'?> class="regular-text wpaicg_chatbot_log_notice_message" value="<?php echo esc_html($wpaicg_log_notice_message)?>" type="text" name="wpaicg_chat_widget[log_notice_message]">
                 </div>
-                <div class="nice-form-group">
-                    <input disabled type="checkbox">
-                    <label><?php echo esc_html__('Moderation (Available in Pro)','gpt3-ai-content-generator')?></label>
-                </div>
                 <?php
                 if(!\WPAICG\wpaicg_util_core()->wpaicg_is_pro() || $wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google'):
                     if($wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google'):
                         echo '<small>'. esc_html__('Moderation is not available in Azure or Google. If you want to use the moderation tool, please change your model to OpenAI under Settings - AI Engine tab.', 'gpt3-ai-content-generator') .'</small>';
                     endif;
                 ?>
+                <div class="nice-form-group">
+                    <input <?php echo !\WPAICG\wpaicg_util_core()->wpaicg_is_pro() ? 'disabled' : ''; ?> type="checkbox">
+                    <label><?php echo esc_html__('Moderation (Pro)', 'gpt3-ai-content-generator') ?></label>
+                </div>
                 <div class="nice-form-group">
                     <label><?php echo esc_html__('Model','gpt3-ai-content-generator')?></label>
                     <select disabled>
@@ -1349,8 +1307,8 @@ $profession_options = array(
                 </div>
                 <?php else: ?>
                 <div class="nice-form-group">
-                    <label><?php echo esc_html__('Enable','gpt3-ai-content-generator')?></label>
                     <input <?php echo isset($wpaicg_chat_widget['moderation']) && $wpaicg_chat_widget['moderation'] ? ' checked': ''?>  name="wpaicg_chat_widget[moderation]" value="1" type="checkbox">
+                    <label><?php echo esc_html__('Moderation','gpt3-ai-content-generator')?></label>
                 </div>
                 <div class="nice-form-group">
                     <label><?php echo esc_html__('Model','gpt3-ai-content-generator')?></label>
@@ -1379,76 +1337,251 @@ $profession_options = array(
                 </details>
             </section>
             <!-- STYLE -->
-            <section id="style" class="tab-content" style="display: none;">
-                <h1>
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-feather">
-                    <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z" />
-                    <line x1="16" y1="8" x2="2" y2="22" />
-                    <line x1="17.5" y1="15" x2="9" y2="15" />
-                </svg>
-                    Style
-                </h1>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Width','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_chat_width)?>" class="wpaicg_chat_widget_width" min="100" type="text" name="wpaicg_chat_widget[width]">
+            <section id="style" class="tab-content" style="line-height: normal;display: none;">
+                <h3 style="margin-top: -1em;"><?php echo esc_html__('Themes','gpt3-ai-content-generator')?></h3>
+                <div class="options-container" style="display: flex; justify-content: space-between;margin-top: -1em;">
+                    <!-- First Options Group -->
+                    <div class="options-group">
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="default" checked>
+                            <label><?php echo esc_html__('Default','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="midnightElegance">
+                            <label><?php echo esc_html__('Night','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="sunriseSerenity">
+                            <label><?php echo esc_html__('Sun','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="forestWhisper">
+                            <label><?php echo esc_html__('Forest','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="oceanBreeze">
+                            <label><?php echo esc_html__('Ocean','gpt3-ai-content-generator')?></label>
+                        </div>
+                    </div>
+                    <!-- Second Options Group -->
+                    <div class="options-group">
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="spaceGalaxy">
+                            <label><?php echo esc_html__('Space','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="desertDune">
+                            <label><?php echo esc_html__('Desert','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="winterWonderland">
+                            <label><?php echo esc_html__('Winter','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="cityscapeGlow">
+                            <label><?php echo esc_html__('City','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="mountainPeak">
+                            <label><?php echo esc_html__('Mountain','gpt3-ai-content-generator')?></label>
+                        </div>
+                    </div>
+                    <!-- Third Options Group -->
+                    <div class="options-group">
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="glade">
+                            <label><?php echo esc_html__('Glade','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="dusk">
+                            <label><?php echo esc_html__('Dusk','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="dawn">
+                            <label><?php echo esc_html__('Dawn','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="mist">
+                            <label><?php echo esc_html__('Mist','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="veil">
+                            <label><?php echo esc_html__('Veil','gpt3-ai-content-generator')?></label>
+                        </div>
+                    </div>
+                    <!-- Fourth Options Group -->
+                    <div class="options-group">
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="peak">
+                            <label><?php echo esc_html__('Peak','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="vale">
+                            <label><?php echo esc_html__('Vale','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="cove">
+                            <label><?php echo esc_html__('Cove','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="rift">
+                            <label><?php echo esc_html__('Rift','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="wpaicg-option-container">
+                            <input type="radio" name="chat_theme" value="isle">
+                            <label><?php echo esc_html__('Isle','gpt3-ai-content-generator')?></label>
+                        </div>
+                    </div>
                 </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Height','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_chat_height)?>" class="wpaicg_chat_widget_height" min="100" type="text" name="wpaicg_chat_widget[height]">
+                <h3 style="font-size: small;"><?php echo esc_html__('Chat Window','gpt3-ai-content-generator')?></h3>
+                <!-- Color Pickers Container -->
+                <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: -1em;">
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Box','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_chat_bgcolor)?>" type="color" class="wpaicgchat_bg_color" name="wpaicg_chat_widget[bgcolor]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Font','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_chat_fontcolor)?>" type="color" class="wpaicgchat_font_color" name="wpaicg_chat_widget[fontcolor]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('AI','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_ai_bg_color)?>" type="color" class="wpaicgchat_ai_color" name="wpaicg_chat_widget[ai_bg_color]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('User','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_user_bg_color)?>" type="color" class="wpaicgchat_user_color" name="wpaicg_chat_widget[user_bg_color]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Font','gpt3-ai-content-generator')?></label>
+                        <select style="width: 50px;font-size: 11px;height: 32px;padding: 0 1.2em;background-position: right;" name="wpaicg_chat_widget[fontsize]" class="wpaicg_chat_widget_font_size">
+                            <?php
+                            for($i = 10; $i <= 30; $i++){
+                                echo '<option'.($wpaicg_chat_fontsize == $i ? ' selected': '').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="nice-form-group" style="flex: 1;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Radius','gpt3-ai-content-generator')?></label>
+                        <input style="width: 50px;font-size: 11px;height: 32px;" value="<?php echo esc_html($wpaicg_chat_rounded)?>" type="number" min="0" class="wpaicg_chat_rounded" name="wpaicg_chat_widget[chat_rounded]">
+                    </div>
                 </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Font Size','gpt3-ai-content-generator')?></label>
-                    <select name="wpaicg_chat_widget[fontsize]" class="wpaicg_chat_widget_font_size">
-                        <?php
-                        for($i = 10; $i <= 30; $i++){
-                            echo '<option'.($wpaicg_chat_fontsize == $i ? ' selected': '').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
-                        }
-                        ?>
-                    </select>
+                <div class="nice-form-group" style="display: flex;margin-top: -0.1em;">
+                    <div class="nice-form-group" style="padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Width','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100px;font-size: 11px;height: 32px;" value="<?php echo esc_html($wpaicg_chat_width)?>" class="wpaicg_chat_widget_width" min="100" type="text" name="wpaicg_chat_widget[width]">
+                    </div>
+                    <div class="nice-form-group">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Height','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100px;font-size: 11px;height: 32px;" value="<?php echo esc_html($wpaicg_chat_height)?>" class="wpaicg_chat_widget_height" min="100" type="text" name="wpaicg_chat_widget[height]">
+                    </div>
                 </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Font Color','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_chat_fontcolor)?>" type="text" class="wpaicgchat_color wpaicgchat_font_color" name="wpaicg_chat_widget[fontcolor]">
+                <!-- Text Field -->
+                <h3 style="font-size: small;"><?php echo esc_html__('Text Field','gpt3-ai-content-generator')?></h3>
+                <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: -1em;">
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Box','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_bg_text_field)?>" type="color" class="wpaicgchat_input_color" name="wpaicg_chat_widget[bg_text_field]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Font','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_input_font_color)?>" type="color" class="wpaicgchat_input_font_color" name="wpaicg_chat_widget[input_font_color]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Border','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_border_text_field)?>" type="color" class="wpaicgchat_input_border" name="wpaicg_chat_widget[border_text_field]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Button','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_send_color)?>" type="color" class="wpaicgchat_send_color" name="wpaicg_chat_widget[send_color]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Mic', 'gpt3-ai-content-generator'); ?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo $wpaicg_mic_color; ?>" type="color" class="wpaicg_chat_widget_mic_color" name="wpaicg_chat_widget[mic_color]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Stop', 'gpt3-ai-content-generator'); ?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo $wpaicg_stop_color; ?>" type="color" name="wpaicg_chat_widget[stop_color]" class="wpaicgchat_stop_color">
+                    </div>
                 </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Background','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_chat_bgcolor)?>" type="text" class="wpaicgchat_color wpaicgchat_bg_color" name="wpaicg_chat_widget[bgcolor]">
+                <div class="nice-form-group" style="display: flex;margin-top: -0.1em;">
+                    <div class="nice-form-group" style="padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Height','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100px;font-size: 11px;height: 32px;" value="<?php echo esc_html($wpaicg_text_height)?>" type="number" min="30" class="wpaicg_text_height" name="wpaicg_chat_widget[text_height]">
+                    </div>
+                    <div class="nice-form-group">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Radius','gpt3-ai-content-generator')?></label>
+                        <input style="width: 100px;font-size: 11px;height: 32px;" value="<?php echo esc_html($wpaicg_text_rounded)?>" type="number" min="0" class="wpaicg_text_rounded" name="wpaicg_chat_widget[text_rounded]">
+                    </div>
                 </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Text Field Background','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_bg_text_field)?>" type="text" class="wpaicgchat_color wpaicgchat_input_color" name="wpaicg_chat_widget[bg_text_field]">
+                <!-- Header / Footer -->
+                <h3 style="font-size: small;"><?php echo esc_html__('Header / Footer','gpt3-ai-content-generator')?></h3>
+                <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: -1em;">
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Box','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_footer_color)?>" type="color" class="wpaicgchat_footer_color" name="wpaicg_chat_widget[footer_color]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Font','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_footer_font_color)?>" type="color" class="wpaicgchat_footer_font_color" name="wpaicg_chat_widget[footer_font_color]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Icons','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_bar_color)?>" type="color" class="wpaicgchat_bar_color" name="wpaicg_chat_widget[bar_color]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Wait','gpt3-ai-content-generator')?></label>
+                        <input style="width: 30px;height: 32px;" value="<?php echo esc_html($wpaicg_thinking_color)?>" type="color" class="wpaicgchat_thinking_color" name="wpaicg_chat_widget[thinking_color]">
+                    </div>
                 </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Text Field Border','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_border_text_field)?>" type="text" class="wpaicgchat_color wpaicgchat_input_border" name="wpaicg_chat_widget[border_text_field]">
+                <div class="nice-form-group" style="display: flex;margin-top: -0.1em;">
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Fullscreen','gpt3-ai-content-generator')?></label>
+                        <input style="border-color: #10b981;margin-top: 4px;" <?php echo $wpaicg_chat_fullscreen ? ' checked':''?> value="1" type="checkbox" class="switch wpaicgchat_fullscreen" name="wpaicg_chat_widget[fullscreen]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Download','gpt3-ai-content-generator')?></label>
+                        <input style="border-color: #10b981;margin-top: 4px;" <?php echo $wpaicg_chat_download_btn ? ' checked':''?> value="1" type="checkbox" class="switch wpaicgchat_download_btn" name="wpaicg_chat_widget[download_btn]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1; padding-right: 3px;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Clear','gpt3-ai-content-generator')?></label>
+                        <input style="border-color: #10b981;margin-top: 4px;" <?php echo $wpaicg_chat_clear_btn ? ' checked':''?> value="1" type="checkbox" class="switch wpaicgchat_clear_btn" name="wpaicg_chat_widget[clear_btn]">
+                    </div>
+                    <div class="nice-form-group" style="flex: 1;">
+                        <label style="font-size: 11px;"><?php echo esc_html__('Close','gpt3-ai-content-generator')?></label>
+                        <input style="border-color: #10b981;margin-top: 4px;" <?php echo $wpaicg_chat_close_btn ? ' checked':''?> value="1" type="checkbox" class="switch wpaicgchat_close_btn" name="wpaicg_chat_widget[close_btn]">
+                    </div>
                 </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Send Button','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_send_color)?>" type="text" class="wpaicgchat_color wpaicgchat_send_color" name="wpaicg_chat_widget[send_color]">
-                </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('User Background','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_user_bg_color)?>" type="text" class="wpaicgchat_color wpaicgchat_user_color" name="wpaicg_chat_widget[user_bg_color]">
-                </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('AI Background','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_ai_bg_color)?>" type="text" class="wpaicgchat_color wpaicgchat_ai_color" name="wpaicg_chat_widget[ai_bg_color]">
-                </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Response Wait Message','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_thinking_color)?>" type="text" class="wpaicgchat_color wpaicgchat_thinking_color" name="wpaicg_chat_widget[thinking_color]">
-                </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Border Radius - Window','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_chat_rounded)?>" type="number" min="0" class="wpaicg_chat_rounded" name="wpaicg_chat_widget[chat_rounded]">px
-                </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Border Radius - Text Field','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_text_rounded)?>" type="number" min="0" class="wpaicg_text_rounded" name="wpaicg_chat_widget[text_rounded]">px
-                </div>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Text Field Height','gpt3-ai-content-generator')?></label>
-                    <input value="<?php echo esc_html($wpaicg_text_height)?>" type="number" min="30" class="wpaicg_text_height" name="wpaicg_chat_widget[text_height]">px
+                <h3 style="font-size: small;"><?php echo esc_html__('Avatar / Icon','gpt3-ai-content-generator')?></h3>
+                <div class="nice-form-group" style="display: flex; align-items: center; justify-content: space-between;margin-top: -1em;">
+                    <div style="display: inline-flex; align-items: center">
+                        <input <?php echo $wpaicg_ai_avatar == 'default' ? ' checked': ''?> class="wpaicg_chatbox_avatar_default" type="radio" value="default" name="wpaicg_chat_widget[ai_avatar]">
+                        <input value="<?php echo esc_html($wpaicg_chat_icon_url)?>" type="hidden" name="wpaicg_chat_widget[icon_url]" class="wpaicg_chat_icon_url">
+                        <input value="<?php echo esc_html($wpaicg_ai_avatar_id)?>" type="hidden" name="wpaicg_chat_widget[ai_avatar_id]" class="wpaicg_ai_avatar_id">
+                        <div style="margin-right: 20px;">
+                            <img style="display: block;width: 40px; height: 40px" src="<?php echo esc_html(WPAICG_PLUGIN_URL).'admin/images/chatbot.png'?>">
+                            <label style="font-size: 11px;"><?php echo esc_html__('Default','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <input <?php echo $wpaicg_ai_avatar == 'custom' ? ' checked': ''?> type="radio" class="wpaicg_chatbox_avatar_custom" value="custom" name="wpaicg_chat_widget[ai_avatar]">
+                        <div style="margin-right: 10px;">
+                            <div class="wpaicg_chatbox_avatar">
+                                <?php
+                                if(!empty($wpaicg_ai_avatar_id) && $wpaicg_ai_avatar == 'custom'):
+                                    $wpaicg_ai_avatar_url = wp_get_attachment_url($wpaicg_ai_avatar_id);
+                                    ?>
+                                    <img src="<?php echo esc_html($wpaicg_ai_avatar_url)?>" width="40" height="40">
+                                <?php else: ?>
+                                    <svg width="40px" height="40px" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M246.6 9.4c-12.5-12.5-32.8-12.5-45.3 0l-128 128c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 109.3V320c0 17.7 14.3 32 32 32s32-14.3 32-32V109.3l73.4 73.4c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-128-128zM64 352c0-17.7-14.3-32-32-32s-32 14.3-32 32v64c0 53 43 96 96 96H352c53 0 96-43 96-96V352c0-17.7-14.3-32-32-32s-32 14.3-32 32v64c0 17.7-14.3 32-32 32H96c-17.7 0-32-14.3-32-32V352z"/></svg><br>
+                                <?php endif; ?>
+                            </div>
+                            <label style="font-size: 11px;"><?php echo esc_html__('Custom','gpt3-ai-content-generator')?></label>
+                        </div>
+                        <div class="nice-form-group" style="padding-left: 1em;padding-bottom: 25px;">
+                            <input <?php echo $wpaicg_use_avatar ? ' checked':''?> value="1" type="checkbox" style="border-color: #10b981;margin-top: 4px;" class="switch wpaicgchat_use_avatar" name="wpaicg_chat_widget[use_avatar]">
+                            <label style="font-size: 11px;max-width: fit-content;"><?php echo esc_html__('Use Avatar','gpt3-ai-content-generator')?></label>
+                        </div>
+                    </div>
                 </div>
                 <details>
                     <summary>
@@ -1877,49 +2010,512 @@ $profession_options = array(
         $('.wpaicg_chat_rounded,.wpaicg_text_rounded,.wpaicg_text_height').on('input', function(){
             wpaicgUpdateRealtime();
         })
+
+        // listen changes on wpaicgchat_bg_color
+        $('.wpaicgchat_bg_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox').css('background-color', color); // Set the background color of the chatbox
+        });
+        // wpaicgchat_font_color
+        $('.wpaicgchat_font_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox-messages li').css('color', color); // Set the font color of the chat messages
+            // .wpaicg-chatbox .wpaicg-conversation-starter
+            $('.wpaicg-chatbox .wpaicg-conversation-starter').css('color', color);
+        });
+
+        // wpaicgchat_ai_color
+        $('.wpaicgchat_ai_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox-messages li.wpaicg-chat-ai-message').css('background-color', color); // Set the background color of AI messages
+        });
+        // wpaicgchat_user_color
+        $('.wpaicgchat_user_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox-messages li.wpaicg-chat-user-message').css('background-color', color); // Set the background color of user messages
+            // .wpaicg-chatbox .wpaicg-conversation-starter
+            $('.wpaicg-chatbox .wpaicg-conversation-starter').css('background-color', color);
+        });
+        // wpaicgchat_input_color
+        $('.wpaicgchat_input_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox-typing').css('background-color', color); // Set the background color of the typing area
+        });
+        // Listen for changes on widget input_font_color
+        $('.wpaicgchat_input_font_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+
+            // Apply the color to widget textarea directly
+            $('textarea.wpaicg-chatbox-typing, textarea.wpaicg-chatbox-auto-expand').css('color', color);
+
+            // For the placeholder in the widget, update the style tag content to increase specificity
+            var widgetPlaceholderStyleContent =
+                `textarea.wpaicg-chatbox-typing::placeholder,
+                textarea.wpaicg-chatbox-auto-expand::placeholder,
+                textarea.wpaicg-chatbox-auto-expand.resizing::placeholder,
+                textarea.wpaicg-chatbox-auto-expand:focus::placeholder {
+                    color: ${color} !important;
+                }`;
+
+            // Check if the style tag for widget placeholder colors already exists
+            var $widgetPlaceholderStyles = $('#widget-placeholder-colors');
+            if ($widgetPlaceholderStyles.length) {
+                // Update existing style content
+                $widgetPlaceholderStyles.html(widgetPlaceholderStyleContent);
+            } else {
+                // Create a new style tag and append it to the head
+                $widgetPlaceholderStyles = $('<style>')
+                    .attr('id', 'widget-placeholder-colors')
+                    .html(widgetPlaceholderStyleContent);
+                $('head').append($widgetPlaceholderStyles);
+            }
+        });
+
+        // wpaicgchat_input_border
+        $('.wpaicgchat_input_border').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox-typing').css('border-color', color); // Set the border color of the typing area
+        });
+        // wpaicgchat_send_color
+        $('.wpaicgchat_send_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox-send').css('color', color); // Set the background color of the send button
+            // .wpaicg-img-icon
+            $('.wpaicg-img-icon').css('color', color);
+        });
+        // wpaicg_chat_widget_mic_color
+        $('.wpaicg_chat_widget_mic_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-mic-icon').css('color', color); // Set the color of the mic icon
+        });
+        // wpaicgchat_footer_color
+        $('.wpaicgchat_footer_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox-action-bar').css('background-color', color); // Set the background color of the action bar
+            // .wpaicg-chatbox-footer background color
+            $('.wpaicg-chatbox-footer').css('background-color', color);
+            $('.wpaicg-chatbox-footer').css('border-top', '1px solid ' + color);
+        });
+        // wpaicgchat_footer_font_color
+        $('.wpaicgchat_footer_font_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            // if $('.wpaicg-footer-note').val(); is not empty
+            if($('.wpaicg-footer-note').val() !== ''){
+                $('.wpaicg-chatbox-footer').css('color', color); // Set the font color of the footer
+            }
+        });
+        // wpaicgchat_bar_color
+        $('.wpaicgchat_bar_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox-action-bar').css('color', color); // Set the border color of the action bar
+        });
+        // wpaicgchat_thinking_color
+        $('.wpaicgchat_thinking_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-chatbox .wpaicg-bot-thinking').css('color', color);
+        });
+        // wpaicg_chat_widget_font_size
+        $('.wpaicg_chat_widget_font_size').on('input change', function () {
+            var size = $(this).val(); // Get the font size value from the input
+            $('.wpaicg-chatbox-messages li.wpaicg-chat-ai-message').css('font-size', size + 'px'); // Set the font size of the chat messages
+            $('.wpaicg-chatbox-messages li.wpaicg-chat-user-message').css('font-size', size + 'px');
+            $('.wpaicg-chatbox .wpaicg-conversation-starter').css('font-size', size + 'px');
+            // wpaicg-chat-message
+            $('.wpaicg-chat-message').css('font-size', size + 'px');
+        });
+
+        // wpaicg_pdf_color
+        $('.wpaicg_pdf_color').on('input change', function () {
+            var color = $(this).val(); // Get the color value from the input
+            $('.wpaicg-pdf-icon').css('color', color); // Set the color of the PDF icon
+        });
+
+        $('input[name="chat_theme"]').on('change', function () {
+            var theme = $(this).val(); // Get the selected theme value
+
+            // Define your themes
+            var themes = {
+                default: {
+                    fontColor: "#495057",
+                    aiBgColor: "#d1e8ff",
+                    userBgColor: "#ccf5e1",
+                    windowBgColor: "#f8f9fa",
+                    inputFontColor: "#495057",
+                    borderTextField: "#CED4DA",
+                    sendColor: "#d1e8ff",
+                    bgTextField: "#FFFFFF",
+                    footerColor: "#FFFFFF",
+                    thinkingColor: "#495057",
+                    footerfontColor: "#495057",
+                    headericonColor: "#495057",
+                    pdfColor: "#d1e8ff",
+                    micColor: "#d1e8ff",
+                    stopColor: "#d1e8ff",
+                },
+                midnightElegance: {
+                    fontColor: "#E8E8E8",
+                    aiBgColor: "#495057",
+                    userBgColor: "#6C757D",
+                    windowBgColor: "#343A40",
+                    inputFontColor: "#F8F9FA",
+                    borderTextField: "#6C757D",
+                    sendColor: "#F8F9FA",
+                    bgTextField: "#495057",
+                    footerColor: "#495057",
+                    thinkingColor: "#CED4DA",
+                    footerfontColor: "#FFFFFF",
+                    headericonColor: "#FFFFFF",
+                    pdfColor: "#F8F9FA",
+                    micColor: "#F8F9FA",
+                    stopColor: "#F8F9FA",
+                },
+                sunriseSerenity: { /* Sunrise Serenity theme settings */ 
+                    fontColor: "#543D35",
+                    aiBgColor: "#FFD27D",
+                    userBgColor: "#FFEBB7",
+                    windowBgColor: "#FFF6E5",
+                    inputFontColor: "#543D35",
+                    borderTextField: "#FFD27D",
+                    sendColor: "#FFA500",
+                    bgTextField: "#FFF6E5",
+                    footerColor: "#FFD27D",
+                    thinkingColor: "#FFA500",
+                    footerfontColor: "#543D35",
+                    headericonColor: "#543D35",
+                    pdfColor: "#FFA500",
+                    micColor: "#FFA500",
+                    stopColor: "#FFA500",
+                },
+                forestWhisper: {
+                    fontColor: "#004225",
+                    aiBgColor: "#A9D9C3",
+                    userBgColor: "#CDEBDA",
+                    windowBgColor: "#E6F4EA",
+                    inputFontColor: "#004225",
+                    borderTextField: "#A9D9C3",
+                    sendColor: "#006400",
+                    bgTextField: "#E6F4EA",
+                    footerColor: "#A9D9C3",
+                    thinkingColor: "#006400",
+                    footerfontColor: "#004225",
+                    headericonColor: "#004225",
+                    pdfColor: "#006400",
+                    micColor: "#006400",
+                    stopColor: "#006400",
+                },
+                oceanBreeze: {
+                    fontColor: "#02457A",
+                    aiBgColor: "#A3D5D9",
+                    userBgColor: "#CCEFF5",
+                    windowBgColor: "#EAF7FA",
+                    inputFontColor: "#02457A",
+                    borderTextField: "#A3D5D9",
+                    sendColor: "#017991",
+                    bgTextField: "#EAF7FA",
+                    footerColor: "#A3D5D9",
+                    thinkingColor: "#017991",
+                    footerfontColor: "#02457A",
+                    headericonColor: "#02457A",
+                    pdfColor: "#017991",
+                    micColor: "#017991",
+                    stopColor: "#017991",
+                },
+                spaceGalaxy: {
+                    fontColor: "#CCCCCC", // Light grey for contrast against dark backgrounds
+                    aiBgColor: "#2E2E3A", // Deep space dark
+                    userBgColor: "#414152", // Darker shade for distinction
+                    windowBgColor: "#31313D", // Dark space gray
+                    inputFontColor: "#CCCCCC",
+                    borderTextField: "#414152",
+                    sendColor: "#5D5DFF", // Galaxy inspired blue
+                    bgTextField: "#31313D",
+                    footerColor: "#2E2E3A",
+                    thinkingColor: "#5D5DFF",
+                    footerfontColor: "#CCCCCC",
+                    headericonColor: "#CCCCCC",
+                    pdfColor: "#5D5DFF",
+                    micColor: "#5D5DFF",
+                    stopColor: "#5D5DFF",
+                },
+                desertDune: {
+                    fontColor: "#4E403B", // Earthy brown
+                    aiBgColor: "#F4C07A", // Sandy dune
+                    userBgColor: "#FCE5C0", // Lighter sand
+                    windowBgColor: "#FAE0AC", // Warm light sand
+                    inputFontColor: "#4E403B",
+                    borderTextField: "#F4C07A",
+                    sendColor: "#D98941", // Desert sunset
+                    bgTextField: "#FAE0AC",
+                    footerColor: "#F4C07A",
+                    thinkingColor: "#D98941",
+                    footerfontColor: "#4E403B",
+                    headericonColor: "#4E403B",
+                    pdfColor: "#D98941",
+                    micColor: "#D98941",
+                    stopColor: "#D98941",
+                },
+                winterWonderland: {
+                    fontColor: "#004C70", // Deep winter blue
+                    aiBgColor: "#AED9E0", // Frosty blue
+                    userBgColor: "#D0EFFF", // Light frost
+                    windowBgColor: "#CCEFFF", // Very light blue
+                    inputFontColor: "#004C70",
+                    borderTextField: "#AED9E0",
+                    sendColor: "#007BFF", // Bright winter sky blue
+                    bgTextField: "#CCEFFF",
+                    footerColor: "#AED9E0",
+                    thinkingColor: "#007BFF",
+                    footerfontColor: "#004C70",
+                    headericonColor: "#004C70",
+                    pdfColor: "#007BFF",
+                    micColor: "#007BFF",
+                    stopColor: "#007BFF",
+                },
+                cityscapeGlow: {
+                    fontColor: "#EBEBEB", // Light grey for urban night glow
+                    aiBgColor: "#555555", // Dark urban gray
+                    userBgColor: "#6E6E6E", // Slightly lighter grey for distinction
+                    windowBgColor: "#4D4D4D", // Dark grey representing night
+                    inputFontColor: "#EBEBEB",
+                    borderTextField: "#6E6E6E",
+                    sendColor: "#FF9500", // Neon sign orange
+                    bgTextField: "#4D4D4D",
+                    footerColor: "#555555",
+                    thinkingColor: "#FF9500",
+                    footerfontColor: "#EBEBEB",
+                    headericonColor: "#EBEBEB",
+                    pdfColor: "#FF9500",
+                    micColor: "#FF9500",
+                    stopColor: "#FF9500",
+                },
+                mountainPeak: {
+                    fontColor: "#3E423F", // Dark greenish-gray
+                    aiBgColor: "#A8B4A5", // Mountain mist
+                    userBgColor: "#CFD8CD", // Light mountain fog
+                    windowBgColor: "#BCC5B9", // Pale greenish-gray, evoking rock surfaces
+                    inputFontColor: "#3E423F",
+                    borderTextField: "#A8B4A5",
+                    sendColor: "#5A7252", // Pine green
+                    bgTextField: "#BCC5B9",
+                    footerColor: "#A8B4A5",
+                    thinkingColor: "#5A7252",
+                    footerfontColor: "#3E423F",
+                    headericonColor: "#3E423F",
+                    pdfColor: "#5A7252",
+                    micColor: "#5A7252",
+                    stopColor: "#5A7252",
+                },
+                glade: {
+                    fontColor: "#3A6351",
+                    aiBgColor: "#A7C4BC",
+                    userBgColor: "#D9EAD3",
+                    windowBgColor: "#E4EFE7",
+                    inputFontColor: "#3A6351",
+                    borderTextField: "#A7C4BC",
+                    sendColor: "#81B29A",
+                    bgTextField: "#E4EFE7",
+                    footerColor: "#A7C4BC",
+                    thinkingColor: "#81B29A",
+                    footerfontColor: "#3A6351",
+                    headericonColor: "#3A6351",
+                    pdfColor: "#81B29A",
+                    micColor: "#81B29A",
+                    stopColor: "#81B29A",
+                },
+                dusk: {
+                    fontColor: "#FFE8D6",
+                    aiBgColor: "#2B2D42",
+                    userBgColor: "#8D99AE",
+                    windowBgColor: "#EDF2F4",
+                    inputFontColor: "#FFE8D6",
+                    borderTextField: "#8D99AE",
+                    sendColor: "#EF233C",
+                    bgTextField: "#EDF2F4",
+                    footerColor: "#2B2D42",
+                    thinkingColor: "#EF233C",
+                    footerfontColor: "#FFE8D6",
+                    headericonColor: "#FFE8D6",
+                    pdfColor: "#EF233C",
+                    micColor: "#EF233C",
+                    stopColor: "#EF233C",
+                },
+                dawn: {
+                    fontColor: "#563F1B",
+                    aiBgColor: "#F2CC8F",
+                    userBgColor: "#FAF3DD",
+                    windowBgColor: "#FFF9EB",
+                    inputFontColor: "#563F1B",
+                    borderTextField: "#F2CC8F",
+                    sendColor: "#E07A5F",
+                    bgTextField: "#FFF9EB",
+                    footerColor: "#F2CC8F",
+                    thinkingColor: "#E07A5F",
+                    footerfontColor: "#563F1B",
+                    headericonColor: "#563F1B",
+                    pdfColor: "#E07A5F",
+                    micColor: "#E07A5F",
+                    stopColor: "#E07A5F",
+                },
+                mist: {
+                    fontColor: "#646E78",
+                    aiBgColor: "#CFD9DF",
+                    userBgColor: "#E2E8EE",
+                    windowBgColor: "#F4F6F8",
+                    inputFontColor: "#646E78",
+                    borderTextField: "#CFD9DF",
+                    sendColor: "#9FB3C8",
+                    bgTextField: "#F4F6F8",
+                    footerColor: "#CFD9DF",
+                    thinkingColor: "#9FB3C8",
+                    footerfontColor: "#646E78",
+                    headericonColor: "#646E78",
+                    pdfColor: "#9FB3C8",
+                    micColor: "#9FB3C8",
+                    stopColor: "#9FB3C8",
+                },
+                veil: {
+                    fontColor: "#D1D1D1",
+                    aiBgColor: "#B1A2A2",
+                    userBgColor: "#EADDDC",
+                    windowBgColor: "#F7F3F2",
+                    inputFontColor: "#D1D1D1",
+                    borderTextField: "#B1A2A2",
+                    sendColor: "#C49AAB",
+                    bgTextField: "#F7F3F2",
+                    footerColor: "#B1A2A2",
+                    thinkingColor: "#C49AAB",
+                    footerfontColor: "#D1D1D1",
+                    headericonColor: "#D1D1D1",
+                    pdfColor: "#C49AAB",
+                    micColor: "#C49AAB",
+                    stopColor: "#C49AAB",
+                },
+                peak: {
+                    fontColor: "#4A4E69",
+                    aiBgColor: "#9A8C98",
+                    userBgColor: "#C9ADA7",
+                    windowBgColor: "#F2E9E4",
+                    inputFontColor: "#4A4E69",
+                    borderTextField: "#9A8C98",
+                    sendColor: "#C2CAD0",
+                    bgTextField: "#F2E9E4",
+                    footerColor: "#9A8C98",
+                    thinkingColor: "#C2CAD0",
+                    footerfontColor: "#4A4E69",
+                    headericonColor: "#4A4E69",
+                    pdfColor: "#C2CAD0",
+                    micColor: "#C2CAD0",
+                    stopColor: "#C2CAD0",
+                },
+
+                vale: {
+                    fontColor: "#1D3557",
+                    aiBgColor: "#A8DADC",
+                    userBgColor: "#F1FAEE",
+                    windowBgColor: "#F8FAF9",
+                    inputFontColor: "#1D3557",
+                    borderTextField: "#A8DADC",
+                    sendColor: "#457B9D",
+                    bgTextField: "#F8FAF9",
+                    footerColor: "#A8DADC",
+                    thinkingColor: "#457B9D",
+                    footerfontColor: "#1D3557",
+                    headericonColor: "#1D3557",
+                    pdfColor: "#457B9D",
+                    micColor: "#457B9D",
+                    stopColor: "#457B9D",
+                },
+
+                cove: {
+                    fontColor: "#05668D",
+                    aiBgColor: "#02C3A7",
+                    userBgColor: "#00FA9A",
+                    windowBgColor: "#E0F9F5",
+                    inputFontColor: "#05668D",
+                    borderTextField: "#02C3A7",
+                    sendColor: "#028090",
+                    bgTextField: "#E0F9F5",
+                    footerColor: "#02C3A7",
+                    thinkingColor: "#028090",
+                    footerfontColor: "#05668D",
+                    headericonColor: "#05668D",
+                    pdfColor: "#028090",
+                    micColor: "#028090",
+                    stopColor: "#028090",
+                },
+                rift: {
+                    fontColor: "#555B6E",
+                    aiBgColor: "#89B0AE",
+                    userBgColor: "#BEE3DB",
+                    windowBgColor: "#E5E5E5",
+                    inputFontColor: "#555B6E",
+                    borderTextField: "#89B0AE",
+                    sendColor: "#7A9E9F",
+                    bgTextField: "#E5E5E5",
+                    footerColor: "#89B0AE",
+                    thinkingColor: "#7A9E9F",
+                    footerfontColor: "#555B6E",
+                    headericonColor: "#555B6E",
+                    pdfColor: "#7A9E9F",
+                    micColor: "#7A9E9F",
+                    stopColor: "#7A9E9F",
+                },
+
+                isle: {
+                    fontColor: "#3D5A80",
+                    aiBgColor: "#98C1D9",
+                    userBgColor: "#E0FBFC",
+                    windowBgColor: "#EEF6FB",
+                    inputFontColor: "#3D5A80",
+                    borderTextField: "#98C1D9",
+                    sendColor: "#293241",
+                    bgTextField: "#EEF6FB",
+                    footerColor: "#98C1D9",
+                    thinkingColor: "#293241",
+                    footerfontColor: "#3D5A80",
+                    headericonColor: "#3D5A80",
+                    pdfColor: "#293241",
+                    micColor: "#293241",
+                    stopColor: "#293241",
+                }
+            };
+
+            if (themes[theme]) {
+                var selectedTheme = themes[theme];
+                // Update the color inputs
+                $('.wpaicgchat_font_color').val(selectedTheme.fontColor).trigger('change');
+                $('.wpaicgchat_ai_color').val(selectedTheme.aiBgColor).trigger('change');
+                $('.wpaicgchat_user_color').val(selectedTheme.userBgColor).trigger('change');
+                $('.wpaicgchat_bg_color').val(selectedTheme.windowBgColor).trigger('change');
+                $('.wpaicgchat_input_font_color').val(selectedTheme.inputFontColor).trigger('change');
+                $('.wpaicgchat_input_border').val(selectedTheme.borderTextField).trigger('change');
+                $('.wpaicgchat_send_color').val(selectedTheme.sendColor).trigger('change');
+                $('.wpaicgchat_input_color').val(selectedTheme.bgTextField).trigger('change');
+                $('.wpaicgchat_footer_color').val(selectedTheme.footerColor).trigger('change');
+                $('.wpaicgchat_thinking_color').val(selectedTheme.thinkingColor).trigger('change');
+                $('.wpaicgchat_footer_font_color').val(selectedTheme.footerfontColor).trigger('change');
+                $('.wpaicgchat_bar_color').val(selectedTheme.headericonColor).trigger('change');
+                $('.wpaicg_pdf_color').val(selectedTheme.pdfColor).trigger('change');
+                $('.wpaicg_chat_widget_mic_color').val(selectedTheme.micColor).trigger('change');
+                $('.wpaicgchat_stop_color').val(selectedTheme.stopColor).trigger('change');
+            }
+        });
+        
         function wpaicgUpdateRealtime(){
             var wpaicgWindowWidth = window.innerWidth;
             var wpaicgWindowHeight = window.innerHeight;
-            let fontsize = $('.wpaicg_chat_widget_font_size').val();
-            let fontcolor = $('.wpaicgchat_font_color').iris('color');
-            let bgcolor = $('.wpaicgchat_bg_color').iris('color');
-            let inputbg = $('.wpaicgchat_input_color').iris('color');
-            let inputborder = $('.wpaicgchat_input_border').iris('color');
-            let buttoncolor = $('.wpaicgchat_send_color').iris('color');
-            let chatbarcolor = $('.wpaicgchat_bar_color').iris('color');
-            let userbg = $('.wpaicgchat_user_color').iris('color');
-            let aibg = $('.wpaicgchat_ai_color').iris('color');
             let useavatar = $('.wpaicgchat_use_avatar').val();
             let width = $('.wpaicg_chat_widget_width').val();
             let height = $('.wpaicg_chat_widget_height').val();
-            let mic_color = $('.wpaicg_chat_widget_mic_color').iris('color');
             let wpaicg_chat_rounded = $('.wpaicg_chat_rounded').val();
             let wpaicg_text_rounded = $('.wpaicg_text_rounded').val();
             let wpaicg_text_height = $('.wpaicg_text_height').val();
-            $('.wpaicg-mic-icon').css('color', mic_color);
-            $('.wpaicg-img-icon').css('color', mic_color);
             $('.wpaicg-chatbox').attr('data-height',height);
             $('.wpaicg-chatbox').attr('data-width',width);
             $('.wpaicg-chatbox').attr('data-chat_rounded',wpaicg_chat_rounded);
             $('.wpaicg-chatbox').attr('data-text_rounded',wpaicg_text_rounded);
             $('.wpaicg-chatbox').attr('data-text_height',wpaicg_text_height);
-            $('.wpaicg-chatbox-action-bar').css({
-                'color':chatbarcolor,
-                'background-color':bgcolor
-            });
-            let footernote = $('.wpaicg-footer-note').val();
-            let footerheight = 0;
 
-            if(footernote === ''){
-                footerheight = 18;
-                $('.wpaicg-chatbox-footer').hide();
-                $('.wpaicg-chatbox-type').css('padding','5px');
-            }
-            else{
-                $('.wpaicg-chatbox-type').css('padding','5px 5px 0 5px');
-                $('.wpaicg-chatbox-footer').show();
-                $('.wpaicg-chatbox-footer').html(footernote);
-            }
             if($('.wpaicg_chat_widget_audio').prop('checked')){
                 $('.wpaicg-mic-icon').show();
             }
@@ -1932,25 +2528,8 @@ $profession_options = array(
             else{
                 $('.wpaicg-img-icon').hide();
             }
-            $('.wpaicg-chatbox-messages li.wpaicg-chat-ai-message').css({
-                'font-size': fontsize+'px',
-                'color': fontcolor,
-                'background-color': aibg
-            })
-            $('.wpaicg-chatbox-messages li.wpaicg-chat-user-message').css({
-                'font-size': fontsize+'px',
-                'color': fontcolor,
-                'background-color': userbg
-            });
-            $('.wpaicg_chat_widget_content .wpaicg-chatbox-content ul,.wpaicg_chat_widget_content .wpaicg-chatbox').css({
-                'background-color': bgcolor
-            });
-            $('.wpaicg-chatbox-typing').css({
-                'border-color': inputborder,
-                'background-color': inputbg
-            });
+
             var previewboxWidth = $('.wpaicg-chatbox-preview-box').width();
-            $('.wpaicg-chatbox-send').css('color',buttoncolor);
             if(width.indexOf('%') < 0){
                 if(width.indexOf('px') < 0){
                     width = parseFloat(width);
@@ -1983,28 +2562,16 @@ $profession_options = array(
                 'height': height+'px',
                 'width': width+'px',
             });
-            $('.wpaicg_chat_widget_content .wpaicg-chatbox-content').css({
-                'height': (height - 58 + footerheight)+'px'
-            });
-            $('.wpaicg_chat_widget_content .wpaicg-chatbox-content ul').css({
-                'height': (height - 82 + footerheight)+'px'
-            });
+
             wpaicgChatBoxSize();
         }
-        $('.wpaicg_chat_widget_font_size,.wpaicg_chat_widget_width,.wpaicg_chat_widget_height').on('input', function(){
+        $('.wpaicg_chat_widget_width,.wpaicg_chat_widget_height').on('input', function(){
             wpaicgUpdateRealtime();
         });
         $('.wpaicg_chat_widget_audio,.wpaicg_chat_widget_image,.wpaicgchat_use_avatar,.wpaicgchat_fullscreen,.wpaicgchat_close_btn,.wpaicgchat_download_btn,.wpaicgchat_clear_btn').click(function(){
             wpaicgUpdateRealtime();
         })
-        $('.wpaicgchat_color').wpColorPicker({
-            change: function (event, ui){
-                wpaicgUpdateRealtime();
-            },
-            clear: function(event){
-                wpaicgUpdateRealtime();
-            }
-        });
+
         $('.wpaicg-footer-note').on('input', function(){
             wpaicgUpdateRealtime();
         })
@@ -2047,14 +2614,6 @@ $profession_options = array(
                     button.html('<img width="40" height="40" src="'+attachment.url+'">');
                     $('.wpaicg_ai_avatar_id').val(attachment.id);
                 }).open();
-        });
-        $('.wpaicg-collapse-title').click(function (){
-            if(!$(this).hasClass('wpaicg-collapse-active')){
-                $('.wpaicg-collapse').removeClass('wpaicg-collapse-active');
-                $('.wpaicg-collapse-title span').html('+');
-                $(this).find('span').html('-');
-                $(this).parent().addClass('wpaicg-collapse-active');
-            }
         });
 
         // Function to toggle visibility based on Vector DB selection
@@ -2330,5 +2889,44 @@ document.addEventListener('DOMContentLoaded', function() {
             wpaicgadvancedContentSettings.style.display = 'none';
             wpaicgadvancedContentSettingsLink.textContent = '<?php echo esc_js(esc_html__('Show Additional Options','gpt3-ai-content-generator')); ?>';
         }
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('wpaicg_conversation_starters_widget_container');
+        // Initialize counter based on the number of input fields already present
+        let counter = container.querySelectorAll('.nice-form-group').length;
+
+        window.handleInputWidget = function(event) {
+            const inputs = container.querySelectorAll('.nice-form-group input');
+            const lastInput = inputs[inputs.length - 1];
+            // Adjust the condition to check for the actual last input
+            if (event.target === lastInput && lastInput.value.length > 0 && counter < 10) {
+                addNewStarterInput();
+            }
+        };
+
+        function addNewStarterInput() {
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.classList.add('nice-form-group');
+            wrapperDiv.style.marginTop = "10px"; // Add spacing between inputs
+
+            // Add the input and button, making sure to include the delete button except for the first input
+            const inputHTML = `<input type="text" name="wpaicg_conversation_starters_widget[]" oninput="handleInputWidget(event)">`;
+            const deleteButtonHTML = counter > 0 ? `<button type="button" class="wpaicg-delete-starter" onclick="removeStarter(this)">X</button>` : ``;
+
+            wrapperDiv.innerHTML = inputHTML + deleteButtonHTML;
+            container.appendChild(wrapperDiv);
+            counter++;
+        }
+
+        window.removeStarter = function(button) {
+            button.closest('.nice-form-group').remove();
+            counter--;
+            // Add a new input if all inputs are deleted, keeping at least one input present
+            if (container.querySelectorAll('.nice-form-group').length === 0) {
+                addNewStarterInput();
+            }
+        };
     });
 </script>

@@ -263,15 +263,36 @@ if(!class_exists('\\WPAICG\\WPAICG_Help')) {
                 $wpaicg_result['type'] = $type;
                 $chatgpt['name'] = 'My Bot Name';
                 $chatgpt['temperature'] = '0.7';
-                $chatgpt['max_tokens'] = 700;
-                $chatgpt['top_p'] = 1;
+                $chatgpt['max_tokens'] = 1500;
+                $chatgpt['top_p'] = 0.01;
                 $chatgpt['best_of'] = 1;
                 $chatgpt['ai_avatar'] = '';
-                $chatgpt['frequency_penalty'] = 0.01;
-                $chatgpt['presence_penalty'] = 0.01;
+                $chatgpt['frequency_penalty'] = 0;
+                $chatgpt['presence_penalty'] = 0;
                 $chatgpt['model'] = 'gpt-3.5-turbo';
                 $chatgpt['content_aware'] = 'yes';
-                $chatgpt['bgcolor'] = '#222';
+                $chatgpt['bgcolor'] = '#f8f9fa';
+                $chatgpt['fontcolor'] = '#495057';
+                $chatgpt['user_bg_color'] = '#ccf5e1';
+                $chatgpt['fontsize'] = 14;
+                $chatgpt['bg_text_field'] = '#ffffff';
+                $chatgpt['send_color'] = '#d1e8ff';
+                $chatgpt['bar_color'] = '#495057';
+                $chatgpt['thinking_color'] = '#495057';
+                $chatgpt['text_height'] = 60;
+                $chatgpt['text_rounded'] = 8;
+                $chatgpt['pdf_pages'] = 120;
+                $chatgpt['chat_rounded'] = 8;
+                $chatgpt['ai_bg_color'] = '#d1e8ff';
+                $chatgpt['border_text_field'] = '#ced4da';
+                $chatgpt['footer_color'] = '#ffffff';
+                $chatgpt['footer_font_color'] = '#495057';
+                $chatgpt['input_font_color'] = '#495057';
+                $chatgpt['mic_color'] = '#d1e8ff';
+                $chatgpt['download_btn'] = 'true';
+                $chatgpt['audio_enable'] = 'true';
+                $chatgpt['clear_btn'] = 'true';
+                $chatgpt['fullscreen'] = 'true';
                 if($type == 'shortcode'){
                     $wpaicg_chatbot_id = wp_insert_post(array(
                         'post_title' => 'My Bot Name',
@@ -286,20 +307,41 @@ if(!class_exists('\\WPAICG\\WPAICG_Help')) {
                         $wpaicg_chat_widget = array(
                             'position' => $position,
                             'status' => 'active',
-                            'bgcolor' => '#222',
-                            'content_aware' => 'yes'
+                            'bgcolor' => '#f8f9fa',
+                            'fontcolor' => '#495057',
+                            'user_bg_color' => '#ccf5e1',
+                            'fontsize' => 14,
+                            'bg_text_field' => '#fff',
+                            'send_color' => '#d1e8ff',
+                            'bar_color' => '#495057',
+                            'thinking_color' => '#495057',
+                            'text_height' => 60,
+                            'text_rounded' => 8,
+                            'pdf_pages' => 120,
+                            'chat_rounded' => 8,
+                            'ai_bg_color' => '#d1e8ff',
+                            'content_aware' => 'yes',
+                            'border_text_field' => '#ced4da',
+                            'footer_color' => '#ffffff',
+                            'footer_font_color' => '#495057',
+                            'input_font_color' => '#495057',
+                            'download_btn' => 'true',
+                            'audio_enable' => 'true',
+                            'clear_btn' => 'true',
+                            'fullscreen' => 'true',
+                            'height' => '60%',
+                            'width' => '60%',
                         );
                         update_option('wpaicg_chat_language', $language);
                         update_option('wpaicg_chat_widget', $wpaicg_chat_widget);
                         update_option('wpaicg_chat_model', 'gpt-3.5-turbo');
                         update_option('wpaicg_chat_temperature', '0.7');
-                        update_option('wpaicg_chat_max_tokens', 700);
+                        update_option('wpaicg_chat_max_tokens', 1500);
                         update_option('wpaicg_chat_embedding', '');
-                        update_option('wpaicg_chat_frequency_penalty', 0.01);
-                        update_option('wpaicg_chat_presence_penalty', 0.01);
-                        update_option('wpaicg_chat_presence_penalty', 0.01);
+                        update_option('wpaicg_chat_frequency_penalty', 0);
+                        update_option('wpaicg_chat_presence_penalty', 0);
                         update_option('wpaicg_chat_best_of', 1);
-                        update_option('wpaicg_chat_top_p', 1);
+                        update_option('wpaicg_chat_top_p', 0.01);
                         if($chat_addition){
                             update_option('wpaicg_chat_addition', 1);
                             update_option('wpaicg_chat_addition_text', $addition);

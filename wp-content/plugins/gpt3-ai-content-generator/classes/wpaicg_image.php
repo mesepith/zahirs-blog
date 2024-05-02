@@ -207,7 +207,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Image')) {
                 'wpaicg_image_generator',
                 'wpaicg_image_generator',
                 array( $this, 'wpaicg_image_generator' ),
-                4
+                7
             );
         }
 

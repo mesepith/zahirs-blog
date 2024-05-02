@@ -4,14 +4,13 @@ if (!defined('ABSPATH')) {
 }
 
 ?>
-<div class="wpaicg-modal-content">
     <?php
 if (isset($wpaicg_data) && is_array($wpaicg_data) && count($wpaicg_data)):
     usort($wpaicg_data, function ($item1, $item2) {
         return $item2->created_at <=> $item1->created_at;
     });
     ?>
-				        <table class="wp-list-table widefat fixed striped table-view-list comments">
+				        <table class="wp-list-table widefat striped table-view-list comments">
 				            <thead>
 				            <tr>
 				                <th><?php echo esc_html__('Object', 'gpt3-ai-content-generator') ?></th>
@@ -44,5 +43,3 @@ else:
     echo esc_html__('No events', 'gpt3-ai-content-generator');
 endif;
 ?>
-
-</div>

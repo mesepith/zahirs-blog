@@ -590,7 +590,8 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 alert('<?php echo esc_html__('Please wait content generated','gpt3-ai-content-generator')?>')
             }
             else {
-                var data = $('#wpaicg-post-form select').serialize()+'&'+$('#wpaicg-post-form input').serialize()+'&'+$('#wpaicg-post-form textarea').serialize();
+                // var data = $('#wpaicg-post-form select').serialize()+'&'+$('#wpaicg-post-form input').serialize()+'&'+$('#wpaicg-post-form textarea').serialize();
+                var data = $('#right-nav-express select').serialize()+'&'+$('#right-nav-express input').serialize()+'&'+$('#right-nav-express textarea').serialize() + '&' + $('#expressdata select').serialize()+'&'+$('#expressdata input').serialize()+'&'+$('#expressdata textarea').serialize();
                 data = data+'&title='+title+'&content='+content+'&action=wpaicg_save_draft_post_extra&nonce=<?php echo wp_create_nonce('wpaicg-ajax-nonce')?>';
                 if($('#post_ID').length){
                     data += '&post_id='+$('#post_ID').val();

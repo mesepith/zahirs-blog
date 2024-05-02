@@ -32,13 +32,390 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
             add_action( 'wp_ajax_wpaicg_bulk_status', array( $this, 'wpaicg_bulk_status' ) );
             add_action( 'wp_ajax_wpaicg_read_csv', array( $this, 'wpaicg_read_csv' ) );
             add_action( 'wp_ajax_wpaicg_speech_record', array( $this, 'wpaicg_speech_record' ) );
+            add_action( 'wp_ajax_gpt3_pagination', array( $this, 'gpt3_ajax_pagination' ) );
+            add_action( 'wp_ajax_nopriv_gpt3_pagination', 'gpt3_ajax_pagination');
+            add_action( 'wp_ajax_delete_post_action', array( $this, 'delete_post_by_ajax' ) );
+            add_action( 'wp_ajax_delete_all_posts_action', array($this, 'delete_all_wpaicg_posts'));
+            add_action('wp_ajax_reload_items', array($this, 'reload_items'));
+            add_action('wp_ajax_fetch_batch_details', array($this, 'fetch_batch_details'));
+            add_action('wp_ajax_trigger_wpaicg_cron', array($this, 'trigger_wpaicg_cron'));
+            add_action('wp_ajax_restart_queue_process', array($this, 'restart_queue_process'));
         }
 
+        public function restart_queue_process() {
+            // Security check, ensure user has the capability to perform this action
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error('Unauthorized operation');
+                return;
+            }
+
+            $files = [
+                WPAICG_PLUGIN_DIR . 'wpaicg_running.txt',
+                WPAICG_PLUGIN_DIR . '/wpaicg_sheets.txt',
+                WPAICG_PLUGIN_DIR . '/wpaicg_rss.txt',
+                WPAICG_PLUGIN_DIR . 'wpaicg_tweet.txt',
+            ];
+
+            foreach ($files as $file) {
+                if (file_exists($file)) {
+                    @unlink($file);
+                }
+            }
+
+            wp_send_json_success('Queue restarted successfully.');
+        }
+
+        public function trigger_wpaicg_cron() {
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error('Unauthorized');
+                return;
+            }
+        
+            // Retrieve the task parameter from the AJAX request
+            $task = isset($_POST['task']) ? $_POST['task'] : '';
+        
+            // Construct the URL based on the task parameter
+            $cron_url = home_url('/index.php?' . $task);
+        
+            // Make a non-blocking, timeout-limited request
+            wp_remote_get($cron_url, array(
+                'timeout' => 1, // Wait for 1 second before aborting the request
+                'blocking' => false, // Non-blocking mode
+            ));
+        
+            wp_send_json_success('Trigger initiated. Please refresh the page to see the updated status.');
+        }
+
+
+        public function fetch_batch_details() {
+            check_ajax_referer('fetch_batch_details_nonce', 'nonce');
+        
+            $batch_id = isset($_POST['batchId']) ? intval($_POST['batchId']) : 0;
+            if (!$batch_id) {
+                wp_send_json_error('Invalid batch ID');
+            }
+        
+            $batch_items = get_posts(array(
+                'post_type' => 'wpaicg_bulk',
+                'post_status' => array('publish', 'pending', 'draft', 'trash', 'inherit'),
+                'post_parent' => $batch_id,
+                'posts_per_page' => -1
+            ));
+
+            $pricing = array(
+                'gpt-4' => 0.06,
+                'gpt-4-32k' => 0.12,
+                'gpt-4-turbo-preview' => 0.01,
+                'gpt-4-turbo' => 0.01,
+                'gpt-4-1106-preview' => 0.01,
+                'gpt-4-vision-preview' => 0.01,
+                'gpt-3.5-turbo' => 0.002,
+                'gpt-3.5-turbo-instruct' => 0.002,
+                'gpt-3.5-turbo-16k' => 0.004,
+                'text-davinci-003' => 0.02,
+                'text-curie-001' => 0.002,
+                'text-babbage-001' => 0.0005,
+                'text-ada-001' => 0.0004,
+                'gemini-pro' => 0.000375
+            );
+        
+            $html = '';
+            if ($batch_items) {
+                foreach ($batch_items as $item) {
+                    $status = esc_html($item->post_status);
+                    $title = esc_html($item->post_title);
+                    $run = get_post_meta($item->ID, '_wpaicg_generator_run', true);
+                    $formatted_run = $this->format_duration($run);
+                    $length = get_post_meta($item->ID, '_wpaicg_generator_length', true);
+                    $token = get_post_meta($item->ID, '_wpaicg_generator_token', true);
+                    $ai_model = get_post_meta($item->ID, 'wpaicg_ai_model', true);
+
+                    // Calculate cost
+                    $cost = 'N/A'; // Default value
+                    if (!empty($token) && array_key_exists($ai_model, $pricing)) {
+                        $cost_per_1k_tokens = $pricing[$ai_model];
+                        $cost = '$' . number_format($token * $cost_per_1k_tokens / 1000, 5);
+                    }
+        
+                    if ($status === 'publish') {
+                        $published_post_id = get_post_meta($item->ID, '_wpaicg_generator_post', true);
+                        $edit_post_link = get_edit_post_link($published_post_id);
+                        $title = $edit_post_link ? "<a href='" . esc_url($edit_post_link) . "' target='_blank'>$title</a>" : $title;
+                    }
+        
+                    // Assuming 'Pending', 'In Progress', 'Completed', 'Cancelled' as possible $status_text values
+                    $status_text_map = [
+                        'publish' => '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">Completed</span>',
+                        'pending' => '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">Pending</span>',
+                        'draft' => '<span style="color: #ffffff;background: #ffc300;border-radius: 5px;padding: 0 0.3em 0.1em;">In Progress</span>',
+                        'trash' => 'Cancelled',
+                        'inherit' => 'Cancelled',
+                    ];
+
+                    $status_text = array_key_exists($status, $status_text_map) ? $status_text_map[$status] : 'Unknown';
+
+                    // Show only Title and Status for non-completed items
+                    if ($status !== 'publish') {
+                        $html .= "<div><strong>Title:</strong> $title</div>";
+                        $html .= "<div><strong>Status:</strong> $status_text</div><br>";
+                        continue; // Skip the rest of the details for non-completed items
+                    }
+
+                    // Continue to add other details for completed items
+                    if ($status === 'publish' && $published_post_id = get_post_meta($item->ID, '_wpaicg_generator_post', true)) {
+                        $edit_post_link = get_edit_post_link($published_post_id);
+                        $title = $edit_post_link ? "<a href='" . esc_url($edit_post_link) . "' target='_blank'>$title</a>" : $title;
+                    }
+
+
+                    $html .= "<div><strong>Title:</strong> $title</div>";
+                    $html .= "<div><strong>Status:</strong> $status_text</div>";
+                    $html .= "<div><strong>Duration:</strong> $formatted_run</div>";
+                    $html .= "<div><strong>Word Count:</strong> $length</div>";
+                    $html .= "<div><strong>Token:</strong> $token</div>";
+                    $html .= "<div><strong>Estimated Cost:</strong> $cost</div>";
+                    $html .= "<div><strong>Model:</strong> $ai_model</div><br>";
+
+                }
+            } else {
+                $html = "<div>No items found for this batch.</div>";
+            }
+        
+            wp_send_json_success($html);
+        }
+        
+        
+        public function format_duration($seconds) {
+            // Check if the run value is empty or not numeric and return a default message
+            if (empty($seconds) || !is_numeric($seconds)) {
+                return "Not available"; // Or return ""; for an empty string
+            }
+        
+            // Explicitly convert the input to a float to handle fractional seconds
+            $seconds = floatval($seconds);
+        
+            // If necessary, round to the nearest second
+            $seconds = round($seconds);
+        
+            $hours = floor($seconds / 3600);
+            $minutes = floor(($seconds % 3600) / 60);
+            $seconds = $seconds % 60;
+        
+            $parts = [];
+        
+            if ($hours > 0) {
+                $parts[] = $hours . ' hour' . ($hours == 1 ? '' : 's');
+            }
+            if ($minutes > 0) {
+                $parts[] = $minutes . ' min' . ($minutes == 1 ? '' : 's');
+            }
+            if ($seconds > 0 || count($parts) === 0) {
+                $parts[] = $seconds . ' sec' . ($seconds == 1 ? '' : 's');
+            }
+        
+            return implode(' and ', $parts);
+        }
+        
+        
+        public function gpt3_ajax_pagination() {
+            global $wpdb;
+            // Check for nonce security
+            if ( ! wp_verify_nonce( $_POST['nonce'], 'gpt3_ajax_pagination_nonce' ) ) {
+                wp_send_json_error(['msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $posts_per_page = 5; // Adjust as needed
+            $offset = ($page - 1) * $posts_per_page;
+        
+            // Calculate total number of posts from wpaicg_tracking or wpaicg_twitter
+            $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'wpaicg_tracking' OR post_type = 'wpaicg_twitter'");
+            $total_pages = ceil($total_posts / $posts_per_page);
+        
+            $posts = $wpdb->get_results($wpdb->prepare("
+                SELECT ID, post_title, post_status, post_mime_type, post_type
+                FROM {$wpdb->posts} 
+                WHERE post_type IN ('wpaicg_tracking', 'wpaicg_twitter')
+                ORDER BY post_date DESC 
+                LIMIT %d, %d", 
+                $offset, $posts_per_page
+            ));
+        
+            $output = '';
+            foreach ( $posts as $post ) {
+                $title = strlen($post->post_title) > 20 ? esc_html(substr($post->post_title, 0, 20)) . '...' : esc_html($post->post_title);
+                $status = '';
+                switch ($post->post_status) {
+                    case 'pending':
+                        $status = '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Pending', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'publish':
+                        $status = '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Completed', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'draft':
+                        $status = '<span style="color: #bb0505;">' . esc_html__('Error', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'trash':
+                        $status = '<span style="color: #bb0505;">' . esc_html__('Cancelled', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                }
+                $source = ''; // Initialize source variable
+                // Determine source based on post_mime_type and post_type
+                if ($post->post_type == 'wpaicg_twitter') {
+                    $source = esc_html__('Twitter', 'gpt3-ai-content-generator');
+                } elseif (empty($post->post_mime_type) || $post->post_mime_type == 'editor') {
+                    $source = esc_html__('Bulk Editor', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'csv') {
+                    $source = esc_html__('CSV', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'rss') {
+                    $source = esc_html__('RSS', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'sheets') {
+                    $source = esc_html__('Google Sheets', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'multi') {
+                    $source = esc_html__('Copy-Paste', 'gpt3-ai-content-generator');
+                }
+                // Append "Action" column HTML
+                $output .= "<tr id='post-row-{$post->ID}'><td class='column-id'>" . esc_html($post->ID) . "</td><td class='column-batch'><a href='javascript:void(0)' class='show-details' data-id='{$post->ID}'>" . $title . "</a></td><td class='column-source'>" . $source . "</td><td class='column-status'>" . $status . "</td><td class='column-action'><button class='button button-primary delete-post' data-postid='{$post->ID}'>Delete</button></td></tr>";
+            }
+        
+            // Generate and return pagination HTML as before
+            $pagination_html = '<div class="gpt3-pagination">';
+            for ($i = 1; $i <= $total_pages; $i++) {
+                $pagination_html .= '<a href="#" data-page="' . $i . '">' . $i . '</a> ';
+            }
+            $pagination_html .= '</div>';
+        
+            // Send back both the table content and pagination HTML
+            wp_send_json_success(['content' => $output, 'pagination' => $pagination_html]);
+        
+            die();
+        }
+        
+        public function reload_items() {
+            global $wpdb;
+            // Check for nonce security
+            if ( ! wp_verify_nonce( $_POST['nonce'], 'gpt3_ajax_pagination_nonce' ) ) {
+                wp_send_json_error(['msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $posts_per_page = 5; // Adjust as needed
+            $offset = ($page - 1) * $posts_per_page;
+        
+            // Calculate total number of posts
+            $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type IN ('wpaicg_tracking', 'wpaicg_twitter')");
+            $total_pages = ceil($total_posts / $posts_per_page);
+        
+            $posts = $wpdb->get_results($wpdb->prepare("
+                SELECT ID, post_title, post_status, post_mime_type, post_type
+                FROM {$wpdb->posts} 
+                WHERE post_type IN ('wpaicg_tracking', 'wpaicg_twitter') 
+                ORDER BY post_date DESC 
+                LIMIT %d, %d", 
+                $offset, $posts_per_page
+            ));
+    
+            $output = '';
+            foreach ( $posts as $post ) {
+                $title = strlen($post->post_title) > 20 ? esc_html(substr($post->post_title, 0, 20)) . '...' : esc_html($post->post_title);
+                $status = '';
+                switch ($post->post_status) {
+                    case 'pending':
+                        $status = '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Pending', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'publish':
+                        $status = '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Completed', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'draft':
+                        $status = '<span style="color: #bb0505;">' . esc_html__('Error', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'trash':
+                        $status = '<span style="color: #bb0505;">' . esc_html__('Cancelled', 'gpt-3-ai-content-generator') . '</span>';
+                        break;
+                }
+                $source = ''; // Initialize source variable
+                // Source determination logic
+                if ($post->post_type == 'wpaicg_twitter') {
+                    $source = esc_html__('Twitter', 'gpt3-ai-content-generator');
+                } elseif (empty($post->post_mime_type) || $post->post_mime_type == 'editor') {
+                    $source = esc_html__('Bulk Editor', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'csv') {
+                    $source = esc_html__('CSV', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'rss') {
+                    $source = esc_html__('RSS', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'sheets') {
+                    $source = esc_html__('Google Sheets', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'multi') {
+                    $source = esc_html__('Copy-Paste', 'gpt3-ai-content-generator');
+                }
+                // Append "Action" column HTML
+                $output .= "<tr id='post-row-{$post->ID}'><td class='column-id'>" . esc_html($post->ID) . "</td><td class='column-batch'><a href='javascript:void(0)' class='show-details' data-id='{$post->ID}'>" . $title . "</a></td><td class='column-source'>" . $source . "</td><td class='column-status'>" . $status . "</td><td class='column-action'><button class='button button-primary delete-post' data-postid='{$post->ID}'>Delete</button></td></tr>";
+            }
+
+            wp_send_json_success(['content' => $output]);
+
+            die();
+        }
+
+        public function delete_post_by_ajax() {
+            global $wpdb; // Make sure you have access to the global $wpdb object
+        
+            // Check for nonce security
+            $nonce = $_POST['nonce'];
+            if (!wp_verify_nonce($nonce, 'gpt3_ajax_pagination_nonce')) {
+                wp_send_json_error(['msg' => 'Nonce verification failed']);
+                return; // Early return to stop execution if the nonce check fails
+            }
+        
+            $postid = isset($_POST['postid']) ? intval($_POST['postid']) : 0;
+            if ($postid <= 0) {
+                wp_send_json_error(['msg' => 'Invalid Post ID']);
+                return; // Early return to stop execution if the post ID is invalid
+            }
+        
+            // Delete the specified post and its related children posts
+            wp_delete_post($postid, true); // Bypass trash and permanently delete
+            $wpdb->delete($wpdb->posts, ['post_parent' => $postid, 'post_type' => 'wpaicg_bulk']); // Delete children
+        
+            // Clean up related post meta entries
+            $related_meta = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->postmeta} WHERE meta_key=%s AND meta_value=%d", 'wpaicg_twitter_track', $postid));
+            if ($related_meta) {
+                delete_post_meta($related_meta->post_id, 'wpaicg_tweeted');
+            }
+        
+            wp_send_json_success(['msg' => 'Post and related items deleted successfully']);
+        }
+        
+
+        public function delete_all_wpaicg_posts() {
+
+            global $wpdb;
+            // Security check
+            check_ajax_referer('gpt3_ajax_pagination_nonce', 'nonce');
+        
+            // Query to select all posts of the custom post types
+            $tasks_sql = $wpdb->prepare(
+                "SELECT ID FROM " . $wpdb->posts . " WHERE post_type IN ('wpaicg_bulk', 'wpaicg_tracking')"
+            );
+            $tasks = $wpdb->get_results($tasks_sql, ARRAY_A);
+        
+            // Loop through each task and delete it using wp_delete_post
+            foreach ($tasks as $task) {
+                wp_delete_post($task['ID'], true); // Set to true to bypass trash
+            }
+        
+            wp_send_json_success(); // Return success
+            
+            die();
+        }
+        
+        
+        
         public function wpaicg_speech_record()
         {
             $mime_types = ['mp3' => 'audio/mpeg','mp4' => 'video/mp4','mpeg' => 'video/mpeg','m4a' => 'audio/m4a','wav' => 'audio/wav','webm' => 'video/webm'];
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong','gpt3-ai-content-generator'));
-            if(!current_user_can('wpaicg_single_content_speech')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -116,7 +493,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'status' => 'error',
                 'msg'    => esc_html__('Something went wrong','gpt3-ai-content-generator'),
             );
-            if(!current_user_can('wpaicg_bulk_content_csv')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -168,7 +545,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'wpaicg_single_content',
                 'wpaicg_single_content',
                 array( $this, 'wpaicg_single_content' ),
-                1
+                2
             );
             add_submenu_page(
                 'wpaicg',
@@ -177,7 +554,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'wpaicg_bulk_content',
                 'wpaicg_bulk_content',
                 array( $this, 'wpaicg_bulk_content' ),
-                2
+                3
             );
             add_submenu_page(
                 'edit.php',
@@ -187,13 +564,13 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'wpaicg_single_content',
                 array( $this, 'wpaicg_single_content' )
             );
+
         }
 
         public function wpaicg_single_content()
         {
             include WPAICG_PLUGIN_DIR . 'admin/extra/wpaicg_single.php';
         }
-
         public function wpaicg_bulk_content()
         {
             include WPAICG_PLUGIN_DIR . 'admin/extra/wpaicg_bulk.php';
@@ -207,7 +584,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'status' => 'error',
                 'msg'    => esc_html__('Something went wrong','gpt3-ai-content-generator'),
             );
-            if(!current_user_can('wpaicg_bulk_content_editor')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -263,7 +640,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'status' => 'error',
                 'msg'    => esc_html__('Something went wrong','gpt3-ai-content-generator'),
             );
-            if(!current_user_can('wpaicg_bulk_content_editor')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -342,7 +719,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'status' => 'error',
                 'msg'    => esc_html__('Something went wrong','gpt3-ai-content-generator'),
             );
-            if(!current_user_can('wpaicg_bulk_content_editor')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -464,6 +841,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                             'gpt-4' => 0.06,
                             'gpt-4-32k' => 0.12,
                             'gpt-4-1106-preview' => 0.01,
+                            'gpt-4-turbo' => 0.01,
                             'gpt-4-vision-preview' => 0.01,
                             'gpt-3.5-turbo' => 0.002,
                             'gpt-3.5-turbo-instruct' => 0.002,

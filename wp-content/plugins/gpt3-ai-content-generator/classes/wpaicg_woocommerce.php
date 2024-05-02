@@ -289,7 +289,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_WooCommerce' ) ) {
                         $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
                     }
                     
-                    if($wpaicg_ai_model == 'gpt-3.5-turbo' || $wpaicg_ai_model == 'gpt-3.5-turbo-16k' || $wpaicg_ai_model == 'gpt-4-1106-preview' || $wpaicg_ai_model == 'gpt-4' || $wpaicg_ai_model == 'gpt-4-32k' || $wpaicg_ai_model == 'gpt-3.5-turbo-instruct' || $wpaicg_ai_model == 'gpt-4-vision-preview' || $wpaicg_ai_model == 'gemini-pro'){
+                    if($wpaicg_ai_model == 'gpt-3.5-turbo' || $wpaicg_ai_model == 'gpt-3.5-turbo-16k' || $wpaicg_ai_model == 'gpt-4-1106-preview' || $wpaicg_ai_model == 'gpt-4-turbo' || $wpaicg_ai_model == 'gpt-4' || $wpaicg_ai_model == 'gpt-4-32k' || $wpaicg_ai_model == 'gpt-3.5-turbo-instruct' || $wpaicg_ai_model == 'gpt-4-vision-preview' || $wpaicg_ai_model == 'gemini-pro'){
                         $prompt = $wpaicg_languages['fixed_prompt_turbo'].' '.$prompt;
                     }
 

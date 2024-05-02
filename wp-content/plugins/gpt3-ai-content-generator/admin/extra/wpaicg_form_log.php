@@ -112,6 +112,7 @@ $totalPage         = ceil($total / $items_per_page);
                 'gpt-4' => 0.06,
                 'gpt-4-32k' => 0.12,
                 'gpt-4-1106-preview' => 0.01,
+                'gpt-4-turbo' => 0.01,
                 'gpt-4-vision-preview' => 0.01,
                 'gpt-3.5-turbo' => 0.002,
                 'gpt-3.5-turbo-instruct' => 0.002,

@@ -63,6 +63,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                         'wpaicg_chat_shortcode_options',
                         'wpaicg_shortcode_stream',
                         'wpaicg_shortcode_google_model',
+                        'wpaicg_conversation_starters',
                     ];
                     foreach ($options_to_delete as $option) {
                         if (get_option($option) !== false) {
@@ -93,7 +94,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                         'wpaicg_chat_no_answer',
                         'wpaicg_chat_embedding_type',
                         'wpaicg_chat_embedding_top',
-                        'wpaicg_widget_google_model'
+                        'wpaicg_widget_google_model',
+                        'wpaicg_conversation_starters_widget',
                     ];
                     foreach ($widget_options as $option) {
                         if (get_option($option) !== false) {
@@ -369,16 +371,32 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 wp_send_json($wpaicg_result);
             }
             if(isset($_REQUEST['bot']) && is_array($_REQUEST['bot'])){
+                $bot_id = isset($_REQUEST['bot']['id']) ? intval($_REQUEST['bot']['id']) : 0;
+
+                // use bot id to get the current conversation_starters from the db post_content conversation_starters field
+                $current_conversation_starters = '';
+                if($bot_id > 0){
+                    $bot = get_post($bot_id);
+                    if($bot){
+                        $bot = json_decode($bot->post_content,true);
+                        if(isset($bot['conversation_starters'])){
+                            $current_conversation_starters = $bot['conversation_starters'];
+                        }
+                    }
+                }
+
+                $conversation_starters = isset($_REQUEST['bot']['conversation_starters']) ? wp_unslash($_REQUEST['bot']['conversation_starters']) : $current_conversation_starters;
                 // Extract the footer_text field before sanitization
                 $footer_text = isset($_REQUEST['bot']['footer_text']) ? wp_kses_post($_REQUEST['bot']['footer_text']) : '';
 
                 // Remove the footer_text field from the bot array temporarily
-                unset($_REQUEST['bot']['footer_text']);
+                unset($_REQUEST['bot']['footer_text'], $_REQUEST['bot']['conversation_starters']);
 
                 $bot = wpaicg_util_core()->sanitize_text_or_array_field($_REQUEST['bot']);
 
                 // Reintroduce the footer_text field into the bot array or process separately as needed
                 $bot['footer_text'] = $footer_text;
+                $bot['conversation_starters'] = $conversation_starters;
 
                 if(isset($bot['id']) && !empty($bot['id'])){
                     $wpaicg_chatbot_id = $bot['id'];
@@ -436,7 +454,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 'wpaicg_chatgpt',
                 'wpaicg_chatgpt',
                 array( $this, 'wpaicg_chatmode' ),
-                3
+                1
             );
         }
 
@@ -602,7 +620,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                     'presence_penalty' => $existingValue['presence_penalty'],
                     'ai_name' => esc_html__('AI','gpt3-ai-content-generator'),
                     'you' => esc_html__('You','gpt3-ai-content-generator'),
-                    'ai_thinking' => esc_html__('AI Thinking','gpt3-ai-content-generator'),
+                    'ai_thinking' => esc_html__('Gathering thoughts','gpt3-ai-content-generator'),
                     'placeholder' => esc_html__('Type a message','gpt3-ai-content-generator'),
                     'welcome' => esc_html__('Hello human, I am a GPT powered AI chat bot. Ask me anything!','gpt3-ai-content-generator'),
                     'remember_conversation' => 'yes',
@@ -614,9 +632,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                     'embedding_index' => '',
                     'no_answer' => '',
                     'fontsize' => 13,
-                    'fontcolor' => '#fff',
-                    'user_bg_color' => '#444654',
-                    'ai_bg_color' => '#343541',
+                    'fontcolor' => '#495057',
+                    'user_bg_color' => '#ccf5e1',
+                    'ai_bg_color' => '#d1e8ff',
                     'ai_icon_url' => '',
                     'ai_icon' => 'default',
                     'use_avatar' => false,
@@ -1535,7 +1553,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
 
         public function getChatEndpointModels() {
             // List of models for the chat completions endpoint
-            $chatModels = ['gpt-4', 'gpt-4-32k', 'gpt-4-1106-preview', 'gpt-4-vision-preview', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'];
+            $chatModels = ['gpt-4', 'gpt-4-32k', 'gpt-4-1106-preview', 'gpt-4-turbo','gpt-4-vision-preview', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'];
             
             // Get custom models and Azure deployment model, if any
             $custom_models = get_option('wpaicg_custom_models', []);
@@ -1665,6 +1683,21 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
         }
 
         public function processChunkedData($accumulatedData, $wpaicg_chatgpt_messages, $wpaicg_ai_model, $isChatEndpoint) {
+            // First, check for an error in the accumulated data
+            $decodedData = json_decode($accumulatedData, true);
+            if (isset($decodedData['error']['message'])) {
+                echo "event: message\n";
+                echo 'data: {"choices":[{"delta":{"content":"' . $decodedData['error']['message'] . '"}}]}';
+                echo "\n\n";
+                echo 'data: {"choices":[{"finish_reason":"stop"}]}';
+                echo "\n\n";
+                ob_implicit_flush( true );
+                // Flush and end buffer if it exists
+                if (ob_get_level() > 0) {
+                    ob_end_flush();
+                }
+                return;
+            }
             // Parse the chunked data
             $chunks = explode("\n\n", $accumulatedData);
             $completeData = [];
@@ -1905,11 +1938,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                     'model' => $model
                 ];
 
-                // Add dimensions parameter if the model is 'text-embedding-3-large'
-                if ($model === 'text-embedding-3-large') {
-                    $apiParams['dimensions'] = 1536;
-                }
-
                 // Make the API call
                 $response = $open_ai->embeddings($apiParams);
                 $response = json_decode($response, true);
@@ -2009,12 +2037,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                     'input' => $wpaicg_message,
                     'model' => $model
                 ];
-
-                // Add dimensions parameter if the model is 'text-embedding-3-large'
-                if ($model === 'text-embedding-3-large') {
-                    $apiParams['dimensions'] = 1536;
-                }
-
+                
                 // Make the API call
                 $response = $open_ai->embeddings($apiParams);
                 $response = json_decode($response, true);
@@ -2075,9 +2098,11 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                                 $result['data'] = $data;
                                 $result['status'] = 'success';
                             } else {
+                                $errror_message_from_api = isset($body['status']['error']) ? $body['status']['error'] : esc_html__('No results from Qdrant.', 'gpt3-ai-content-generator');
+                                $errror_message_from_api = esc_html__('Response from Qdrant: ', 'gpt3-ai-content-generator') . $errror_message_from_api;
                                 $result['status'] = 'error';
                                 $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source);
-                                $stream_pinecone_error = ['msg'    => esc_html__('Something wrong with Qdrant setup. Check your Qdrant settings.', 'gpt3-ai-content-generator'), 'pineconeError' => true];
+                                $stream_pinecone_error = ['msg'    => $errror_message_from_api, 'pineconeError' => true];
                                 if ($stream_nav_setting == 1) {
                                     header('Content-Type: text/event-stream');
                                     header('Cache-Control: no-cache');
@@ -2090,7 +2115,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                                     }
                                     exit;
                                 } else {
-                                    $result['data'] = esc_html__('Something wrong with Qdrant setup. Check your Qdrant settings.', 'gpt3-ai-content-generator');
+                                    $result['data'] = $errror_message_from_api;
                                 }
                             }
                         }

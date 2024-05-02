@@ -1,78 +1,88 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
-$wpaicg_openai = \WPAICG\WPAICG_OpenAI::get_instance()->openai();
+global $wpdb;
+$wpaicgTable = $wpdb->prefix . 'wpaicg';
+$sql = $wpdb->prepare( 'SELECT * FROM ' . $wpaicgTable . ' where name=%s','wpaicg_settings' );
+$wpaicg_settings = $wpdb->get_row( $sql, ARRAY_A );
+$wpaicg_openai_api_key = '';
+if($wpaicg_settings && isset($wpaicg_settings['api_key']) && !empty($wpaicg_settings['api_key'])){
+    $wpaicg_openai_api_key = $wpaicg_settings['api_key'];
+}
 $wpaicg_pinecone_api = get_option('wpaicg_troubleshoot_pinecone_api',get_option('wpaicg_pinecone_api',''));
-$wpaicg_openai_trouble_api = get_option('wpaicg_openai_trouble_api',$wpaicg_openai->api_key);
+$wpaicg_openai_trouble_api = get_option('wpaicg_openai_trouble_api',$wpaicg_openai_api_key);
 $wpaicg_provider = get_option('wpaicg_provider');
 $wpaicg_vector_db_provider = get_option('wpaicg_vector_db_provider', 'pinecone'); // Default to Pinecone
 $wpaicg_qdrant_api_key = get_option('wpaicg_qdrant_api_key', '');
 $wpaicg_qdrant_endpoint = get_option('wpaicg_qdrant_endpoint', '');
 ?>
-<style>
-    pre{
-        padding: 10px;
-        background: #dbdbdb;
-        border-radius: 4px;
-        max-height: 200px;
-        overflow-y: auto;
-    }
-</style>
 <!-- Vector DB Provider Selection -->
 <div class="wpaicg_vector_db_provider_selection">
-    <label>Vector DB Provider: </label>
-    <select class="wpaicg_vector_db_provider" name="wpaicg_vector_db_provider">
-        <option value="pinecone" <?php echo $wpaicg_vector_db_provider === 'pinecone' ? 'selected' : ''; ?>>Pinecone</option>
-        <option value="qdrant" <?php echo $wpaicg_vector_db_provider === 'qdrant' ? 'selected' : ''; ?>>Qdrant</option>
-    </select>
+    <div class="nice-form-group">
+        <label><?php esc_html_e('Vector DB Provider', 'gpt3-ai-content-generator'); ?></label>
+        <select class="wpaicg_vector_db_provider" name="wpaicg_vector_db_provider" style="width: 50%;">
+            <option value="pinecone" <?php echo $wpaicg_vector_db_provider === 'pinecone' ? 'selected' : ''; ?>>Pinecone</option>
+            <option value="qdrant" <?php echo $wpaicg_vector_db_provider === 'qdrant' ? 'selected' : ''; ?>>Qdrant</option>
+        </select>
+    </div>
 </div>
 <p></p>
 <!-- Pinecone specific fields -->
 <div class="wpaicg_pinecone_specific" style="<?php echo $wpaicg_vector_db_provider === 'qdrant' ? 'display: none;' : ''; ?>">
-    <strong>Get Pinecone Indexes</strong>
-    <div class="wpaicg_pinecone_api_box">
-        <p>
-            <label>API Key: </label>
-            <input value="<?php echo esc_html($wpaicg_pinecone_api)?>" class="wpaicg_pinecone_api" type="text" placeholder="000000-000-000-0000-0000000" />
-            <button class="button button-primary wpaicg_valid_pinecone_api">Get Index</button>
-            <button class="button wpaicg_start_pinecone_api">Start Again</button>
-        </p>
+    <div class="nice-form-group">
+        <label><?php esc_html_e('Pinecone API Key', 'gpt3-ai-content-generator'); ?></label>
+        <input style="width: 50%;" value="<?php echo esc_html($wpaicg_pinecone_api)?>" class="wpaicg_pinecone_api" type="text" placeholder="000000-000-000-0000-0000000" />
+        <button class="button button-primary wpaicg_valid_pinecone_api" style="padding-top: 0.5em;padding-bottom: 0.5em;"><?php esc_html_e('Sync Indexes', 'gpt3-ai-content-generator'); ?></button>
+        <button class="button wpaicg_start_pinecone_api" style="padding-top: 0.5em;padding-bottom: 0.5em;"><?php esc_html_e('Start Over', 'gpt3-ai-content-generator'); ?></button>
         <div class="wpaicg_valid_pinecone_result"></div>
     </div>
     <div class="wpaicg_pinecone_index_box" style="display: none">
-        <div class="wpaicg_pinecone_index_list"></div>
+        <div class="nice-form-group">
+            <div class="wpaicg_pinecone_index_list"></div>
+        </div>
     </div>
 </div>
 
 <!-- Qdrant specific fields -->
 <div class="wpaicg_qdrant_specific" style="<?php echo $wpaicg_vector_db_provider === 'qdrant' ? '' : 'display: none;'; ?>">
-    <label>Qdrant API Key: </label>
-    <input type="text" class="wpaicg_qdrant_api_key" value="<?php echo esc_attr($wpaicg_qdrant_api_key); ?>" placeholder="Your Qdrant API Key" />
-    <label>Qdrant Endpoint: </label>
-    <input type="text" class="wpaicg_qdrant_endpoint" value="<?php echo esc_attr($wpaicg_qdrant_endpoint); ?>" placeholder="Your Qdrant Endpoint" />
-    <button class="button button-primary wpaicg_connect_qdrant">Connect</button>
-    <button class="button wpaicg_start_qdrant">Start Over</button>
-    <div class="wpaicg_qdrant_connection_result"></div>
-
-    <div class="wpaicg_qdrant_collections" style="display: none;">
-        <button class="button wpaicg_show_collections">Show Collections</button>
-        <div class="wpaicg_collections_result"></div>
-        <div id="collection_details" style="margin-top: 20px;"></div> <!-- Details will be shown here -->
+    <div class="nice-form-group">
+        <label><?php esc_html_e('Qdrant API Key', 'gpt3-ai-content-generator'); ?></label>
+        <input style="width: 50%;" type="text" class="wpaicg_qdrant_api_key" value="<?php echo esc_attr($wpaicg_qdrant_api_key); ?>" placeholder="Your Qdrant API Key" />
     </div>
-    <div class="wpaicg_create_collection_form" style="margin-top: 20px; display: none;">
-        <input type="text" class="wpaicg_new_collection_name" placeholder="Enter new collection name" />
-        <button class="button button-primary wpaicg_submit_new_collection">Create</button>
+    <div class="nice-form-group">
+        <label><?php esc_html_e('Qdrant Endpoint', 'gpt3-ai-content-generator'); ?></label>
+        <input style="width: 50%;" type="text" class="wpaicg_qdrant_endpoint" value="<?php echo esc_attr($wpaicg_qdrant_endpoint); ?>" placeholder="Your Qdrant Endpoint" />
+        <button style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button button-primary wpaicg_connect_qdrant">Connect</button>
+        <button style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button wpaicg_start_qdrant">Start Over</button>
+    </div>
+    <p></p>
+    <div class="wpaicg_qdrant_connection_result"></div>
+    <p></p>
+    <div class="wpaicg_qdrant_collections" style="display: none;">
+        <div class="nice-form-group">
+            <button class="button wpaicg_show_collections">Show Collections</button>
+            <div class="wpaicg_collections_result"></div>
+            <div id="collection_details"></div> <!-- Details will be shown here -->
+        </div>
+    </div>
+    <div class="wpaicg_create_collection_form" style="display: none;">
+        <div class="nice-form-group">
+            <input style="width: 50%;" type="text" class="wpaicg_new_collection_name" placeholder="Enter new collection name" />
+            <button style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button button-primary wpaicg_submit_new_collection">Create</button>
+        </div>
     </div>
     <input type="hidden" id="selected_qdrant_collection" value="">
-    <div class="wpaicg_create_collection_response" style="margin-top: 10px;"></div>
+    <div class="wpaicg_create_collection_response"></div>
 </div>
 <!-- OpenAI specific fields -->
 <?php if ($wpaicg_provider !== 'Azure'): ?>
 <div class="wpaicg_openai_api_box" style="display: none">
-    <p><strong>OpenAI Authentication</strong></p>
-    <label>OpenAI API Key: </label>
-    <input value="<?php echo esc_html($wpaicg_openai_trouble_api)?>" class="wpaicg_openai_api" type="text" placeholder="sk-..." />
-    <button class="button button-primary wpaicg_valid_openai_api">Validate</button>
+    <div class="nice-form-group">
+        <label><?php esc_html_e('OpenAI API Key', 'gpt3-ai-content-generator'); ?></label>
+        <input style="width: 50%;" value="<?php echo esc_html($wpaicg_openai_trouble_api)?>" class="wpaicg_openai_api" type="text" placeholder="sk-..." />
+        <button style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button button-primary wpaicg_valid_openai_api"><?php esc_html_e('Validate', 'gpt3-ai-content-generator'); ?></button>
+    </div>
 </div>
+<p></p>
 <?php endif; ?>
 <div id="accordion_troubleshoot" style="display: none">
     <ul>
@@ -81,10 +91,13 @@ $wpaicg_qdrant_endpoint = get_option('wpaicg_qdrant_endpoint', '');
     </ul>
     <div id="tab-embeddings">
         <div class="wpaicg_valid_openai_api_result"></div>
+        <p></p>
         <div class="wpaicg_pinecone_test_vectors" style="display: none">
-            <h3>Get Vectors</h3>
-            <textarea rows="5"></textarea>
-            <button class="button button-primary wpaicg_send_content_vectors">Send</button>
+            <h1>Store Sample Data</h1>
+            <div class="nice-form-group">
+                <textarea style="width: 50%;" rows="5"></textarea>
+                <button style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button button-primary wpaicg_send_content_vectors">Send</button>
+            </div>
             <div class="wpaicg_pinecone_vectors_result"></div>
         </div>
         <div class="wpaicg_pinecone_send_vectors" style="display: none">
@@ -211,7 +224,7 @@ $wpaicg_qdrant_endpoint = get_option('wpaicg_qdrant_endpoint', '');
                 if (response.length === 0) {
                     $('.wpaicg_collections_result').html('<p>No collections available. Please create one.</p>');
                 } else {
-                    var tableHtml = '<table><thead><tr><th>Collection Name</th><th>Actions</th></tr></thead><tbody>';
+                    var tableHtml = '<p><table class="wp-list-table widefat striped"><thead><tr><th>Collection Name</th><th>Actions</th></tr></thead><tbody>';
 
                     response.forEach(function(collection) {
                         tableHtml += '<tr><td>' + collection + '</td><td>';
@@ -221,7 +234,7 @@ $wpaicg_qdrant_endpoint = get_option('wpaicg_qdrant_endpoint', '');
                         tableHtml += '</td></tr>';
                     });
 
-                    tableHtml += '</tbody></table>';
+                    tableHtml += '</tbody></table></p>';
                     $('.wpaicg_collections_result').html(tableHtml);
                 }
 
@@ -503,13 +516,15 @@ $wpaicg_qdrant_endpoint = get_option('wpaicg_qdrant_endpoint', '');
                     success: function (res) {
                             if (res.indexes && res.indexes.length > 0) {
                                 
-                                var selectList = '<label>Pinecone Index:</label><select>';
+                                var selectList = '<div class="nice-form-group">';
+                                selectList += '<label>Pinecone Index</label>';
+                                selectList += '<select id="pineconeIndexSelect" style="width: 50%;">';
                                 
                                 res.indexes.forEach(function(index) {
                                     selectList += '<option value="' + index.host + '">' + index.name + ' (' + (index.spec.pod ? 'Pod' : 'Serverless') + ')</option>';
                                 });
 
-                                selectList += '</select>';
+                                selectList += '</select></div>';
                                 wpaicg_pinecone_index_list.html(selectList);
                                 wpaicgRmLoading(wpaicg_valid_pinecone_api);
                                 wpaicg_pinecone_index_box.show();
@@ -625,7 +640,7 @@ $wpaicg_qdrant_endpoint = get_option('wpaicg_qdrant_endpoint', '');
                         },
                         success: function (res){
                             wpaicgRmLoading(wpaicg_send_vectors_btn);
-                            wpaicg_pinecone_send_vectors_result.html('<p><strong>Response:</strong></p><pre>'+JSON.stringify(res,undefined, 4)+'</pre><button class="button wpaicg_pinecone_delete_vectors_btn" style="background: #cc0000;color: #fff;border-color: #cb0404;">Delete Vector</button>');
+                            wpaicg_pinecone_send_vectors_result.html('<div class="nice-form-group"><p><strong>Response:</strong></p><pre>'+JSON.stringify(res,undefined, 4)+'</pre><button class="button wpaicg_pinecone_delete_vectors_btn" style="background: #cc0000;color: #fff;border-color: #cb0404;">Delete Vector</button></div>');
                         },
                         error: function (e){
                             wpaicgRmLoading(wpaicg_send_vectors_btn)

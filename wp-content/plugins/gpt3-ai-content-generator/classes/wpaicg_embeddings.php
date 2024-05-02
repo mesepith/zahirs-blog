@@ -22,7 +22,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             add_action('init',[$this,'wpaicg_cron_job'],9999);
             add_action('wp_ajax_wpaicg_builder_reindex',[$this,'wpaicg_builder_reindex']);
             add_action('wp_ajax_wpaicg_builder_delete',[$this,'wpaicg_builder_delete']);
-            add_action('wp_ajax_wpaicg_builder_list',[$this,'wpaicg_builder_list']);
             add_action('wp_ajax_wpaicg_reindex_embeddings',[$this,'wpaicg_reindex_embeddings']);
             add_action('wp_ajax_wpaicg_delete_embeddings',[$this,'wpaicg_delete_embeddings']);
             add_action('wp_ajax_wpaicg_reindex_builder_data',[$this,'wpaicg_reindex_builder_data']);
@@ -34,6 +33,252 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             }
             /*Pinecone sync Indexes*/
             add_action('wp_ajax_wpaicg_pinecone_indexes',[$this,'wpaicg_pinecone_indexes']);
+            add_action( 'wp_ajax_gpt4_pagination', array( $this, 'gpt4_ajax_pagination' ) );
+            add_action( 'wp_ajax_nopriv_gpt4_pagination', 'gpt4_ajax_pagination');
+            add_action('wp_ajax_reload_items_embeddings', array($this, 'reload_items_embeddings'));
+            add_action('wp_ajax_search_embeddings_content', array($this, 'search_embeddings_content'));
+            // wpaicg_delete_all_embeddings
+            add_action('wp_ajax_wpaicg_delete_all_embeddings', array($this, 'wpaicg_delete_all_embeddings'));
+        }
+        
+
+        public function calculate_estimated_cost($post_id) {
+            $token = get_post_meta($post_id, 'wpaicg_embedding_token', true);
+            $wpaicg_emb_model = get_post_meta($post_id, 'wpaicg_model', true);
+        
+            // Default cost per token
+            $costPerToken = 0.00010 / 1000; // Default cost for 'text-embedding-ada-002'
+        
+            // Adjust cost per token based on model
+            switch ($wpaicg_emb_model) {
+                case 'text-embedding-3-small':
+                    $costPerToken = 0.00002 / 1000;
+                    break;
+                case 'text-embedding-3-large':
+                    $costPerToken = 0.00013 / 1000;
+                    break;
+                case 'embedding-001':
+                    $costPerToken = 0.0002 / 1000;
+                    break;
+                // Add more cases as needed
+            }
+        
+            // Calculate estimated cost
+            $estimatedCost = !empty($token) ? number_format((int)$token * $costPerToken, 8) . '$' : '--';
+            return $estimatedCost;
+        }
+
+        public function generate_table_row($post) {
+            $title = strlen($post->post_title) > 20 ? esc_html(substr($post->post_title, 0, 20)) . '...' : esc_html($post->post_title);
+            $token = get_post_meta($post->ID, 'wpaicg_embedding_token', true); // Fetch the token value for each post
+            $estimatedCost = $this->calculate_estimated_cost($post->ID); // Calculate estimated cost
+            $postContent = htmlentities(wp_kses_post(get_post_field('post_content', $post->ID)), ENT_QUOTES, 'UTF-8'); // Safely encode the post content
+            $wpaicg_embedding_type = get_post_meta($post->ID,'wpaicg_embedding_type',true);
+            $wpaicg_embedding_status = get_post_meta($post->ID,'wpaicg_embeddings_reindex',true);
+            $wpaicg_provider = get_post_meta($post->ID, 'wpaicg_provider', true);
+            $wpaicg_index = get_post_meta($post->ID, 'wpaicg_index', true);
+            // Define allowed HTML tags for wp_kses
+            $allowed_html = array(
+                'div' => array(
+                    'style' => array()
+                ),
+                'strong' => array(),
+                'br' => array(),
+            );
+            $wpaicg_emb_model = get_post_meta($post->ID, 'wpaicg_model', true);
+
+            // Determine the source based on post_type
+            $source = 'Unknown'; // Default source
+            if ($post->post_type == 'wpaicg_embeddings') {
+                $source = 'Manual';
+            } elseif ($post->post_type == 'wpaicg_pdfadmin') {
+                $source = 'PDF';
+            } elseif ($post->post_type == 'wpaicg_builder') {
+                $source = 'Auto-Scan';
+            }
+
+            // Display empty or placeholder if fields are not available
+            $wpaicg_provider_display = !empty($wpaicg_provider) ? esc_html($wpaicg_provider) : '';
+            
+            $wpaicg_emb_model_display = !empty($wpaicg_emb_model) ? esc_html($wpaicg_emb_model) : 'text-embedding-ada-002';
+
+            $postdate = date('y-m-d H:i', strtotime($post->post_date));
+            // Combine all information into a detailed string
+            $details = "<div style='font-size: 90%;white-space: break-spaces;'>";
+            if (!empty($wpaicg_index)) {
+                $dbProvider = (strpos($wpaicg_index, 'pinecone.io') !== false) ? 'Pinecone' : 'Qdrant';
+                $details .= "<strong>DB:</strong> " . esc_html($dbProvider) . "<br>";
+                if ($dbProvider == 'Pinecone') {
+                    $parts = explode('-', $wpaicg_index);
+                    $indexName = $parts[0];
+                    $projectName = substr($parts[1], 0, strpos($parts[1], '.svc'));
+                    $details .= "<strong>Project:</strong> " . esc_html($projectName) . "<br>" . "<strong>Index:</strong> " . esc_html($indexName) . "<br>";
+                } else {
+                    $details .= "<strong>Collection:</strong> " . esc_html($wpaicg_index) . "<br>";
+                }
+            }
+
+            // Include Model, AI Provider, Estimated Cost, and Token
+            $details .= "<strong>Model:</strong> " . esc_html($wpaicg_emb_model_display) . "<br>" .
+                        "<strong>AI:</strong> " . esc_html($wpaicg_provider_display) . "<br>" .
+                        "<strong>Cost:</strong> " . esc_html($estimatedCost) . "<br>" .
+                        "<strong>Token:</strong> " . esc_html($token) . "<br>" .
+                        "</div>";
+
+            // Adjust the table row to include the new "Details" column
+            return "<tr id='post-row-{$post->ID}'>
+                        <td class='column-id'>" . esc_html($post->ID) . "</td>
+                        <td class='column-content'>
+                            <a href='javascript:void(0);' class='wpaicg-embedding-content' data-content='{$postContent}'>" . $title . "</a>
+                        </td>
+                        <td class='column-details'>" . $details . "</td>
+                        <td class='column-source'>" . esc_html($source) . "</td>
+                        <td class='column-date' style='white-space: break-spaces;'>" . esc_html($postdate) . "</td>
+                        <td class='column-action'><button class='button btn-delete-post' data-post-id='{$post->ID}'>" . esc_html__('Delete', 'gpt3-ai-content-generator') . "</button></td>
+                    </tr>";
+        }
+        public function search_embeddings_content() {
+            global $wpdb; // Access the global database object
+            check_ajax_referer('gpt4_ajax_pagination_nonce', 'nonce');
+        
+            $search_term = isset($_POST['search_term']) ? sanitize_text_field($_POST['search_term']) : '';
+            $posts_per_page = 3; // Adjust as needed, or make dynamic
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $offset = ($page - 1) * $posts_per_page;
+        
+            // Construct the basic query with LIKE clause for search within post_content
+            $query = $wpdb->prepare(
+                "SELECT ID, post_title,post_date,post_type FROM {$wpdb->posts} 
+                 WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder') AND post_status = 'publish' 
+                 AND post_content LIKE %s
+                 ORDER BY post_date DESC 
+                 LIMIT %d, %d",
+                '%' . $wpdb->esc_like($search_term) . '%', $offset, $posts_per_page
+            );
+        
+            // Execute the query
+            $posts = $wpdb->get_results($query);
+        
+            // Prepare content HTML
+            $output = '';
+            foreach ($posts as $post) {
+                $output .= $this->generate_table_row($post);
+            }
+        
+            // Get total posts for pagination
+            $total_posts_query = $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->posts} 
+                 WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder') AND post_status = 'publish' 
+                 AND post_content LIKE %s",
+                '%' . $wpdb->esc_like($search_term) . '%'
+            );
+            $total_posts = $wpdb->get_var($total_posts_query);
+            $total_pages = ceil($total_posts / $posts_per_page);
+        
+            // Generate pagination HTML
+            $updated_pagination_html = $this->generate_smart_pagination($page, $total_pages);
+        
+            // Return the filtered results and updated pagination
+            wp_send_json_success(array(
+                'content' => $output,
+                'pagination' => $updated_pagination_html,
+            ));
+        }
+        
+        public function gpt4_ajax_pagination() {
+            global $wpdb;
+            // Check for nonce security
+            if ( ! wp_verify_nonce( $_POST['nonce'], 'gpt4_ajax_pagination_nonce' ) ) {
+                wp_send_json_error(['msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $posts_per_page = 3; // Adjust as needed
+            $offset = ($page - 1) * $posts_per_page;
+        
+            // Calculate total number of posts from wpaicg_embeddings
+            $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')");
+            $total_pages = ceil($total_posts / $posts_per_page);
+        
+            $posts = $wpdb->get_results($wpdb->prepare("
+                SELECT ID, post_title, post_status, post_mime_type, post_type, post_date
+                FROM {$wpdb->posts} 
+                WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')
+                ORDER BY post_date DESC 
+                LIMIT %d, %d", 
+                $offset, $posts_per_page
+            ));
+        
+            $output = '';
+            foreach ( $posts as $post ) {
+                $output .= $this->generate_table_row($post);
+            }
+        
+            // Revised to generate smarter pagination
+            $pagination_html = $this->generate_smart_pagination($page, $total_pages);
+
+            // Send back both the table content and pagination HTML
+            wp_send_json_success(['content' => $output, 'pagination' => $pagination_html]);
+        
+            die();
+        }
+
+        public function generate_smart_pagination($current_page, $total_pages) {
+            $html = '<div class="gpt4-pagination">';
+            $range = 2; // Adjust as needed. This will show two pages before and after the current page.
+            $showEllipses = false;
+        
+            for ($i = 1; $i <= $total_pages; $i++) {
+                // Always show the first page, the last page, and the current page with $range pages on each side.
+                if ($i == 1 || $i == $total_pages || ($i >= $current_page - $range && $i <= $current_page + $range)) {
+                    $html .= sprintf('<a href="#" data-page="%d">%d</a> ', $i, $i);
+                    $showEllipses = true;
+                } elseif ($showEllipses) {
+                    $html .= '... ';
+                    $showEllipses = false;
+                }
+            }
+        
+            $html .= '</div>';
+            return $html;
+        }
+
+        public function reload_items_embeddings() {
+            global $wpdb;
+            // Check for nonce security
+            if ( ! wp_verify_nonce( $_POST['nonce'], 'gpt4_ajax_pagination_nonce' ) ) {
+                wp_send_json_error(['msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $posts_per_page = 3; // Adjust as needed
+            $offset = ($page - 1) * $posts_per_page;
+        
+            // Calculate total number of posts
+            $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')");
+            $total_pages = ceil($total_posts / $posts_per_page);
+        
+            $posts = $wpdb->get_results($wpdb->prepare("
+                SELECT ID, post_title, post_status, post_mime_type, post_type, post_date
+                FROM {$wpdb->posts} 
+                WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')
+                ORDER BY post_date DESC 
+                LIMIT %d, %d", 
+                $offset, $posts_per_page
+            ));
+    
+            $output = '';
+            foreach ( $posts as $post ) {
+                $output .= $this->generate_table_row($post);
+            }
+
+            // Generate and return pagination HTML as before
+            $pagination_html = $this->generate_smart_pagination($page, $total_pages);
+
+            // Send back both the table content and pagination HTML
+            wp_send_json_success(['content' => $output, 'pagination' => $pagination_html]);
+
+            die();
         }
 
         public function wpaicg_pinecone_indexes()
@@ -41,7 +286,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             if ( ! wp_verify_nonce( $_POST['nonce'], 'wpaicg-ajax-nonce' ) ) {
                 die(esc_html__('Nonce verification failed','gpt3-ai-content-generator'));
             }
-            if(!current_user_can('wpaicg_embeddings_settings')){
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -231,7 +476,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                 $post_types = wp_parse_args($post_types, array_keys($wpaicg_all_post_types));
             }
             if(in_array($post_type,$post_types)):
-                if(current_user_can('wpaicg_instant_embedding')):
+                if(current_user_can('manage_options')):
             ?>
             <div class="alignleft actions">
                 <a style="height: 32px" href="javascript:void(0)" class="button button-primary wpaicg-instan-embedding-btn"><?php echo esc_html__('Instant Embedding','gpt3-ai-content-generator')?></a>
@@ -243,7 +488,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
 
         public function wpaicg_reindex_builder_data()
         {
-            if(!current_user_can('wpaicg_embeddings_builder')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -264,7 +509,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
         public function wpaicg_delete_embeddings()
         {
             $wpaicg_result = array('status' => 'success');
-            if(!current_user_can('wpaicg_embeddings_logs')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -287,6 +532,37 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             }
         }
 
+        public function wpaicg_delete_all_embeddings()
+        {
+
+            if (!wp_verify_nonce($_POST['nonce'], 'wpaicg-ajax-nonce')) {
+                wp_send_json_error(['message' => 'Nonce verification failed.']);
+                return;
+            }
+
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(['message' => 'You do not have permission for this action.']);
+                return;
+            }
+        
+            global $wpdb;
+            $ids = $wpdb->get_col("SELECT ID FROM $wpdb->posts WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')");
+        
+            if (empty($ids)) {
+                wp_send_json_error(['message' => 'No posts found to delete.']);
+                return;
+            }
+        
+            $this->wpaicg_delete_embeddings_ids($ids);
+            // Clean up postmeta
+            $meta_keys = ['wpaicg_indexed', 'wpaicg_source', 'wpaicg_parent', 'wpaicg_error_msg'];
+            foreach ($meta_keys as $meta_key) {
+                $wpdb->delete($wpdb->postmeta, ['meta_key' => $meta_key]);
+            }
+            
+            wp_send_json_success(['message' => 'All embeddings have been deleted.']);
+        }
+
         public function wpaicg_delete_embeddings_ids($ids)
         {
             global $wpdb;
@@ -299,7 +575,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             foreach ($ids as $id) {
                 $wpaicg_index = get_post_meta($id, 'wpaicg_index', true);
 
-    
                 // Check if the index belongs to Pinecone or Qdrant
                 if (empty($wpaicg_index) || strpos($wpaicg_index, 'pinecone.io') !== false) {
                     // Determine index host
@@ -350,7 +625,11 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                         error_log(print_r($response, true));
                     }
                 }
-        
+                // get wpaicg_parent from meta and find parent id and delete wpaicg_indexed meta key
+                $parent_id = get_post_meta($id, 'wpaicg_parent', true);
+                if (!empty($parent_id)) {
+                    delete_post_meta($parent_id, 'wpaicg_indexed');
+                }
                 // Delete post after vector deletion
                 wp_delete_post($id);
                 
@@ -371,67 +650,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             wp_send_json($wpaicg_result);
         }
 
-        public function wpaicg_builder_list()
-        {
-            global $wpdb;
-            $wpaicg_result = array('status' => 'success', 'msg' => esc_html__('Something went wrong','gpt3-ai-content-generator'));
-            if ( ! wp_verify_nonce( $_REQUEST['nonce'], 'wpaicg-ajax-nonce' ) ) {
-                $wpaicg_result['status'] = 'error';
-                $wpaicg_result['msg'] = esc_html__('Nonce verification failed','gpt3-ai-content-generator');
-                wp_send_json($wpaicg_result);
-            }
-            $wpaicg_embedding_page = isset($_REQUEST['wpage']) && !empty($_REQUEST['wpage']) ? sanitize_text_field($_REQUEST['wpage']) : 1;
-            $wpaicg_embeddings = new \WP_Query(array(
-                'post_type' => 'wpaicg_builder',
-                'posts_per_page' => 40,
-                'paged' => $wpaicg_embedding_page,
-                'order' => 'DESC',
-                'orderby' => 'meta_value',
-                'meta_key' => 'wpaicg_start'
-            ));
-            ob_start();
-            if($wpaicg_embeddings->have_posts()){
-                foreach ($wpaicg_embeddings->posts as $wpaicg_embedding){
-                    include WPAICG_PLUGIN_DIR.'admin/views/embeddings/builder_item.php';
-                }
-            }
-            $wpaicg_result['html'] = ob_get_clean();
-            ob_start();
-            echo paginate_links( array(
-                'base'         => admin_url('admin.php?page=wpaicg_embeddings&action=builder&wpage=%#%'),
-                'total'        => $wpaicg_embeddings->max_num_pages,
-                'current'      => $wpaicg_embedding_page,
-                'format'       => '?wpage=%#%',
-                'show_all'     => false,
-                'prev_next'    => false,
-                'add_args'     => false,
-            ));
-            $wpaicg_result['paginate'] = ob_get_clean();
-            $wpaicg_builder_types = get_option('wpaicg_builder_types',[]);
-            $wpaicg_result['types'] = array();
-            if($wpaicg_builder_types && is_array($wpaicg_builder_types) && count($wpaicg_builder_types)){
-                foreach($wpaicg_builder_types as $wpaicg_builder_type){
-                    $sql_count_data = $wpdb->prepare("SELECT COUNT(p.ID) FROM ".$wpdb->posts." p WHERE p.post_type=%s AND p.post_status = 'publish'",$wpaicg_builder_type);
-                    $total_data = $wpdb->get_var($sql_count_data);
-                    $sql_done_data = $wpdb->prepare("SELECT COUNT(p.ID) FROM ".$wpdb->postmeta." m LEFT JOIN ".$wpdb->posts." p ON p.ID=m.post_id WHERE p.post_type=%s AND p.post_status = 'publish' AND m.meta_key='wpaicg_indexed' AND m.meta_value IN ('error','skip','yes')",$wpaicg_builder_type);
-                    $total_converted = $wpdb->get_var($sql_done_data);
-                    if($total_data > 0) {
-                        $percent_process = ceil($total_converted * 100 / $total_data);
-                        $wpaicg_result['types'][] = array(
-                            'type' => $wpaicg_builder_type,
-                            'text' => $total_converted.'/'.$total_data,
-                            'percent' => $percent_process
-                        );
-                    }
-                }
-            }
-            wp_send_json($wpaicg_result);
-        }
-
         public function wpaicg_builder_delete()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_embeddings_builder')) {
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -509,7 +731,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
         public function wpaicg_builder_reindex()
         {
             $wpaicg_result = array('status' => 'error','msg' => esc_html__('Something went wrong','gpt3-ai-content-generator'));
-            if(!current_user_can('wpaicg_embeddings_builder')){
+            if(!current_user_can('manage_options')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -521,13 +743,13 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             if(isset($_POST['id']) && !empty($_POST['id'])){
                 $id = sanitize_text_field($_POST['id']);
                 $parent_id = get_post_meta($id,'wpaicg_parent',true);
-                if($parent_id && get_post($parent_id)){
+                if($id){
                     update_post_meta($id,'wpaicg_indexed','reindex');
                     update_post_meta($parent_id,'wpaicg_indexed','reindex');
                     $wpaicg_result['status'] = 'success';
                 }
                 else{
-                    $wpaicg_result['msg'] = esc_html__('Data need convert has been deleted','gpt3-ai-content-generator');
+                    $wpaicg_result['msg'] = esc_html__('The content intended for re-indexing cannot be found or may have been removed. Please verify the content exists or has not been deleted before attempting to re-index.', 'gpt3-ai-content-generator');
                 }
             }
             wp_send_json($wpaicg_result);
@@ -924,12 +1146,12 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
         {
             add_submenu_page(
                 'wpaicg',
-                esc_html__('Embeddings','gpt3-ai-content-generator'),
-                esc_html__('Embeddings','gpt3-ai-content-generator'),
+                esc_html__('AI Training','gpt3-ai-content-generator'),
+                esc_html__('AI Training','gpt3-ai-content-generator'),
                 'wpaicg_embeddings',
                 'wpaicg_embeddings',
                 array( $this, 'wpaicg_main' ),
-                7
+                4
             );
         }
 
@@ -977,11 +1199,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                     'input' => $content,
                     'model' => $wpaicg_model
                 ];
-
-                // Add dimensions parameter if the model is 'text-embedding-3-large' or text-embedding-3-small
-                if ($wpaicg_model === 'text-embedding-3-large') {
-                    $apiParams['dimensions'] = 1536;
-                }
 
                 // Make the API call
                 $response = $openai->embeddings($apiParams);
@@ -1142,7 +1359,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                                     ));
                                 }
                                 else{
-                                    $body = json_decode($response['body'],true); 
+                                    $body = json_decode($response['body'],true);
                                     if($body){
                                         if ($body['status'] === 'ok') {
                                             $wpaicg_result['status'] = 'success';
@@ -1150,7 +1367,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                                             update_post_meta($embeddings_id,'wpaicg_completed',time());
                                         }
                                         else{
-                                            $wpaicg_result['msg'] = $body['status']['error'];
+                                            $wpaicg_result['msg'] = "Response from API: " . $body['error'];
                                             wp_delete_post($embeddings_id);
                                             $wpdb->delete($wpdb->postmeta, array(
                                                 'meta_value' => $embeddings_id,

@@ -115,11 +115,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Search')) {
                 'input' => $wpaicg_search,
                 'model' => $model
             ];
-        
-            // Add dimensions parameter if needed
-            if ($model === 'text-embedding-3-large') {
-                $apiParams['dimensions'] = 1536;
-            }
+
         
             // Generate embeddings using OpenAI
             $response = $open_ai->embeddings($apiParams);
@@ -198,11 +194,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Search')) {
                     'input' => $wpaicg_message,
                     'model' => $model
                 ];
-
-                // Add dimensions parameter if the model is 'text-embedding-3-large' or text-embedding-3-small
-                if ($model === 'text-embedding-3-large') {
-                    $apiParams['dimensions'] = 1536;
-                }
 
                 // Make the API call
                 $response = $open_ai->embeddings($apiParams);

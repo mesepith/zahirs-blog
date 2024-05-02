@@ -11,7 +11,7 @@ if($wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google'){
     </div>
     <?php
 } else {
-    $wpaicg_action = isset($_GET['action']) && !empty($_GET['action']) && in_array(sanitize_text_field($_GET['action']), array('embeddings','fine-tunes','files','data','manual','upload')) ? sanitize_text_field($_GET['action']) : 'manual';
+    $wpaicg_action = isset($_GET['action']) && !empty($_GET['action']) && in_array(sanitize_text_field($_GET['action']), array('embeddings','fine-tunes','files','manual')) ? sanitize_text_field($_GET['action']) : 'manual';
     $checkRole = \WPAICG\wpaicg_roles()->user_can('wpaicg_finetune', empty($wpaicg_action) ? 'manual' : ($wpaicg_action == 'fine-tunes' ? 'file-tunes' : $wpaicg_action));
     if($checkRole){
         echo '<script>window.location.href="'.$checkRole.'"</script>';
@@ -35,8 +35,6 @@ if($wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google'){
             <?php
             \WPAICG\wpaicg_util_core()->wpaicg_tabs('wpaicg_finetune', array(
                 'manual' => esc_html__('Data Entry','gpt3-ai-content-generator'),
-                'upload' => esc_html__('Upload','gpt3-ai-content-generator'),
-                'data' => esc_html__('Data Converter','gpt3-ai-content-generator'),
                 'files' => esc_html__('Datasets','gpt3-ai-content-generator'),
                 'fine-tunes' => esc_html__('Trainings','gpt3-ai-content-generator')
             ), $wpaicg_action);
