@@ -38,25 +38,25 @@ if( ! function_exists( 'formula_custom_typography_css' ) ):
 			//C. Slider Typography Settings Start
 
 				//1. Slider Title Typography Settings
-				$output_css .=".slider-caption .title {
+				$output_css .="@media screen and (min-width: 768px) { .slider-caption .title {
 					font-family: " . esc_attr( get_theme_mod('formula_typography_homepage_slider_title_ff', 'Open Sans') )." !important; 						
 					font-size: " . intval( get_theme_mod('formula_typography_homepage_slider_title_fs', '46') )."px !important;
 					line-height: " . intval( get_theme_mod('formula_typography_homepage_slider_title_lh', '60') ). "px !important; 
-				}\n";
+				}}\n";
 				
 				//2. Slider Subtitle Typography Settings
-				$output_css .=".slider-caption .subtitle {
+				$output_css .="@media screen and (min-width: 768px) {.slider-caption .subtitle {
 					font-family: " . esc_attr( get_theme_mod('formula_typography_homepage_slider_subtitle_ff', 'Open Sans') )." !important; 						
 					font-size: " . intval( get_theme_mod('formula_typography_homepage_slider_subtitle_fs', '18') )."px !important;
 					line-height: " . intval( get_theme_mod('formula_typography_homepage_slider_subtitle_lh', '26') ). "px !important; 
-				}\n";
+				}}\n";
 				
 				//3. Slider Description Typography Settings
-				$output_css .=".slider-caption .description {
+				$output_css .="@media screen and (min-width: 768px) { .slider-caption .description {
 					font-family: " . esc_attr( get_theme_mod('formula_typography_homepage_slider_description_ff', 'Open Sans') )." !important; 						
 					font-size: " . intval( get_theme_mod('formula_typography_homepage_slider_description_fs', '16') )."px !important;
 					line-height: " . intval( get_theme_mod('formula_typography_homepage_slider_description_lh', '24') ). "px !important; 
-				}\n";		
+				}}\n";		
 			//C. Slider Typography Settings End		
 		endif;
 		
