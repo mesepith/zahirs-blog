@@ -194,16 +194,16 @@ $schedule_tweet = get_option('wpaicg_cron_tweet_schedule', 'none');
                         <?php 
                         switch ($post->post_status) {
                             case 'pending':
-                                echo '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">Pending</span>';
+                                echo '<span style="color: #000000;background: #f2ff05;border-radius: 5px;padding: 0 0.3em 0.1em;">Pending</span>';
                                 break;
                             case 'publish':
                                 echo '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">Completed</span>';
                                 break;
                             case 'draft':
-                                echo '<span style="color: #bb0505;">Cancelled</span>';
+                                echo '<span style="color: #e20000;">Cancelled</span>';
                                 break;
                             case 'trash':
-                                echo '<span style="color: #bb0505;">Cancelled</span>';
+                                echo '<span style="color: #e20000;">Cancelled</span>';
                                 break;
                         }
                         ?>

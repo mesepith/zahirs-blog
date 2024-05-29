@@ -39,6 +39,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             add_action('wp_ajax_search_embeddings_content', array($this, 'search_embeddings_content'));
             // wpaicg_delete_all_embeddings
             add_action('wp_ajax_wpaicg_delete_all_embeddings', array($this, 'wpaicg_delete_all_embeddings'));
+            add_action('wp_ajax_set_results_per_page', array($this, 'set_results_per_page'));
+
         }
         
 
@@ -163,23 +165,23 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             check_ajax_referer('gpt4_ajax_pagination_nonce', 'nonce');
         
             $search_term = isset($_POST['search_term']) ? sanitize_text_field($_POST['search_term']) : '';
-            $posts_per_page = 3; // Adjust as needed, or make dynamic
+            $results_per_page = isset($_POST['results_per_page']) ? intval($_POST['results_per_page']) : get_option('wpaicg_knowledge_builder_page', 3);
             $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
-            $offset = ($page - 1) * $posts_per_page;
+            $offset = ($page - 1) * $results_per_page;
         
             // Construct the basic query with LIKE clause for search within post_content
             $query = $wpdb->prepare(
-                "SELECT ID, post_title,post_date,post_type FROM {$wpdb->posts} 
-                 WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder') AND post_status = 'publish' 
-                 AND post_content LIKE %s
-                 ORDER BY post_date DESC 
-                 LIMIT %d, %d",
-                '%' . $wpdb->esc_like($search_term) . '%', $offset, $posts_per_page
+                "SELECT ID, post_title, post_date, post_type FROM {$wpdb->posts} 
+                WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder') AND post_status = 'publish' 
+                AND post_content LIKE %s
+                ORDER BY post_date DESC 
+                LIMIT %d, %d",
+                '%' . $wpdb->esc_like($search_term) . '%', $offset, $results_per_page
             );
-        
+
             // Execute the query
             $posts = $wpdb->get_results($query);
-        
+                
             // Prepare content HTML
             $output = '';
             foreach ($posts as $post) {
@@ -189,12 +191,12 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             // Get total posts for pagination
             $total_posts_query = $wpdb->prepare(
                 "SELECT COUNT(*) FROM {$wpdb->posts} 
-                 WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder') AND post_status = 'publish' 
-                 AND post_content LIKE %s",
+                WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder') AND post_status = 'publish' 
+                AND post_content LIKE %s",
                 '%' . $wpdb->esc_like($search_term) . '%'
             );
             $total_posts = $wpdb->get_var($total_posts_query);
-            $total_pages = ceil($total_posts / $posts_per_page);
+            $total_pages = ceil($total_posts / $results_per_page);
         
             // Generate pagination HTML
             $updated_pagination_html = $this->generate_smart_pagination($page, $total_pages);
@@ -214,20 +216,27 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             }
         
             $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
-            $posts_per_page = 3; // Adjust as needed
-            $offset = ($page - 1) * $posts_per_page;
+            $results_per_page = isset($_POST['results_per_page']) ? intval($_POST['results_per_page']) : get_option('wpaicg_knowledge_builder_page', 3);
+            $offset = ($page - 1) * $results_per_page;
+            $search_term = isset($_POST['search_term']) ? sanitize_text_field($_POST['search_term']) : '';
         
-            // Calculate total number of posts from wpaicg_embeddings
-            $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')");
-            $total_pages = ceil($total_posts / $posts_per_page);
-        
+            // Calculate total number of posts
+            $total_posts = $wpdb->get_var($wpdb->prepare("
+                SELECT COUNT(*) FROM {$wpdb->posts} 
+                WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')
+                AND post_content LIKE %s", 
+                '%' . $wpdb->esc_like($search_term) . '%'
+            ));
+            $total_pages = ceil($total_posts / $results_per_page);
+
             $posts = $wpdb->get_results($wpdb->prepare("
                 SELECT ID, post_title, post_status, post_mime_type, post_type, post_date
                 FROM {$wpdb->posts} 
                 WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')
+                AND post_content LIKE %s
                 ORDER BY post_date DESC 
                 LIMIT %d, %d", 
-                $offset, $posts_per_page
+                '%' . $wpdb->esc_like($search_term) . '%', $offset, $results_per_page
             ));
         
             $output = '';
@@ -272,20 +281,27 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             }
         
             $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
-            $posts_per_page = 3; // Adjust as needed
-            $offset = ($page - 1) * $posts_per_page;
+            $results_per_page = isset($_POST['results_per_page']) ? intval($_POST['results_per_page']) : get_option('wpaicg_knowledge_builder_page', 3);
+            $offset = ($page - 1) * $results_per_page;
+            $search_term = isset($_POST['search_term']) ? sanitize_text_field($_POST['search_term']) : '';
         
             // Calculate total number of posts
-            $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')");
-            $total_pages = ceil($total_posts / $posts_per_page);
+            $total_posts = $wpdb->get_var($wpdb->prepare("
+                SELECT COUNT(*) FROM {$wpdb->posts} 
+                WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')
+                AND post_content LIKE %s", 
+                '%' . $wpdb->esc_like($search_term) . '%'
+            ));
+            $total_pages = ceil($total_posts / $results_per_page);
         
             $posts = $wpdb->get_results($wpdb->prepare("
                 SELECT ID, post_title, post_status, post_mime_type, post_type, post_date
                 FROM {$wpdb->posts} 
                 WHERE post_type IN ('wpaicg_embeddings', 'wpaicg_pdfadmin','wpaicg_builder')
+                AND post_content LIKE %s
                 ORDER BY post_date DESC 
                 LIMIT %d, %d", 
-                $offset, $posts_per_page
+                '%' . $wpdb->esc_like($search_term) . '%', $offset, $results_per_page
             ));
     
             $output = '';
@@ -299,6 +315,20 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
             // Send back both the table content and pagination HTML
             wp_send_json_success(['content' => $output, 'pagination' => $pagination_html]);
 
+            die();
+        }
+
+        public function set_results_per_page() {
+            check_ajax_referer('gpt4_ajax_pagination_nonce', 'nonce');
+        
+            $results_per_page = isset($_POST['results_per_page']) ? intval($_POST['results_per_page']) : 3;
+        
+            if (update_option('wpaicg_knowledge_builder_page', $results_per_page)) {
+                wp_send_json_success();
+            } else {
+                wp_send_json_error(['msg' => esc_html__('Failed to set results per page', 'gpt3-ai-content-generator')]);
+            }
+        
             die();
         }
 

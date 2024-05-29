@@ -15,6 +15,8 @@ if(isset($_POST['save_bulk_setting'])) {
         'wpaicg_custom_prompt_auto' => 'wp_kses_post', // Assuming this one needs to allow some HTML
         'wpaicg_custom_prompt_enable' => 'boolval', // Converts to boolean true/false
         'wpaicg_rss_new_title' => 'boolval', // Converts to boolean true/false
+        'wpaicg_rss_keywords' => 'sanitize_text_field',
+        'wpaicg_rss_use_description' => 'boolval',
     ];
 
     foreach ($options as $option_name => $sanitization_callback) {
@@ -39,6 +41,8 @@ $wpaicg_custom_prompt_enable = get_option('wpaicg_custom_prompt_enable',false);
 $wpaicg_default_custom_prompt = 'Create a compelling and well-researched article of at least 500 words on the topic of "[title]" in English. Structure the article with clear headings enclosed within the appropriate heading tags (e.g., <h1>, <h2>, etc.) and engaging subheadings. Ensure that the content is informative and provides valuable insights to the reader. Incorporate relevant examples, case studies, and statistics to support your points. Organize your ideas using unordered lists with <ul> and <li> tags where appropriate. Conclude with a strong summary that ties together the key takeaways of the article. Remember to enclose headings in the specified heading tags to make parsing the content easier. Additionally, wrap even paragraphs in <p> tags for improved readability. Do not start your response with ```html.';
 $wpaicg_custom_prompt_auto = get_option('wpaicg_custom_prompt_auto',$wpaicg_default_custom_prompt);
 $wpaicg_rss_new_title = get_option('wpaicg_rss_new_title',false);
+$wpaicg_rss_keywords = get_option('wpaicg_rss_keywords', ''); // New field for keywords
+$wpaicg_rss_use_description = get_option('wpaicg_rss_use_description', false);
 ?>
 <?php
 if($success_save){
@@ -83,6 +87,15 @@ if($success_save){
             <a href="<?php echo esc_url(admin_url('admin.php?page=wpaicg-pricing')); ?>" class="pro-feature-label"><?php echo esc_html__('Pro','gpt3-ai-content-generator')?></a>
         <?php endif; ?>
         <a href="https://docs.aipower.org/docs/AutoGPT/auto-content-writer/rss#generate-new-title" target="_blank">?</a>
+    </div>
+    <div class="nice-form-group">
+        <label for="wpaicg_rss_keywords"><?php echo esc_html__('Keywords to Filter (comma separated)','gpt3-ai-content-generator')?></label>
+        <input type="text" id="wpaicg_rss_keywords" name="wpaicg_rss_keywords" value="<?php echo esc_attr($wpaicg_rss_keywords); ?>" style="width: 50%;" <?php echo \WPAICG\wpaicg_util_core()->wpaicg_is_pro() ? '' : ' disabled'?>>
+        <?php if(!\WPAICG\wpaicg_util_core()->wpaicg_is_pro()): ?>
+        <!-- Display Pro label instead of Available in Pro text -->
+            <a href="<?php echo esc_url(admin_url('admin.php?page=wpaicg-pricing')); ?>" class="pro-feature-label"><?php echo esc_html__('Pro','gpt3-ai-content-generator')?></a>
+        <?php endif; ?>
+        <a href="https://docs.aipower.org/docs/AutoGPT/auto-content-writer/rss#keyword-filtering" target="_blank">?</a>
     </div>
     <p></p>
     <h1><?php echo esc_html__('Content Generation','gpt3-ai-content-generator')?></h1>

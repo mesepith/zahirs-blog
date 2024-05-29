@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0+.
 msgid ""
 msgstr ""
-"Project-Id-Version: AI Power: Complete AI Pack - Powered by GPT-4 1.8.64\n"
+"Project-Id-Version: AI Power: Complete AI Pack - Powered by GPT-4 1.8.65\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/gpt3-ai-content-generator\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2024-05-25T10:18:57+00:00\n"
+"POT-Creation-Date: 2024-05-29T08:46:26+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.7.1\n"
 "X-Domain: gpt3-ai-content-generator\n"
@@ -119,7 +119,7 @@ msgstr ""
 #: admin/extra/wpaicg_chatlog.php:423
 #: admin/extra/wpaicg_form_index.php:380
 #: admin/views/audio/logs.php:54
-#: admin/views/embeddings/entries.php:65
+#: admin/views/embeddings/entries.php:74
 #: admin/views/finetune/events.php:17
 #: admin/views/finetune/files.php:77
 #: admin/views/finetune/fine-tunes.php:49
@@ -149,7 +149,7 @@ msgstr ""
 #: admin/extra/wpaicg_chatbots.php:1705
 #: admin/extra/wpaicg_chatlog.php:443
 #: admin/views/audio/logs.php:59
-#: admin/views/embeddings/entries.php:70
+#: admin/views/embeddings/entries.php:79
 #: admin/views/finetune/files.php:82
 #: lib/views/chat/embeddings.php:62
 msgid "Action"
@@ -173,7 +173,7 @@ msgid "Edit"
 msgstr ""
 
 #: admin/extra/wpaicg_assistants.php:203
-#: admin/extra/wpaicg_bulk_setting.php:119
+#: admin/extra/wpaicg_bulk_setting.php:132
 #: admin/extra/wpaicg_chatbots.php:587
 #: admin/extra/wpaicg_chatbots.php:599
 #: admin/extra/wpaicg_chatbots.php:866
@@ -253,7 +253,7 @@ msgstr ""
 #: admin/extra/wpaicg_promptbase_index.php:877
 #: admin/extra/wpaicg_single.php:1274
 #: admin/views/audio/logs.php:111
-#: classes/wpaicg_embeddings.php:158
+#: classes/wpaicg_embeddings.php:160
 #: classes/wpaicg_finetune.php:1123
 #: classes/wpaicg_finetune.php:1242
 #: lib/views/chat/embeddings.php:140
@@ -270,14 +270,14 @@ msgstr ""
 
 #: admin/extra/wpaicg_bulk.php:27
 #: admin/extra/wpaicg_bulk.php:60
-#: classes/wpaicg_content.php:667
-#: classes/wpaicg_content.php:668
+#: classes/wpaicg_content.php:677
+#: classes/wpaicg_content.php:678
 msgid "AutoGPT"
 msgstr ""
 
 #: admin/extra/wpaicg_bulk.php:37
 #: admin/extra/wpaicg_bulk.php:305
-#: admin/extra/wpaicg_bulk_setting.php:50
+#: admin/extra/wpaicg_bulk_setting.php:54
 msgid "Queue"
 msgstr ""
 
@@ -310,37 +310,37 @@ msgstr ""
 
 #: admin/extra/wpaicg_bulk.php:71
 #: admin/extra/wpaicg_bulk_queue.php:183
-#: classes/wpaicg_content.php:384
-#: classes/wpaicg_content.php:458
+#: classes/wpaicg_content.php:394
+#: classes/wpaicg_content.php:468
 msgid "CSV"
 msgstr ""
 
 #: admin/extra/wpaicg_bulk.php:72
 #: admin/extra/wpaicg_bulk_queue.php:181
-#: classes/wpaicg_content.php:382
-#: classes/wpaicg_content.php:456
+#: classes/wpaicg_content.php:392
+#: classes/wpaicg_content.php:466
 msgid "Bulk Editor"
 msgstr ""
 
 #: admin/extra/wpaicg_bulk.php:73
 #: admin/extra/wpaicg_bulk_queue.php:187
-#: classes/wpaicg_content.php:388
-#: classes/wpaicg_content.php:462
+#: classes/wpaicg_content.php:398
+#: classes/wpaicg_content.php:472
 msgid "Google Sheets"
 msgstr ""
 
 #: admin/extra/wpaicg_bulk.php:74
 #: admin/extra/wpaicg_bulk_queue.php:185
-#: admin/extra/wpaicg_bulk_setting.php:76
-#: classes/wpaicg_content.php:386
-#: classes/wpaicg_content.php:460
+#: admin/extra/wpaicg_bulk_setting.php:80
+#: classes/wpaicg_content.php:396
+#: classes/wpaicg_content.php:470
 msgid "RSS"
 msgstr ""
 
 #: admin/extra/wpaicg_bulk.php:75
 #: admin/extra/wpaicg_bulk_queue.php:179
-#: classes/wpaicg_content.php:380
-#: classes/wpaicg_content.php:454
+#: classes/wpaicg_content.php:390
+#: classes/wpaicg_content.php:464
 msgid "Twitter"
 msgstr ""
 
@@ -553,19 +553,19 @@ msgstr ""
 #: classes/wpaicg_audio.php:89
 #: classes/wpaicg_chat.php:367
 #: classes/wpaicg_chat.php:551
-#: classes/wpaicg_content.php:532
-#: classes/wpaicg_content.php:609
-#: classes/wpaicg_content.php:700
-#: classes/wpaicg_content.php:756
-#: classes/wpaicg_content.php:835
-#: classes/wpaicg_content.php:923
-#: classes/wpaicg_content.php:1530
-#: classes/wpaicg_embeddings.php:676
-#: classes/wpaicg_embeddings.php:754
-#: classes/wpaicg_embeddings.php:1134
-#: classes/wpaicg_embeddings.php:1155
-#: classes/wpaicg_embeddings.php:1215
-#: classes/wpaicg_embeddings.php:1485
+#: classes/wpaicg_content.php:542
+#: classes/wpaicg_content.php:619
+#: classes/wpaicg_content.php:710
+#: classes/wpaicg_content.php:766
+#: classes/wpaicg_content.php:845
+#: classes/wpaicg_content.php:933
+#: classes/wpaicg_content.php:1540
+#: classes/wpaicg_embeddings.php:706
+#: classes/wpaicg_embeddings.php:784
+#: classes/wpaicg_embeddings.php:1164
+#: classes/wpaicg_embeddings.php:1185
+#: classes/wpaicg_embeddings.php:1245
+#: classes/wpaicg_embeddings.php:1515
 #: classes/wpaicg_finetune.php:120
 #: classes/wpaicg_finetune.php:176
 #: classes/wpaicg_finetune.php:267
@@ -634,13 +634,13 @@ msgid "Batch"
 msgstr ""
 
 #: admin/extra/wpaicg_bulk_queue.php:160
-#: admin/views/embeddings/entries.php:68
+#: admin/views/embeddings/entries.php:77
 msgid "Source"
 msgstr ""
 
 #: admin/extra/wpaicg_bulk_queue.php:189
-#: classes/wpaicg_content.php:390
-#: classes/wpaicg_content.php:464
+#: classes/wpaicg_content.php:400
+#: classes/wpaicg_content.php:474
 msgid "Copy-Paste"
 msgstr ""
 
@@ -663,30 +663,30 @@ msgstr ""
 #: classes/wpaicg_chat.php:533
 #: classes/wpaicg_chat.php:557
 #: classes/wpaicg_comment.php:100
-#: classes/wpaicg_content.php:339
-#: classes/wpaicg_content.php:413
-#: classes/wpaicg_content.php:539
-#: classes/wpaicg_content.php:616
-#: classes/wpaicg_content.php:707
-#: classes/wpaicg_content.php:763
-#: classes/wpaicg_content.php:842
-#: classes/wpaicg_content.php:926
-#: classes/wpaicg_content.php:1537
+#: classes/wpaicg_content.php:349
+#: classes/wpaicg_content.php:423
+#: classes/wpaicg_content.php:549
+#: classes/wpaicg_content.php:626
+#: classes/wpaicg_content.php:717
+#: classes/wpaicg_content.php:773
+#: classes/wpaicg_content.php:852
+#: classes/wpaicg_content.php:936
+#: classes/wpaicg_content.php:1547
 #: classes/wpaicg_editor.php:130
 #: classes/wpaicg_elevenlabs.php:70
 #: classes/wpaicg_elevenlabs.php:119
 #: classes/wpaicg_elevenlabs.php:217
 #: classes/wpaicg_elevenlabs.php:250
-#: classes/wpaicg_embeddings.php:213
-#: classes/wpaicg_embeddings.php:271
-#: classes/wpaicg_embeddings.php:308
-#: classes/wpaicg_embeddings.php:333
-#: classes/wpaicg_embeddings.php:519
-#: classes/wpaicg_embeddings.php:540
-#: classes/wpaicg_embeddings.php:666
-#: classes/wpaicg_embeddings.php:682
-#: classes/wpaicg_embeddings.php:761
-#: classes/wpaicg_embeddings.php:1488
+#: classes/wpaicg_embeddings.php:215
+#: classes/wpaicg_embeddings.php:280
+#: classes/wpaicg_embeddings.php:338
+#: classes/wpaicg_embeddings.php:363
+#: classes/wpaicg_embeddings.php:549
+#: classes/wpaicg_embeddings.php:570
+#: classes/wpaicg_embeddings.php:696
+#: classes/wpaicg_embeddings.php:712
+#: classes/wpaicg_embeddings.php:791
+#: classes/wpaicg_embeddings.php:1518
 #: classes/wpaicg_finetune.php:60
 #: classes/wpaicg_finetune.php:128
 #: classes/wpaicg_finetune.php:184
@@ -739,10 +739,10 @@ msgstr ""
 #: classes/wpaicg_regenerate_title.php:37
 #: classes/wpaicg_regenerate_title.php:105
 #: classes/wpaicg_search.php:43
-#: classes/wpaicg_template.php:34
-#: classes/wpaicg_template.php:56
-#: classes/wpaicg_template.php:115
-#: classes/wpaicg_template.php:206
+#: classes/wpaicg_template.php:29
+#: classes/wpaicg_template.php:46
+#: classes/wpaicg_template.php:100
+#: classes/wpaicg_template.php:186
 #: classes/wpaicg_troubleshoot.php:36
 #: classes/wpaicg_troubleshoot.php:73
 #: classes/wpaicg_troubleshoot.php:97
@@ -766,30 +766,31 @@ msgstr ""
 msgid "Nonce verification failed"
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:52
+#: admin/extra/wpaicg_bulk_setting.php:56
 #: admin/views/help/autogpt.php:393
 msgid "Restart Failed Jobs After"
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:60
+#: admin/extra/wpaicg_bulk_setting.php:64
 #: admin/views/help/autogpt.php:404
 msgid "minutes"
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:64
+#: admin/extra/wpaicg_bulk_setting.php:68
 msgid "Try Queue"
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:72
+#: admin/extra/wpaicg_bulk_setting.php:76
 #: admin/views/help/autogpt.php:420
 msgid "times"
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:80
+#: admin/extra/wpaicg_bulk_setting.php:84
 msgid "Generate New Title"
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:83
+#: admin/extra/wpaicg_bulk_setting.php:87
+#: admin/extra/wpaicg_bulk_setting.php:96
 #: admin/extra/wpaicg_chat_shortcode.php:830
 #: admin/extra/wpaicg_chat_widget_settings.php:1074
 #: admin/extra/wpaicg_chat_widget_settings.php:1399
@@ -813,24 +814,28 @@ msgstr ""
 msgid "Pro"
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:88
+#: admin/extra/wpaicg_bulk_setting.php:92
+msgid "Keywords to Filter (comma separated)"
+msgstr ""
+
+#: admin/extra/wpaicg_bulk_setting.php:101
 msgid "Content Generation"
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:92
+#: admin/extra/wpaicg_bulk_setting.php:105
 msgid "Enable Custom Prompt"
 msgstr ""
 
 #. translators: 1: title code, 2: keywords_to_include code, 3: keywords_to_avoid code
-#: admin/extra/wpaicg_bulk_setting.php:102
+#: admin/extra/wpaicg_bulk_setting.php:115
 msgid "Make sure to include %1$s in your prompt. You can also add %2$s and %3$s to further customize your prompt."
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:110
+#: admin/extra/wpaicg_bulk_setting.php:123
 msgid "Make sure %s is included in your prompt."
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:113
+#: admin/extra/wpaicg_bulk_setting.php:126
 #: admin/extra/wpaicg_chat_shortcode.php:593
 #: admin/extra/wpaicg_chat_shortcode.php:637
 #: admin/extra/wpaicg_chat_shortcode.php:900
@@ -851,7 +856,7 @@ msgstr ""
 msgid "Reset"
 msgstr ""
 
-#: admin/extra/wpaicg_bulk_setting.php:140
+#: admin/extra/wpaicg_bulk_setting.php:153
 #: admin/views/scripts.php:726
 msgid "Please note that keywords are only available in pro plan. Please remove keywords from your prompt"
 msgstr ""
@@ -2332,7 +2337,7 @@ msgstr ""
 #: admin/extra/wpaicg_chatlog.php:424
 #: admin/extra/wpaicg_single.php:449
 #: admin/views/audio/logs.php:57
-#: admin/views/embeddings/entries.php:69
+#: admin/views/embeddings/entries.php:78
 #: lib/views/builder/custom_post_type.php:29
 #: lib/views/chat/embeddings.php:61
 msgid "Date"
@@ -2946,7 +2951,7 @@ msgstr ""
 #: admin/extra/wpaicg_single.php:358
 #: admin/views/audio/converter.php:219
 #: admin/views/embeddings/settings.php:304
-#: classes/wpaicg_embeddings.php:475
+#: classes/wpaicg_embeddings.php:505
 #: classes/wpaicg_finetune.php:1239
 #: classes/wpaicg_woocommerce.php:612
 msgid "Cancel"
@@ -4024,7 +4029,7 @@ msgstr ""
 
 #: admin/extra/wpaicg_single.php:168
 #: admin/extra/wpaicg_single.php:282
-#: admin/views/embeddings/entries.php:66
+#: admin/views/embeddings/entries.php:75
 #: admin/views/metabox.php:1242
 #: lib/views/builder/custom_post_type.php:27
 #: lib/views/chat/embeddings.php:55
@@ -4171,9 +4176,9 @@ msgid "Enter a Post Title"
 msgstr ""
 
 #: admin/extra/wpaicg_single.php:377
-#: classes/wpaicg_embeddings.php:897
-#: classes/wpaicg_embeddings.php:902
-#: classes/wpaicg_embeddings.php:944
+#: classes/wpaicg_embeddings.php:927
+#: classes/wpaicg_embeddings.php:932
+#: classes/wpaicg_embeddings.php:974
 msgid "Post Content"
 msgstr ""
 
@@ -4643,15 +4648,15 @@ msgstr ""
 #: admin/extra/wpaicg_single.php:1955
 #: admin/extra/wpaicg_single.php:2044
 #: admin/extra/wpaicg_single.php:2087
-#: classes/wpaicg_template.php:227
-#: classes/wpaicg_template.php:236
-#: classes/wpaicg_template.php:244
-#: classes/wpaicg_template.php:252
+#: classes/wpaicg_template.php:207
+#: classes/wpaicg_template.php:216
+#: classes/wpaicg_template.php:224
+#: classes/wpaicg_template.php:232
 msgid "Please generate title first"
 msgstr ""
 
 #: admin/extra/wpaicg_single.php:1958
-#: classes/wpaicg_template.php:256
+#: classes/wpaicg_template.php:236
 msgid "Please generate sections first"
 msgstr ""
 
@@ -4895,7 +4900,7 @@ msgstr ""
 #: classes/wpaicg_audio.php:125
 #: classes/wpaicg_audio.php:138
 #: classes/wpaicg_audio.php:165
-#: classes/wpaicg_content.php:552
+#: classes/wpaicg_content.php:562
 msgid "We only accept mp3, mp4, mpeg, mpga, m4a, wav, or webm."
 msgstr ""
 
@@ -4904,7 +4909,7 @@ msgstr ""
 #: classes/wpaicg_audio.php:129
 #: classes/wpaicg_audio.php:142
 #: classes/wpaicg_audio.php:173
-#: classes/wpaicg_content.php:556
+#: classes/wpaicg_content.php:566
 msgid "Audio file maximum 25MB"
 msgstr ""
 
@@ -4946,8 +4951,8 @@ msgid "Products"
 msgstr ""
 
 #: admin/views/embeddings/autoscan.php:167
-#: classes/wpaicg_content.php:365
-#: classes/wpaicg_content.php:439
+#: classes/wpaicg_content.php:375
+#: classes/wpaicg_content.php:449
 msgid "Pending"
 msgstr ""
 
@@ -4971,20 +4976,20 @@ msgstr ""
 msgid "Search..."
 msgstr ""
 
-#: admin/views/embeddings/entries.php:67
+#: admin/views/embeddings/entries.php:76
 #: admin/views/finetune/fine-tunes.php:50
 msgid "Details"
 msgstr ""
 
-#: admin/views/embeddings/entries.php:295
+#: admin/views/embeddings/entries.php:337
 msgid "Are you sure you want to delete this data?"
 msgstr ""
 
-#: admin/views/embeddings/entries.php:329
+#: admin/views/embeddings/entries.php:371
 msgid "Failed to delete post."
 msgstr ""
 
-#: admin/views/embeddings/entries.php:334
+#: admin/views/embeddings/entries.php:376
 msgid "An error occurred."
 msgstr ""
 
@@ -5086,8 +5091,8 @@ msgid "Enter collection name"
 msgstr ""
 
 #: admin/views/embeddings/settings.php:225
-#: classes/wpaicg_embeddings.php:463
-#: classes/wpaicg_embeddings.php:503
+#: classes/wpaicg_embeddings.php:493
+#: classes/wpaicg_embeddings.php:533
 msgid "Instant Embedding"
 msgstr ""
 
@@ -5322,10 +5327,10 @@ msgstr ""
 #: admin/views/scripts.php:642
 #: admin/views/woocommerce/wpaicg-meta-box.php:168
 #: admin/views/woocommerce/wpaicg-meta-box.php:176
-#: classes/wpaicg_content.php:371
-#: classes/wpaicg_content.php:445
-#: classes/wpaicg_embeddings.php:406
-#: classes/wpaicg_embeddings.php:425
+#: classes/wpaicg_content.php:381
+#: classes/wpaicg_content.php:455
+#: classes/wpaicg_embeddings.php:436
+#: classes/wpaicg_embeddings.php:455
 #: classes/wpaicg_woocommerce.php:784
 msgid "Error"
 msgstr ""
@@ -6478,8 +6483,8 @@ msgstr ""
 
 #: admin/views/settings/index.php:877
 #: admin/views/settings/index.php:1266
-#: classes/wpaicg_content.php:658
-#: classes/wpaicg_content.php:659
+#: classes/wpaicg_content.php:668
+#: classes/wpaicg_content.php:669
 msgid "Content Writer"
 msgstr ""
 
@@ -6700,8 +6705,8 @@ msgstr ""
 
 #: admin/views/settings/index.php:1850
 #: admin/views/settings/woocommerce.php:246
-#: classes/wpaicg_content.php:368
-#: classes/wpaicg_content.php:442
+#: classes/wpaicg_content.php:378
+#: classes/wpaicg_content.php:452
 msgid "Completed"
 msgstr ""
 
@@ -7040,12 +7045,12 @@ msgid "Write a meta description"
 msgstr ""
 
 #: admin/views/woocommerce/wpaicg-meta-box.php:70
-#: classes/wpaicg_embeddings.php:974
+#: classes/wpaicg_embeddings.php:1004
 msgid "Product Short Description"
 msgstr ""
 
 #: admin/views/woocommerce/wpaicg-meta-box.php:76
-#: classes/wpaicg_embeddings.php:972
+#: classes/wpaicg_embeddings.php:1002
 msgid "Product Description"
 msgstr ""
 
@@ -7100,22 +7105,22 @@ msgstr ""
 #: classes/wpaicg_audio.php:262
 #: classes/wpaicg_chat.php:369
 #: classes/wpaicg_comment.php:95
-#: classes/wpaicg_content.php:534
-#: classes/wpaicg_content.php:612
-#: classes/wpaicg_content.php:703
-#: classes/wpaicg_content.php:759
-#: classes/wpaicg_content.php:838
-#: classes/wpaicg_content.php:1533
+#: classes/wpaicg_content.php:544
+#: classes/wpaicg_content.php:622
+#: classes/wpaicg_content.php:713
+#: classes/wpaicg_content.php:769
+#: classes/wpaicg_content.php:848
+#: classes/wpaicg_content.php:1543
 #: classes/wpaicg_custom_prompt.php:29
 #: classes/wpaicg_editor.php:125
 #: classes/wpaicg_elevenlabs.php:66
 #: classes/wpaicg_elevenlabs.php:115
-#: classes/wpaicg_embeddings.php:312
-#: classes/wpaicg_embeddings.php:328
-#: classes/wpaicg_embeddings.php:514
-#: classes/wpaicg_embeddings.php:535
-#: classes/wpaicg_embeddings.php:678
-#: classes/wpaicg_embeddings.php:756
+#: classes/wpaicg_embeddings.php:342
+#: classes/wpaicg_embeddings.php:358
+#: classes/wpaicg_embeddings.php:544
+#: classes/wpaicg_embeddings.php:565
+#: classes/wpaicg_embeddings.php:708
+#: classes/wpaicg_embeddings.php:786
 #: classes/wpaicg_finetune.php:56
 #: classes/wpaicg_finetune.php:123
 #: classes/wpaicg_finetune.php:179
@@ -7141,10 +7146,6 @@ msgstr ""
 #: classes/wpaicg_promptbase.php:416
 #: classes/wpaicg_regenerate_title.php:32
 #: classes/wpaicg_regenerate_title.php:99
-#: classes/wpaicg_template.php:30
-#: classes/wpaicg_template.php:52
-#: classes/wpaicg_template.php:111
-#: classes/wpaicg_template.php:202
 #: classes/wpaicg_troubleshoot.php:176
 #: classes/wpaicg_woocommerce.php:68
 #: classes/wpaicg_woocommerce.php:842
@@ -7162,8 +7163,8 @@ msgid "The audio URL is required"
 msgstr ""
 
 #: classes/wpaicg_audio.php:179
-#: classes/wpaicg_content.php:544
-#: classes/wpaicg_content.php:1143
+#: classes/wpaicg_content.php:554
+#: classes/wpaicg_content.php:1153
 #: classes/wpaicg_custom_prompt.php:50
 #: classes/wpaicg_finetune.php:203
 #: classes/wpaicg_finetune.php:475
@@ -7292,37 +7293,37 @@ msgstr ""
 msgid "Comment not found"
 msgstr ""
 
-#: classes/wpaicg_content.php:374
-#: classes/wpaicg_embeddings.php:369
+#: classes/wpaicg_content.php:384
+#: classes/wpaicg_embeddings.php:399
 msgid "Cancelled"
 msgstr ""
 
-#: classes/wpaicg_content.php:579
+#: classes/wpaicg_content.php:589
 msgid "Please speak louder or say more words for accurate recognition."
 msgstr ""
 
-#: classes/wpaicg_content.php:637
+#: classes/wpaicg_content.php:647
 msgid "Your CSV was including more than %d lines so we are only processing first 10 lines"
 msgstr ""
 
-#: classes/wpaicg_content.php:639
+#: classes/wpaicg_content.php:649
 msgid "Free users can only generate %d titles at a time. Please upgrade to the Pro plan to get access to more fields."
 msgstr ""
 
-#: classes/wpaicg_content.php:646
+#: classes/wpaicg_content.php:656
 msgid "Your CSV file is empty"
 msgstr ""
 
-#: classes/wpaicg_content.php:676
-#: classes/wpaicg_content.php:677
+#: classes/wpaicg_content.php:686
+#: classes/wpaicg_content.php:687
 msgid "Generate New Post"
 msgstr ""
 
-#: classes/wpaicg_content.php:1170
+#: classes/wpaicg_content.php:1180
 msgid "Break at step"
 msgstr ""
 
-#: classes/wpaicg_content.php:1469
+#: classes/wpaicg_content.php:1479
 msgid "Can not save image to media"
 msgstr ""
 
@@ -7385,130 +7386,134 @@ msgstr ""
 msgid "Missing ElevenLabs API keys"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:325
+#: classes/wpaicg_embeddings.php:329
+msgid "Failed to set results per page"
+msgstr ""
+
+#: classes/wpaicg_embeddings.php:355
 msgid "Missing ID request"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:349
+#: classes/wpaicg_embeddings.php:379
 msgid "Data not found"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:396
+#: classes/wpaicg_embeddings.php:426
 msgid "Indexed"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:431
+#: classes/wpaicg_embeddings.php:461
 msgid "Either something went wrong or you cancelled it."
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:457
+#: classes/wpaicg_embeddings.php:487
 msgid "Please select data to index"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:473
+#: classes/wpaicg_embeddings.php:503
 msgid "Indexing..."
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:706
+#: classes/wpaicg_embeddings.php:736
 msgid "Missing Pinecone API Settings"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:773
+#: classes/wpaicg_embeddings.php:803
 msgid "The content intended for re-indexing cannot be found or may have been removed. Please verify the content exists or has not been deleted before attempting to re-index."
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:896
-#: classes/wpaicg_embeddings.php:901
-#: classes/wpaicg_embeddings.php:943
+#: classes/wpaicg_embeddings.php:926
+#: classes/wpaicg_embeddings.php:931
+#: classes/wpaicg_embeddings.php:973
 msgid "Post Title"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:945
+#: classes/wpaicg_embeddings.php:975
 msgid "Post URL"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:949
+#: classes/wpaicg_embeddings.php:979
 msgid "Post Categories"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:955
+#: classes/wpaicg_embeddings.php:985
 msgid "Page Title"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:956
+#: classes/wpaicg_embeddings.php:986
 msgid "Page Content"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:957
+#: classes/wpaicg_embeddings.php:987
 msgid "Page URL"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:968
+#: classes/wpaicg_embeddings.php:998
 msgid "Product SKU"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:971
+#: classes/wpaicg_embeddings.php:1001
 msgid "Product Name"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:977
+#: classes/wpaicg_embeddings.php:1007
 msgid "Product URL"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:980
+#: classes/wpaicg_embeddings.php:1010
 msgid "Product Regular Price"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:984
+#: classes/wpaicg_embeddings.php:1014
 msgid "Product Sale Price"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:988
+#: classes/wpaicg_embeddings.php:1018
 msgid "Tax Status"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:992
+#: classes/wpaicg_embeddings.php:1022
 msgid "Tax Class"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:999
+#: classes/wpaicg_embeddings.php:1029
 msgid "External Product URL"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:1003
+#: classes/wpaicg_embeddings.php:1033
 msgid "Shipping Weight"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:1011
+#: classes/wpaicg_embeddings.php:1041
 msgid "Dimensions"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:1016
+#: classes/wpaicg_embeddings.php:1046
 msgid "Stock Status"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:1020
+#: classes/wpaicg_embeddings.php:1050
 msgid "Custom Product Attributes"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:1198
-#: classes/wpaicg_embeddings.php:1199
+#: classes/wpaicg_embeddings.php:1228
+#: classes/wpaicg_embeddings.php:1229
 msgid "AI Training"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:1281
-#: classes/wpaicg_embeddings.php:1394
-#: classes/wpaicg_embeddings.php:1463
+#: classes/wpaicg_embeddings.php:1311
+#: classes/wpaicg_embeddings.php:1424
+#: classes/wpaicg_embeddings.php:1493
 #: lib/modules/wpaicg_pdf.php:95
 #: lib/modules/wpaicg_pdf.php:710
 msgid "No data returned"
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:1478
+#: classes/wpaicg_embeddings.php:1508
 msgid "Missing API details."
 msgstr ""
 
-#: classes/wpaicg_embeddings.php:1496
+#: classes/wpaicg_embeddings.php:1526
 msgid "Please insert content"
 msgstr ""
 
@@ -7802,13 +7807,13 @@ msgstr ""
 msgid "Missing PineCone Settings"
 msgstr ""
 
-#: classes/wpaicg_template.php:49
-#: classes/wpaicg_template.php:108
-#: classes/wpaicg_template.php:199
+#: classes/wpaicg_template.php:44
+#: classes/wpaicg_template.php:98
+#: classes/wpaicg_template.php:184
 msgid "Missing request"
 msgstr ""
 
-#: classes/wpaicg_template.php:361
+#: classes/wpaicg_template.php:341
 msgid "No data generated"
 msgstr ""
 

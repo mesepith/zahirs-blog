@@ -1,8 +1,8 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-// Define posts per page
-$posts_per_page = 3;
+// Get the posts per page option from the database or set default
+$posts_per_page = get_option('wpaicg_knowledge_builder_page', 3);
 
 // Ensure the page number is at least 1
 $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
@@ -52,8 +52,17 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
 <div id="wpaicg_embedding_error_msg" class="wpaicg_embedding_error_msg" style="display: none;"></div>
 </p>
 <p></p>
-<div class="search-area" style="margin-bottom: 1em;">
+<div class="search-area" style="margin-bottom: 1em;display: flex;justify-content: space-between;">
     <input type="text" id="search-input" placeholder="<?php echo esc_attr__('Search...', 'gpt3-ai-content-generator'); ?>" style="width: 100%; max-width: 300px;">
+    <select id="results-per-page" name="results-per-page">
+        <?php
+        $options = [3, 5, 10, 25, 50, 100, 500, 1000];
+        foreach ($options as $option) {
+            $selected = ($option == $posts_per_page) ? 'selected' : '';
+            echo "<option value='$option' $selected>$option</option>";
+        }
+        ?>
+    </select>
 </div>
 
 <div class="content-area">
@@ -78,9 +87,7 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
         </table>
     </div>
 
-    <?php
-    echo \WPAICG\WPAICG_Embeddings::get_instance()->generate_smart_pagination($page, $total_pages);
-    ?>
+    <?php echo \WPAICG\WPAICG_Embeddings::get_instance()->generate_smart_pagination($page, $total_pages); ?>
     <p></p>
     <button id="reload-items" class="button button-secondary" title="Refresh">
         <svg id="reload-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-ccw"><polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></svg>
@@ -169,6 +176,8 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
             var page = $(this).data('page');
             var ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
             var nonce = $('#gpt4_pagination_nonce').val();
+            var searchTerm = $('#search-input').val();
+            var resultsPerPage = $('#results-per-page').val();
 
             $.ajax({
                 url: ajaxurl,
@@ -176,7 +185,9 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
                 data: {
                     action: 'gpt4_pagination',
                     page: page,
-                    nonce: nonce
+                    nonce: nonce,
+                    search_term: searchTerm,
+                    results_per_page: resultsPerPage
                 },
                 success: function(response) {
                     if (response.success) {
@@ -192,6 +203,8 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
             e.preventDefault();
             var ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
             var nonce = $('#gpt4_pagination_nonce').val();
+            var searchTerm = $('#search-input').val();
+            var resultsPerPage = $('#results-per-page').val();
             $('#reload-icon').addClass('spinrefresh'); 
 
             $.ajax({
@@ -199,7 +212,9 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
                 type: 'post',
                 data: {
                     action: 'reload_items_embeddings',
-                    nonce: nonce
+                    nonce: nonce,
+                    search_term: searchTerm,
+                    results_per_page: resultsPerPage
                 },
                 success: function(response) {
                     if (response.success) {
@@ -238,6 +253,7 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
             var searchTerm = $(this).val();
             var ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>'; // Your AJAX handler URL
             var nonce = $('#gpt4_pagination_nonce').val(); // Use your existing nonce for security
+            var resultsPerPage = $('#results-per-page').val();
 
             $.ajax({
                 url: ajaxurl,
@@ -246,7 +262,8 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
                     action: 'search_embeddings_content', // This action needs to be handled in your PHP code
                     search_term: searchTerm,
                     nonce: nonce,
-                    page: 1 // Assuming starting fresh search from page 1
+                    page: 1,
+                    results_per_page: resultsPerPage
                 },
                 success: function(response) {
                     if (response.success) {
@@ -261,6 +278,31 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
                 }
             });
         }, 250)); // 250ms debounce time
+
+        // Handle results per page change
+        $('#results-per-page').on('change', function() {
+            var resultsPerPage = $(this).val();
+            var ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
+            var nonce = $('#gpt4_pagination_nonce').val();
+            var searchTerm = $('#search-input').val();
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'post',
+                data: {
+                    action: 'set_results_per_page',
+                    results_per_page: resultsPerPage,
+                    nonce: nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#reload-items').click(); // Reload items to apply the new results per page
+                    } else {
+                        alert('Failed to set results per page.');
+                    }
+                }
+            });
+        });
     });
 </script>
 <script>

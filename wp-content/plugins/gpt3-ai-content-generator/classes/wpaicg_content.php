@@ -261,10 +261,10 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                     // Assuming 'Pending', 'In Progress', 'Completed', 'Cancelled' as possible $status_text values
                     $status_text_map = [
                         'publish' => '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">Completed</span>',
-                        'pending' => '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">Pending</span>',
+                        'pending' => '<span style="color: #000000;background: #f2ff05;border-radius: 5px;padding: 0 0.3em 0.1em;">Pending</span>',
                         'draft' => '<span style="color: #ffffff;background: #ffc300;border-radius: 5px;padding: 0 0.3em 0.1em;">In Progress</span>',
-                        'trash' => 'Cancelled',
-                        'inherit' => 'Cancelled',
+                        'trash' => '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">Cancelled</span>',
+                        'inherit' => '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">Cancelled</span>',
                     ];
 
                     $status_text = array_key_exists($status, $status_text_map) ? $status_text_map[$status] : 'Unknown';
@@ -272,7 +272,17 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                     // Show only Title and Status for non-completed items
                     if ($status !== 'publish') {
                         $html .= "<div><strong>Title:</strong> $title</div>";
-                        $html .= "<div><strong>Status:</strong> $status_text</div><br>";
+                        $html .= "<div><strong>Status:</strong> $status_text</div>";
+                        
+                        // Check for cancelled status and display error if present
+                        if ($status === 'trash' || $status === 'inherit') {
+                            $error = get_post_meta($item->ID, '_wpaicg_error', true);
+                            if ($error) {
+                                $html .= "<div style='display: block;white-space: break-spaces;'><strong>Reason:</strong> <span style='color: #e20000;'>" . esc_html($error) . "</span></div>";
+                            }
+                        }
+                        
+                        $html .= "<br>";
                         continue; // Skip the rest of the details for non-completed items
                     }
 
@@ -362,16 +372,16 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 $status = '';
                 switch ($post->post_status) {
                     case 'pending':
-                        $status = '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Pending', 'gpt3-ai-content-generator') . '</span>';
+                        $status = '<span style="color: #000000;background: #f2ff05;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Pending', 'gpt3-ai-content-generator') . '</span>';
                         break;
                     case 'publish':
                         $status = '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Completed', 'gpt3-ai-content-generator') . '</span>';
                         break;
                     case 'draft':
-                        $status = '<span style="color: #bb0505;">' . esc_html__('Error', 'gpt3-ai-content-generator') . '</span>';
+                        $status = '<span style="color: #e20000;">' . esc_html__('Error', 'gpt3-ai-content-generator') . '</span>';
                         break;
                     case 'trash':
-                        $status = '<span style="color: #bb0505;">' . esc_html__('Cancelled', 'gpt3-ai-content-generator') . '</span>';
+                        $status = '<span style="color: #e20000;">' . esc_html__('Cancelled', 'gpt3-ai-content-generator') . '</span>';
                         break;
                 }
                 $source = ''; // Initialize source variable
@@ -436,16 +446,16 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 $status = '';
                 switch ($post->post_status) {
                     case 'pending':
-                        $status = '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Pending', 'gpt3-ai-content-generator') . '</span>';
+                        $status = '<span style="color: #000000;background: #f2ff05;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Pending', 'gpt3-ai-content-generator') . '</span>';
                         break;
                     case 'publish':
                         $status = '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Completed', 'gpt3-ai-content-generator') . '</span>';
                         break;
                     case 'draft':
-                        $status = '<span style="color: #bb0505;">' . esc_html__('Error', 'gpt3-ai-content-generator') . '</span>';
+                        $status = '<span style="color: #e20000;">' . esc_html__('Error', 'gpt3-ai-content-generator') . '</span>';
                         break;
                     case 'trash':
-                        $status = '<span style="color: #bb0505;">' . esc_html__('Cancelled', 'gpt-3-ai-content-generator') . '</span>';
+                        $status = '<span style="color: #e20000;">' . esc_html__('Cancelled', 'gpt-3-ai-content-generator') . '</span>';
                         break;
                 }
                 $source = ''; // Initialize source variable

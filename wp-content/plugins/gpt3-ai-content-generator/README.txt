@@ -4,7 +4,7 @@ Tags: chatgpt, gpt, ai, openai, chatbot
 Requires at least: 5.0.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.8.64
+Stable tag: 1.8.65
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
  
@@ -151,6 +151,19 @@ Please read documentation here: [https://docs.aipower.org/](https://docs.aipower
 Note: You can view non-Minified JS files [here](https://github.com/aipowerorg/Non-Minified-JS-Files).
 
 == Changelog ==
+
+= 1.8.65 =
+
+- You can filter our certain keywords from RSS feed. More info [here](https://docs.aipower.org/docs/AutoGPT/auto-content-writer/rss#keyword-filtering).
+- Accessibility improvements in the chat bot.
+- Fixed a permission issue in custom mode.
+- Fixed an issue where search results were not maintained when navigating through pagination in AI Training.
+- Added more pagination options for AI Training - Knowledge Builder.
+- Added error reasons for failed tasks in AutoGPT - Queue.
+
+Fix:
+
+- Display the error message in the AutoGPT queue if the task fails.
 
 = 1.8.64 =
 
