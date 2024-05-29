@@ -59,23 +59,18 @@ if(isset($_POST['wpaicg_save_builder_settings'])){
     $selected_qdrant_collection = isset($_POST['wpaicg_qdrant_collections']) ? sanitize_text_field($_POST['wpaicg_qdrant_collections']) : '';
     update_option('wpaicg_qdrant_default_collection', $selected_qdrant_collection);
     
-    // Saving the Embeddings Model option
-    $wpaicg_openai_embeddings_value = isset($_POST['wpaicg_openai_embeddings']) ? sanitize_text_field($_POST['wpaicg_openai_embeddings']) : 'text-embedding-ada-002';
-    update_option('wpaicg_openai_embeddings', $wpaicg_openai_embeddings_value);
-    // Saving the Google Embeddings Model option
-    $wpaicg_google_embeddings_value = isset($_POST['wpaicg_google_embeddings']) ? sanitize_text_field($_POST['wpaicg_google_embeddings']) : 'embedding-001';
-    update_option('wpaicg_google_embeddings', $wpaicg_google_embeddings_value);
-    // Update the variable to reflect the new setting immediately
-    $wpaicg_openai_embeddings = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
-    $wpaicg_google_embeddings = get_option('wpaicg_google_embeddings', 'embedding-001');
-    
+    // Update the main embedding model option
+    if(isset($_POST['wpaicg_embedding_model']) && !empty($_POST['wpaicg_embedding_model'])) {
+        update_option('wpaicg_main_embedding_model', sanitize_text_field($_POST['wpaicg_embedding_model']));
+    } 
+
     $wpaicg_embeddings_settings_updated = true;
 }
 $table_name = $wpdb->prefix . 'wpaicg';
 $ai_provider_api_key = ''; // Initialize the variable to store the API key
 
 // Retrieve the vector db provider option
-$wpaicg_vector_db_provider = get_option('wpaicg_vector_db_provider', '');
+$wpaicg_vector_db_provider = get_option('wpaicg_vector_db_provider', 'pinecone');
 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 $wpaicg_qdrant_api_key = get_option('wpaicg_qdrant_api_key', '');
 $wpaicg_pinecone_api = get_option('wpaicg_pinecone_api', '');
@@ -86,21 +81,56 @@ $svg_alert_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24
 
 $embedding_model = '';
 $embedding_model_reason = '';
-// Retrieve the embedding model based on the provider
-switch ($wpaicg_provider) {
-    case 'OpenAI':
-        $api_key_row = $wpdb->get_row("SELECT api_key FROM {$table_name} WHERE name = 'wpaicg_settings'", ARRAY_A);
-        $ai_provider_api_key = $api_key_row ? $api_key_row['api_key'] : '';
-        $embedding_model = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
-        break;
-    case 'Azure':
-        $ai_provider_api_key = get_option('wpaicg_azure_api_key', '');
-        $embedding_model = get_option('wpaicg_azure_embeddings', '');
-        break;
-    case 'Google':
-        $ai_provider_api_key = get_option('wpaicg_google_model_api_key', '');
-        $embedding_model = get_option('wpaicg_google_embeddings', 'embedding-001');
-        break;
+$default_provider = '';
+$embedding_dimension = '';
+// First, try to get the 'wpaicg_main_embedding_model' and split into provider and model
+$main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+if (!empty($main_embedding_model)) {
+    list($provider, $model) = explode(':', $main_embedding_model, 2);
+    $embedding_model = $model;
+    $all_embedding_models = \WPAICG\WPAICG_Util::get_instance()->get_embedding_models();
+    if (isset($all_embedding_models[$provider][$model])) {
+        $embedding_dimension = $all_embedding_models[$provider][$model];
+    }
+    $default_provider = $provider;
+
+    // Determine the API key based on the provider
+    switch ($provider) {
+        case 'OpenAI':
+            $api_key_row = $wpdb->get_row("SELECT api_key FROM {$table_name} WHERE name = 'wpaicg_settings'", ARRAY_A);
+            $ai_provider_api_key = $api_key_row ? $api_key_row['api_key'] : '';
+            break;
+        case 'Azure':
+            $ai_provider_api_key = get_option('wpaicg_azure_api_key', '');
+            break;
+        case 'Google':
+            $ai_provider_api_key = get_option('wpaicg_google_model_api_key', '');
+            break;
+    }
+} else {
+    // If 'wpaicg_main_embedding_model' is not set, fall back to provider-specific logic
+    $get_embedding_models = \WPAICG\WPAICG_Util::get_instance()->get_embedding_models();
+    switch ($wpaicg_provider) {
+        case 'OpenAI':
+            $api_key_row = $wpdb->get_row("SELECT api_key FROM {$table_name} WHERE name = 'wpaicg_settings'", ARRAY_A);
+            $ai_provider_api_key = $api_key_row ? $api_key_row['api_key'] : '';
+            $embedding_model = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
+            $embedding_dimension = $get_embedding_models['OpenAI'][$embedding_model] ?? null;
+            $default_provider = 'OpenAI';
+            break;
+        case 'Azure':
+            $ai_provider_api_key = get_option('wpaicg_azure_api_key', '');
+            $embedding_model = get_option('wpaicg_azure_embeddings', '');
+            $embedding_dimension = $get_embedding_models['Azure'][$embedding_model] ?? null;
+            $default_provider = 'Azure';
+            break;
+        case 'Google':
+            $ai_provider_api_key = get_option('wpaicg_google_model_api_key', '');
+            $embedding_model = get_option('wpaicg_google_embeddings', 'embedding-001');
+            $embedding_dimension = $get_embedding_models['Google'][$embedding_model] ?? null;
+            $default_provider = 'Google';
+            break;
+    }
 }
 
 // Check if the embedding model is set
@@ -108,33 +138,83 @@ if (empty($embedding_model)) {
     $embedding_model_reason = 'Embedding model not set.';
 }
 
-
 $index_name = '';
 $db_alert_reason = '';
 $index_alert_reason = '';
 $ai_provider_alert_reason = '';
-
-
+$vector_dimension = '';
+$vectors_count = '';
+$points_count = '';
+$dimension_alert_reason = '';
 // Check for AI provider API key status
-if ($wpaicg_provider == 'OpenAI' && (empty($ai_provider_api_key) || strlen($ai_provider_api_key) < 5)) {
+if ($default_provider == 'OpenAI' && (empty($ai_provider_api_key) || strlen($ai_provider_api_key) < 5)) {
     $ai_provider_alert_reason = 'OpenAI API key missing or invalid.';
 } elseif (empty($ai_provider_api_key)) {
-    $ai_provider_alert_reason = $wpaicg_provider . ' API key missing.';
+    $ai_provider_alert_reason = $default_provider . ' API key missing.';
 }
 
 if (!empty($wpaicg_vector_db_provider)) {
     if ($wpaicg_vector_db_provider === 'qdrant') {
         $index_name = get_option('wpaicg_qdrant_default_collection');
-        $db_alert_reason .= empty($wpaicg_qdrant_api_key) ? 'Qdrant API missing. ' : '';
+        $db_alert_reason .= empty($wpaicg_qdrant_api_key) ? 'API key missing. ' : '';
         $index_alert_reason .= empty($index_name) ? 'Collection missing. ' : '';
+        $qdrant_collections = get_option('wpaicg_qdrant_collections', []);
+        foreach ($qdrant_collections as $collection) {
+            if (is_array($collection) && isset($collection['name']) && $collection['name'] == $index_name) {
+                $vector_dimension = isset($collection['dimension']) ? $collection['dimension'] : '';
+                $vectors_count = isset($collection['vectors_count']) ? $collection['vectors_count'] : '';
+                $points_count = isset($collection['points_count']) ? $collection['points_count'] : '';
+                break;
+            }
+        }
+        if (empty($vector_dimension)) $dimension_alert_reason = 'Dimension not synced';
     } elseif ($wpaicg_vector_db_provider === 'pinecone') {
-        $index_name_parts = explode('-', get_option('wpaicg_pinecone_environment'), 2);
-        $index_name = $index_name_parts[0];
+        $env_string = get_option('wpaicg_pinecone_environment');
+        $svc_pos = strpos($env_string, '.svc');
+        $index_name = null;
+        if ($svc_pos !== false) {
+            // Find the last "-" before ".svc" by looking backwards from the position of ".svc"
+            $sub_string_up_to_svc = substr($env_string, 0, $svc_pos);
+            $last_dash_before_svc = strrpos($sub_string_up_to_svc, '-');
+        
+            // Ensure there's a "-" before ".svc"
+            if ($last_dash_before_svc !== false) {
+                // Extract everything before the last "-" before ".svc"
+                $index_name = substr($env_string, 0, $last_dash_before_svc);
+            } else {
+                // No "-" found before ".svc", handle the error or assume the whole part before ".svc" is the index name
+                $index_name = $sub_string_up_to_svc;
+            }
+        } else {
+            // ".svc" not found, handle the error or use a default
+            $index_name = null;  // Or handle this case as needed
+        }
         $db_alert_reason .= empty($wpaicg_pinecone_api) ? 'Pinecone API missing. ' : '';
         $index_alert_reason .= empty($index_name) ? 'Index missing. ' : '';
+        $pinecone_indexes = json_decode(get_option('wpaicg_pinecone_indexes'), true);
+        if (is_array($pinecone_indexes) && !empty($pinecone_indexes)) {
+            foreach ($pinecone_indexes as $index) {
+                if ($index['name'] == $index_name) {
+                    $vector_dimension = isset($index['dimension']) ? $index['dimension'] : null;
+                    break;
+                }
+            }
+        }
+        if (empty($vector_dimension)) $dimension_alert_reason = 'Dimension not synced';
     }
 }
+// First, validate that both dimension values exist and are not empty
+if (!empty($vector_dimension) && !empty($embedding_dimension)) {
+    // Cast dimensions to integers to ensure proper comparison
+    $vector_dimension = intval($vector_dimension);
+    $embedding_dimension = intval($embedding_dimension);
 
+    // Prepare dimension check output
+    $dimension_mismatch = ($vector_dimension !== $embedding_dimension) ? true : false;
+} else {
+    // If one or both dimensions are missing, handle the case appropriately
+    $dimension_mismatch = false;  // or true based on how you want to handle this case
+}
 ?>
 <div class="content-writer-master">
   <div class="content-writer-master-navigation">
@@ -287,31 +367,79 @@ if (!empty($wpaicg_vector_db_provider)) {
         <nav>
             <ul>
                 <li>
-                    <a href="javascript:void(0)" class="advanced-settings" ><?php echo esc_html__('STATUS','gpt3-ai-content-generator')?></a>
+                    <a href="javascript:void(0)" class="advanced-settings" ><?php echo esc_html__('Default Embedding','gpt3-ai-content-generator')?></a>
                     <!-- Submenu for status -->
                     <div class="submenu">
-                        <table class="wp-list-table widefat striped table-view-list comments" style="white-space: break-spaces;">
+                        <table class="wp-list-table widefat striped table-view-list comments" style="word-break: break-all;">
                             <tbody>
                                 <tr>
-                                    <th><?php echo esc_html__('AI', 'gpt3-ai-content-generator'); ?></th>
-                                    <td><strong><?php echo esc_html($wpaicg_provider); ?></strong></td>
-                                    <td><span class="wpaicg_alert_container"><?php echo empty($ai_provider_alert_reason) ? $svg_check_icon : $svg_alert_icon; ?> <?php echo esc_html($ai_provider_alert_reason); ?></span></td>
+                                    <th style="font-size: 12px;width: 80px;"><?php echo esc_html__('Provider', 'gpt3-ai-content-generator'); ?></th>
+                                    <td style="font-size: 12px;width: 80px;"><strong><?php echo esc_html($default_provider); ?></strong></td>
+                                    <td style="font-size: 12px;"><span class="wpaicg_alert_container"><?php echo empty($ai_provider_alert_reason) ? $svg_check_icon : $svg_alert_icon; ?> <?php echo esc_html($ai_provider_alert_reason); ?></span></td>
                                 </tr>
                                 <tr>
-                                    <th><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></th>
-                                    <td><strong><?php echo esc_html($embedding_model); ?></strong></td>
-                                    <td><span class="wpaicg_alert_container"><?php echo empty($embedding_model_reason) ? $svg_check_icon : $svg_alert_icon; ?> <?php echo esc_html($embedding_model_reason); ?></span></td>
+                                    <th style="font-size: 12px;width: 80px;"><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></th>
+                                    <td style="font-size: 12px;width: 80px;"><strong><?php echo esc_html($embedding_model); ?></strong></td>
+                                    <td style="font-size: 12px;"><span class="wpaicg_alert_container"><?php echo empty($embedding_model_reason) ? $svg_check_icon : $svg_alert_icon; ?> <?php echo esc_html($embedding_model_reason); ?></span></td>
+                                </tr>
+                                <!-- Show embedding dimension if exists and not empty, check for mismatch -->
+                                <tr>
+                                    <th style="font-size: 12px;width: 80px;"><?php echo esc_html__('Dim', 'gpt3-ai-content-generator'); ?></th>
+                                    <td style="font-size: 12px;width: 80px;"><strong><?php echo esc_html($embedding_dimension); ?></strong></td>
+                                    <td style="font-size: 12px;">
+                                        <?php if ($dimension_mismatch): ?>
+                                            <span class="wpaicg_alert_container"><?php echo $svg_alert_icon; ?></span><p style="font-size: 12px;word-break: normal;">Dimension mismatch</p>
+                                        <?php else: ?>
+                                            <span class="wpaicg_alert_container"><?php echo $svg_check_icon; ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </li>
+                <li>
+                    <a href="javascript:void(0)" class="advanced-settings" ><?php echo esc_html__('Default Vector DB','gpt3-ai-content-generator')?></a>
+                    <!-- Submenu for status -->
+                    <div class="submenu">
+                        <table class="wp-list-table widefat striped table-view-list comments" style="word-break: break-all;">
+                            <tbody>
+                                <tr>
+                                    <th style="font-size: 12px;width: 80px;"><?php echo esc_html__('DB', 'gpt3-ai-content-generator'); ?></th>
+                                    <td style="font-size: 12px;width: 80px;"><strong><?php echo esc_html($wpaicg_vector_db_provider); ?></strong></td>
+                                    <td style="font-size: 10px;"><span class="wpaicg_alert_container"><?php echo empty($db_alert_reason) ? $svg_check_icon : $svg_alert_icon; ?> </span><p style="font-size: 12px;"><?php echo esc_html($db_alert_reason); ?></p></td>
                                 </tr>
                                 <tr>
-                                    <th><?php echo esc_html__('DB', 'gpt3-ai-content-generator'); ?></th>
-                                    <td><strong><?php echo esc_html($wpaicg_vector_db_provider); ?></strong></td>
-                                    <td><span class="wpaicg_alert_container"><?php echo empty($db_alert_reason) ? $svg_check_icon : $svg_alert_icon; ?> <?php echo esc_html($db_alert_reason); ?></span></td>
+                                    <th style="font-size: 12px;width: 80px;"><?php echo esc_html__('Index', 'gpt3-ai-content-generator'); ?></th>
+                                    <td style="font-size: 12px;width: 80px;"><strong><?php echo !empty($index_name) ? esc_html($index_name) : esc_html__('N/A', 'gpt3-ai-content-generator'); ?></strong></td>
+                                    <td style="font-size: 10px;"><span class="wpaicg_alert_container"><?php echo empty($index_alert_reason) ? $svg_check_icon : $svg_alert_icon; ?></span><p style="font-size: 12px;"><?php echo esc_html($index_alert_reason); ?></p></td>
+                                </tr>
+                                <!-- Show vector dimension if exists and not empty, check for mismatch -->
+                                <?php if (!empty($vector_dimension)): ?>
+                                <tr>
+                                    <th style="font-size: 12px;width: 80px;"><?php echo esc_html__('Dim', 'gpt3-ai-content-generator'); ?></th>
+                                    <td style="font-size: 12px;width: 80px;"><strong><?php echo esc_html($vector_dimension); ?></strong></td>
+                                    <td style="font-size: 12px;">
+                                        <?php if ($dimension_mismatch): ?>
+                                            <span class="wpaicg_alert_container"><?php echo $svg_alert_icon; ?></span><p style="font-size: 12px;word-break: normal;">Dimension mismatch</p>
+                                        <?php else: ?>
+                                            <span class="wpaicg_alert_container"><?php echo $svg_check_icon; ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endif; ?>
+                                <?php if ($wpaicg_vector_db_provider === 'qdrant' && !empty($points_count) && $points_count != '0'): ?>
+                                <tr>
+                                    <th style="font-size: 12px;width: 80px;"><?php echo esc_html__('Vectors', 'gpt3-ai-content-generator'); ?></th>
+                                    <td style="font-size: 12px;width: 80px;"><strong><?php echo esc_html($vectors_count); ?></strong></td>
+                                    <td style="font-size: 10px;"><span class="wpaicg_alert_container"><?php echo $svg_check_icon; ?></span></td>
                                 </tr>
                                 <tr>
-                                    <th><?php echo esc_html__('Index', 'gpt3-ai-content-generator'); ?></th>
-                                    <td><strong style="word-break: break-all;"><?php echo !empty($index_name) ? esc_html($index_name) : esc_html__('N/A', 'gpt3-ai-content-generator'); ?></strong></td>
-                                    <td><span class="wpaicg_alert_container"><?php echo empty($index_alert_reason) ? $svg_check_icon : $svg_alert_icon; ?> <?php echo esc_html($index_alert_reason); ?></span></td>
+                                    <th style="font-size: 12px;width: 80px;"><?php echo esc_html__('Points', 'gpt3-ai-content-generator'); ?></th>
+                                    <td style="font-size: 12px;width: 80px;"><strong><?php echo esc_html($points_count); ?></strong></td>
+                                    <td style="font-size: 10px;"><span class="wpaicg_alert_container"><?php echo $svg_check_icon; ?></span></td>
                                 </tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>

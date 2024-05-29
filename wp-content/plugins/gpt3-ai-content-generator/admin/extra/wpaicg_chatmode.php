@@ -27,13 +27,12 @@ if($checkRole){
         $menus = array(
             'shortcode' => esc_html__('Shortcode','gpt3-ai-content-generator'),
             'widget' => esc_html__('Widget','gpt3-ai-content-generator'),
-            'bots' => esc_html__('Chat Bots','gpt3-ai-content-generator'),
+            'bots' => esc_html__('Custom Bots','gpt3-ai-content-generator'),
             'logs' => esc_html__('Logs','gpt3-ai-content-generator'),
             'settings' => esc_html__('Settings','gpt3-ai-content-generator')
         );
-        $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-        // Add 'assistants' tab if the feature is enabled and provider is OpenAI
-        if ($assistants_enabled && $wpaicg_provider == 'OpenAI') {
+        // Add 'assistants' tab if the feature is enabled
+        if ($assistants_enabled) {
             $menus['assistants'] = esc_html__('Assistants','gpt3-ai-content-generator');
         }
         if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()){

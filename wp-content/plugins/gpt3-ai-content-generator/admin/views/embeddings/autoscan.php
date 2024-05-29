@@ -2,27 +2,54 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 global $wpdb;
 $wpaicg_cron_added = get_option('wpaicg_cron_builder_added','');
+$humanReadableBuilder = (!empty($wpaicg_cron_added)) ? date('y-m-d H:i', $wpaicg_cron_added) : 'NA';
 $wpaicg_builder_types = get_option('wpaicg_builder_types',[]);
+$schedule_options = [
+    'none' => 'None',
+    '5minutes' => 'Every 5 Minutes',
+    '15minutes' => 'Every 15 Minutes',
+    '30minutes' => 'Every 30 Minutes',
+    '1hour' => 'Every 1 Hour',
+    '2hours' => 'Every 2 Hours',
+    '6hours' => 'Every 6 Hours',
+    '12hours' => 'Every 12 Hours',
+    '1day' => 'Every Day',
+    '1week' => 'Every Week'
+];
+
+$schedule_builder = get_option('wpaicg_cron_builder_schedule', 'none');
 ?>
 <table class="wp-list-table widefat fixed striped table-view-list comments">
 <thead>
         <tr>
-            <th><?php echo esc_html__('#', 'gpt3-ai-content-generator'); ?></th>
-            <th><?php echo esc_html__('Status', 'gpt3-ai-content-generator'); ?></th>
-            <th><?php echo esc_html__('Manual Trigger', 'gpt3-ai-content-generator'); ?></th>
-            <th><?php echo esc_html__('Cron Job', 'gpt3-ai-content-generator'); ?></th>
+            <th style="width: 60px;"><?php echo esc_html__('#', 'gpt3-ai-content-generator'); ?></th>
+            <th style="width: 60px;"><?php echo esc_html__('Status', 'gpt3-ai-content-generator'); ?></th>
+            <th style="width: 120px;"><?php echo esc_html__('Last Run', 'gpt3-ai-content-generator'); ?></th>
+            <th style="width: 60px;"><?php echo esc_html__('Manual', 'gpt3-ai-content-generator'); ?></th>
+            <th><?php echo esc_html__('Schedule', 'gpt3-ai-content-generator'); ?></th>
+            <th><?php echo esc_html__('Cron', 'gpt3-ai-content-generator'); ?></th>
         </tr>
         </thead>
     <tbody>
         <tr>
-            <td>Queue Processor</td>
+            <td>Scan</td>
             <td style="color: <?php echo empty($wpaicg_cron_added) ? '#ff0000' : '#008000'; ?>;"><?php echo empty($wpaicg_cron_added) ? 'OFF' : 'ON'; ?></td>
+            <td><?php echo esc_html($humanReadableBuilder); ?></td>
             <td>
                 <button id="triggerAutoScan" class="button button-primary" title="Trigger Queue">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
             </td>
-            <td><a href="#" class="view-instructions" data-instruction="builder">View Instructions</a></td>
+            <td>
+                <select id="schedule_builder" data-task="builder" style="width: 120px;">
+                    <?php foreach ($schedule_options as $value => $label) : ?>
+                        <option value="<?php echo esc_attr($value); ?>" <?php selected($schedule_builder, $value); ?>>
+                            <?php echo esc_html($label); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </td>
+            <td><a href="#" class="view-instructions" data-instruction="builder">Instructions</a></td>
         </tr>
     </tbody>
 </table>
@@ -171,6 +198,32 @@ if ($wpaicg_builder_types && is_array($wpaicg_builder_types) && count($wpaicg_bu
 
         $('#triggerAutoScan').click(function() { triggerAutoScan("wpaicg_builder=yes"); });
 
+        // Function to save schedule
+        function saveSchedule(task, value) {
+            $.ajax({
+                url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                type: 'post',
+                data: {
+                    action: 'save_schedule',
+                    task: task,
+                    value: value,
+                    nonce: '<?php echo wp_create_nonce('save_schedule_nonce'); ?>'
+                },
+                success: function(response) {
+                    if (!response.success) {
+                        alert('Failed to save schedule.');
+                    }
+                }
+            });
+        }
+
+        // Handle schedule change
+        $('#schedule_builder').on('change', function() {
+            var task = $(this).data('task');
+            var value = $(this).val();
+            saveSchedule(task, value);
+        });
+
     })
 </script>
 <script>
@@ -213,7 +266,7 @@ function toggleVisibility(className) {
                 // Create and insert the instruction row below the current row
                 const instructionRow = document.createElement('tr');
                 instructionRow.className = 'instruction-row';
-                instructionRow.innerHTML = `<td colspan="4"><div class="wpaicg-code-container">${instructionText}<br><code>${cronCommand}</code></div></td>`;
+                instructionRow.innerHTML = `<td colspan="6"><div class="wpaicg-code-container">${instructionText}<br><code>${cronCommand}</code></div></td>`;
                 this.closest('tr').after(instructionRow);
             });
         });

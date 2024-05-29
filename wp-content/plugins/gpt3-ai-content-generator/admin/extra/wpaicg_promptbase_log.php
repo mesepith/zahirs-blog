@@ -68,6 +68,9 @@ $totalPage         = ceil($total / $items_per_page);
     <div class="wpaicg-d-flex mb-5">
         <input style="width: 100%" value="<?php echo esc_html($search)?>" class="regular-text" name="search" type="text" placeholder="<?php echo esc_html__('Type for search','gpt3-ai-content-generator')?>">
         <button class="button button-primary"><?php echo esc_html__('Search','gpt3-ai-content-generator')?></button>
+        <?php if ($total > 0) : ?>
+        <button id="delete-all" class="button button-secondary" style="color: white;background: #9d0000;border: #9d0000;margin-left: 5px;"><?php echo esc_html__('Delete All','gpt3-ai-content-generator')?></button>
+        <?php endif; ?>
     </div>
 </form>
 <table class="wp-list-table widefat fixed striped table-view-list posts">
@@ -105,17 +108,19 @@ $totalPage         = ceil($total / $items_per_page);
             if($wpaicg_log->source > 0){
                 $source = get_the_title($wpaicg_log->source);
             }
-            if($wpaicg_ai_model === 'gpt-3.5-turbo' || $wpaicg_ai_model === 'gpt-3.5-turbo-16k') {
-                $wpaicg_estimated = 0.002 * $wpaicg_usage_token / 1000;
-            }
-            if($wpaicg_ai_model === 'gpt-4') {
-                $wpaicg_estimated = 0.06 * $wpaicg_usage_token / 1000;
-            }
-            if($wpaicg_ai_model === 'gpt-4-32k') {
-                $wpaicg_estimated = 0.12 * $wpaicg_usage_token / 1000;
-            }
-            else{
-                $wpaicg_estimated = 0.02 * $wpaicg_usage_token / 1000;
+
+            $pricing = \WPAICG\WPAICG_Util::get_instance()->model_pricing;
+            $wpaicg_estimated = 0;
+            // Calculate estimated cost
+            if (!empty($wpaicg_usage_token) && is_numeric($wpaicg_usage_token)) {
+                if (array_key_exists($wpaicg_ai_model, $pricing)) {
+                    $wpaicg_estimated = $pricing[$wpaicg_ai_model] * $wpaicg_usage_token / 1000;
+                } else {
+                    // Default pricing if the model is not listed
+                    $wpaicg_estimated = 0.02 * $wpaicg_usage_token / 1000;
+                }
+            } else {
+                $wpaicg_estimated = 0.02; // Default estimated cost
             }
             ?>
             <tr>
@@ -263,4 +268,26 @@ $totalPage         = ceil($total / $items_per_page);
             $('.wpaicg-overlay, .wpaicg_modal').show();
         });
     });
+</script>
+<script>
+jQuery(document).ready(function($) {
+    $('#delete-all').click(function() {
+        if (confirm('Are you sure you want to delete all logs? This action cannot be undone.')) {
+            $.ajax({
+                url: ajaxurl, // Make sure ajaxurl is defined globally
+                type: 'POST',
+                data: {
+                    action: 'wpaicg_delete_all_prompt_logs', // The action hook for backend
+                    nonce: '<?php echo wp_create_nonce("wpaicg_delete_all_prompt_logs_nonce"); ?>'
+                },
+                success: function(response) {
+                    alert(response.data.message);
+                    if (response.success) {
+                        location.reload(); // Reload the page to update the log table
+                    }
+                }
+            });
+        }
+    });
+});
 </script>

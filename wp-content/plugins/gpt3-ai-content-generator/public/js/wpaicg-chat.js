@@ -1,7 +1,6 @@
 function loadConversations() {
     var clientId = localStorage.getItem('wpaicg_chat_client_id');
     if (!clientId) {
-        console.log("No previous conversations found.");
         // Show conversation starters for each chat interface when there are no conversations
         showAllConversationStarters();
         return;
@@ -25,43 +24,49 @@ function showAllConversationStarters() {
 
 function loadChatInterface(containerSelector, type, clientId) {
     var chatContainers = document.querySelectorAll(containerSelector);
-    console.log(`Found ${chatContainers.length} ${type} containers`);
 
     chatContainers.forEach(chatContainer => {
-        console.log('Current chat container:', chatContainer);  // Detailed log of the container
+
+        // Read autoload chat conversations setting, default to '0' if not set
+        var autoloadConversations = chatContainer.getAttribute('data-autoload_chat_conversations');
+        if (autoloadConversations === null) {
+            autoloadConversations = '0';  // Default value if attribute does not exist
+        }
 
         // Fetch the bot ID based on the type
         var botId = chatContainer.getAttribute('data-bot-id') || '0';
-        console.log(`Loading chat history for ${type} chat interface with bot ID ${botId} and client ID ${clientId}...`);
 
         // Determine the history key based on whether it's a custom bot or not
         var historyKey = botId !== '0' 
             ? `wpaicg_chat_history_custom_bot_${botId}_${clientId}` 
             : `wpaicg_chat_history_${type}_${clientId}`;
 
-        // Retrieve and display the chat history
-        var chatHistory = localStorage.getItem(historyKey);
-        if (chatHistory) {
-            chatHistory = JSON.parse(chatHistory);
-            var chatBox = chatContainer.querySelector('.wpaicg-chatbox-messages, .wpaicg-chat-shortcode-messages'); // Generalized selector
-            if (!chatBox) {
-                console.error(`No chat box found within the ${type} container.`);
-                return;
-            }
-            chatBox.innerHTML = '';  // Clears the chat box
-            chatHistory.forEach(message => {
-                reconstructMessage(chatBox, message, chatContainer);
-            });
-            chatBox.appendChild(document.createElement('br'));
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    chatBox.scrollTop = chatBox.scrollHeight; // Scrolls to the bottom
+        if (autoloadConversations === '0') {
+            // Retrieve and display the chat history
+            var chatHistory = localStorage.getItem(historyKey);
+            if (chatHistory) {
+                chatHistory = JSON.parse(chatHistory);
+                var chatBox = chatContainer.querySelector('.wpaicg-chatbox-messages, .wpaicg-chat-shortcode-messages'); // Generalized selector
+                if (!chatBox) {
+                    console.error(`No chat box found within the ${type} container.`);
+                    return;
+                }
+                chatBox.innerHTML = '';  // Clears the chat box
+                chatHistory.forEach(message => {
+                    reconstructMessage(chatBox, message, chatContainer);
                 });
-            });
-            hideConversationStarter(chatContainer);
+                chatBox.appendChild(document.createElement('br'));
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        chatBox.scrollTop = chatBox.scrollHeight; // Scrolls to the bottom
+                    });
+                });
+                hideConversationStarter(chatContainer);
 
+            } else {
+                showConversationStarters(chatContainer);
+            }
         } else {
-            console.log('No chat history found for key:', historyKey);
             showConversationStarters(chatContainer);
         }
     });
@@ -628,7 +633,6 @@ function wpaicgChatInit() {
         var imageUrl = ''; // Variable to store the URL of the uploaded image for preview
         if(imageInput){
             if (imageInput.files && imageInput.files[0]) {
-                //console.log("Image binded with send message: ", imageInput.files[0].name);
                 // Append image file to FormData object
                 wpaicgData.append('image', imageInput.files[0], imageInput.files[0].name);
                 // Create a URL for the uploaded image file for preview
@@ -644,8 +648,10 @@ function wpaicgChatInit() {
             wpaicg_messages_box.scrollTop = wpaicg_messages_box.scrollHeight;
             // Retrieve all message elements
             const messages = wpaicg_messages_box.querySelectorAll('li');
-            // scroll to the last message
-            messages[messages.length - 1].scrollIntoView();
+            // Ensure messages exist and scroll to the last message
+            if (messages.length > 0) {
+                messages[messages.length - 1].scrollIntoView();
+            } 
             
         } else {
             wpaicg_ai_thinking = chat.getElementsByClassName('wpaicg-bot-thinking')[0];
@@ -799,8 +805,7 @@ function wpaicgChatInit() {
                     } else {
                         wpaicg_message = '<li class="' + class_ai_item + '" style="background-color:' + wpaicg_ai_bg + ';font-size: ' + wpaicg_font_size + 'px;color: ' + wpaicg_font_color + '"><p style="width:100%"><strong class="wpaicg-chat-avatar">' + wpaicg_ai_name + '</strong><span class="wpaicg-chat-message wpaicg-chat-message-error" id="wpaicg-chat-message-' + wpaicg_randomnum + '"></span>';
                         wpaicg_response_text = 'Something went wrong. Please clear your cache and try again.';
-                        // clear chat history
-                        localStorage.removeItem('wpaicg_chat_history_' + chatbot_identity + '_' + clientID);
+                        wpaicg_ai_thinking.style.display = 'none';
                     }
                     if (wpaicg_response_text === 'null' || wpaicg_response_text === null) {
                         wpaicg_response_text = 'Empty response from api. Check your server logs for more details.';
@@ -1167,6 +1172,15 @@ function wpaicgChatInit() {
         };
         eventSource.onmessage = function(e) {
             wpaicg_ai_thinking.style.display = 'none';
+
+            // Check if the message is the '[DONE]' signal
+            if (e.data === "[DONE]") {
+                console.log('Received the [DONE] signal');
+                eventSource.close();
+                toggleBlinkingCursor(false); // Ensure cursor is removed when done
+                updateChatHistory(completeAIResponse, 'ai');
+                return; // Exit the function to avoid further processing
+            }
             
             var resultData = JSON.parse(e.data);
             
@@ -1253,6 +1267,7 @@ function wpaicgChatInit() {
                 updateChatHistory(completeAIResponse, 'ai');
 
                 if (streamFormatter(completeAIResponse)) {
+                    console.log('URL or email found in the response');
                     flashMessage(chatids); // Call flashMessage only if a URL or an email address is found
                 }
 
@@ -1287,7 +1302,8 @@ function wpaicgChatInit() {
             // Replace newlines with <br> tags
             text = text.replace(/(?:\r\n|\r|\n)/g, '<br>');
 
-            console.log(text);
+            // remove **
+            text = text.replace(/\*\*/g, '');
 
             // return the formatted text
             return text;

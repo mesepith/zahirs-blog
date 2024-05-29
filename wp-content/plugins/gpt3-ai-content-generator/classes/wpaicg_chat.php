@@ -96,6 +96,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                         'wpaicg_chat_embedding_top',
                         'wpaicg_widget_google_model',
                         'wpaicg_conversation_starters_widget',
+                        'wpaicg_widget_openrouter_model',
                     ];
                     foreach ($widget_options as $option) {
                         if (get_option($option) !== false) {
@@ -189,7 +190,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                         'wpaicg_chat_addition_text',
                         'wpaicg_chat_no_answer',
                         'wpaicg_chat_embedding_type',
-                        'wpaicg_chat_embedding_top'
+                        'wpaicg_chat_embedding_top',
+                        'wpaicg_widget_openrouter_model',
                     );
                     foreach ($widget_options as $option_key) {
                         $settings[$option_key] = get_option($option_key, '');
@@ -273,7 +275,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                             'wpaicg_chat_addition_text',
                             'wpaicg_chat_no_answer',
                             'wpaicg_chat_embedding_type',
-                            'wpaicg_chat_embedding_top'
+                            'wpaicg_chat_embedding_top',
+                            'wpaicg_widget_openrouter_model'
                         ];
 
                         foreach ($additional_widget_settings as $setting) {
@@ -373,19 +376,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             if(isset($_REQUEST['bot']) && is_array($_REQUEST['bot'])){
                 $bot_id = isset($_REQUEST['bot']['id']) ? intval($_REQUEST['bot']['id']) : 0;
 
-                // use bot id to get the current conversation_starters from the db post_content conversation_starters field
-                $current_conversation_starters = '';
-                if($bot_id > 0){
-                    $bot = get_post($bot_id);
-                    if($bot){
-                        $bot = json_decode($bot->post_content,true);
-                        if(isset($bot['conversation_starters'])){
-                            $current_conversation_starters = $bot['conversation_starters'];
-                        }
-                    }
-                }
-
-                $conversation_starters = isset($_REQUEST['bot']['conversation_starters']) ? wp_unslash($_REQUEST['bot']['conversation_starters']) : $current_conversation_starters;
+                $conversation_starters = isset($_REQUEST['bot']['conversation_starters']) ? wp_unslash($_REQUEST['bot']['conversation_starters']) : array();
                 // Extract the footer_text field before sanitization
                 $footer_text = isset($_REQUEST['bot']['footer_text']) ? wp_kses_post($_REQUEST['bot']['footer_text']) : '';
 
@@ -393,6 +384,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 unset($_REQUEST['bot']['footer_text'], $_REQUEST['bot']['conversation_starters']);
 
                 $bot = wpaicg_util_core()->sanitize_text_or_array_field($_REQUEST['bot']);
+
+                // Ensure 'use_default_embedding' is set appropriately
+                $bot['use_default_embedding'] = isset($_REQUEST['bot']['use_default_embedding']) ? '1' : '0';
 
                 // Reintroduce the footer_text field into the bot array or process separately as needed
                 $bot['footer_text'] = $footer_text;
@@ -442,6 +436,21 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             if($shortcode_reset_limit > 0) {
                 $shortcode_time = time() - ($shortcode_reset_limit * 86400);
                 $wpdb->query($wpdb->prepare("DELETE FROM " . $wpdb->prefix . "wpaicg_chattokens WHERE source='shortcode' AND created_at < %s",$shortcode_time));
+            }
+            // New code to handle custom bots
+            $custom_bots = $wpdb->get_results("SELECT ID, post_content FROM {$wpdb->posts} WHERE post_type = 'wpaicg_chatbot'");
+            foreach ($custom_bots as $bot) {
+                $content = json_decode($bot->post_content, true);
+                $reset_limit = isset($content['reset_limit']) ? (int) $content['reset_limit'] : 0;
+                if ($reset_limit > 0) {
+                    $bot_type = isset($content['type']) && in_array(strtolower($content['type']), ['widget', 'shortcode']) ? ucfirst($content['type']) : '';
+                    $source_key = $bot_type . ' ID: ' . $bot->ID;
+                    $time_threshold = time() - ($reset_limit * 86400);
+                    $wpdb->query($wpdb->prepare(
+                        "DELETE FROM {$wpdb->prefix}wpaicg_chattokens WHERE source = %s AND created_at < %s",
+                        $source_key, $time_threshold
+                    ));
+                }
             }
         }
 
@@ -559,19 +568,63 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 error_log('wpaicg_chat_client_id is not set in the request');
             }
 
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+            // Get the default provider option
+            $default_provider = get_option('wpaicg_provider', 'OpenAI');
+            $wpaicg_provider = $default_provider;
+
+            // Check for bot_id first
+            if (isset($_REQUEST['bot_id']) && intval($_REQUEST['bot_id']) > 0) {
+                $bot_id = intval($_REQUEST['bot_id']);
+                $post = get_post($bot_id);
+                if ($post) {
+                    $post_content = $post->post_content;
+                    $post_content_json = json_decode($post_content, true);
+                    $wpaicg_provider = isset($post_content_json['provider']) && !empty($post_content_json['provider']) ? sanitize_text_field($post_content_json['provider']) : $default_provider;
+                }
+            } elseif (isset($_REQUEST['chatbot_identity'])) {
+                $chatbot_identity = sanitize_text_field($_REQUEST['chatbot_identity']);
+                if ($chatbot_identity === 'shortcode') {
+                    $shortcode_options = get_option('wpaicg_chat_shortcode_options');
+                    $wpaicg_provider = isset($shortcode_options['provider']) ? sanitize_text_field($shortcode_options['provider']) : $default_provider;
+                } elseif ($chatbot_identity === 'widget') {
+                    if (isset($_POST['wpaicg_chat_widget']['provider']) && !empty($_POST['wpaicg_chat_widget']['provider'])) {
+                        $wpaicg_provider = sanitize_text_field($_POST['wpaicg_chat_widget']['provider']);
+                    } else {
+                        $widget_options = get_option('wpaicg_chat_widget');
+                        $wpaicg_provider = isset($widget_options['provider']) ? sanitize_text_field($widget_options['provider']) : $default_provider;
+                    }
+                } else {
+                    // Handle other custom chatbot identities if needed
+                    $wpaicg_provider = $default_provider;
+                }
+            } else {
+                // Fallback to default provider if no specific identity or bot_id is found
+                $wpaicg_provider = $default_provider;
+            }
+
             $open_ai = WPAICG_OpenAI::get_instance()->openai();
 
-            // Get the AI engine.
-            try {
-                $open_ai = WPAICG_Util::get_instance()->initialize_ai_engine();
-            } catch (\Exception $e) {
-                $wpaicg_result['msg'] = $e->getMessage();
-                wp_send_json($wpaicg_result);
+            // Determine AI engine based on provider
+            switch ($wpaicg_provider) {
+                case 'Google':
+                    $open_ai = WPAICG_Google::get_instance();
+                    break;
+                case 'Azure':
+                    $open_ai = WPAICG_AzureAI::get_instance()->azureai();
+                    break;
+                case 'OpenAI':
+                    $open_ai = WPAICG_OpenAI::get_instance()->openai();
+                    break;
+                case 'OpenRouter':
+                    $open_ai = WPAICG_OpenRouter::get_instance()->openai();
+                    break;
+                default:
+                    $open_ai = WPAICG_OpenAI::get_instance()->openai();
+                    break;
             }
         
             if (!$open_ai) {
-                $wpaicg_result['msg'] = esc_html__('Unable to initialize the AI instance.', 'gpt3-ai-content-generator');
+                $wpaicg_result['msg'] = esc_html__('Unable to initialize the AI instance. Please make sure the API key is valid.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
                 exit;
             }
@@ -600,6 +653,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 $wpaicg_chat_source = 'shortcode';
             }
 
+            $use_default_embedding = true;
+            $selected_embedding_model = '';
+            $selected_embedding_provider = '';
+
             $wpaicg_moderation = false;
             $wpaicg_moderation_model = 'text-moderation-latest';
             $wpaicg_moderation_notice = esc_html__('Your message has been flagged as potentially harmful or inappropriate. Please ensure that your messages are respectful and do not contain language or content that could be offensive or harmful to others. Thank you for your cooperation.','gpt3-ai-content-generator');
@@ -608,6 +665,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 $existingValue = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE name = %s", 'wpaicg_settings' ), ARRAY_A );
                 $wpaicg_chat_shortcode_options = get_option('wpaicg_chat_shortcode_options',[]);
                 $default_setting = array(
+                    'provider' => 'OpenAI',
                     'language' => 'en',
                     'tone' => 'friendly',
                     'profession' => 'none',
@@ -655,6 +713,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                     'log_request' => false,
                     'vectordb' => 'pinecone',
                     'qdrant_collection' => '',
+                    'use_default_embedding' => true,
+                    'embedding_model' => '',
+                    'embedding_provider' => '',
                 );
                 $wpaicg_settings = shortcode_atts($default_setting, $wpaicg_chat_shortcode_options);
 
@@ -677,16 +738,23 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 $wpaicg_chat_vectordb = isset($wpaicg_settings['vectordb']) ? $wpaicg_settings['vectordb'] : 'pinecone' ;
                 $wpaicg_chat_qdrant_collection = isset($wpaicg_settings['qdrant_collection']) ? $wpaicg_settings['qdrant_collection'] : '' ;
 
+                $use_default_embedding = isset($wpaicg_settings['use_default_embedding']) ? $wpaicg_settings['use_default_embedding'] : true;
+                $selected_embedding_model = isset($wpaicg_settings['embedding_model']) ? $wpaicg_settings['embedding_model'] : "";
+                $selected_embedding_provider = isset($wpaicg_settings['embedding_provider']) ? $wpaicg_settings['embedding_provider'] : "";
+
                 $wpaicg_ai_model = isset($wpaicg_settings['model']) ? $wpaicg_settings['model'] : 'gpt-3.5-turbo' ;
 
-                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');  // Fetching the provider
-
-                if ($wpaicg_provider === 'OpenAI') {
+                // if OpenAI or OpenRouter
+                if ($wpaicg_provider === 'OpenAI' || $wpaicg_provider === 'OpenRouter') {
                     $wpaicg_ai_model = isset($wpaicg_settings['model']) ? $wpaicg_settings['model'] : 'gpt-3.5-turbo';
                 } elseif ($wpaicg_provider === 'Azure') {
                     $wpaicg_ai_model = get_option('wpaicg_azure_deployment', ''); 
                 }  elseif ($wpaicg_provider === 'Google') {
-                    $wpaicg_ai_model = get_option('wpaicg_shortcode_google_model', 'gemini-pro'); 
+                    if (isset($wpaicg_settings['provider']) && $wpaicg_settings['provider'] === 'Google') {
+                        $wpaicg_ai_model = isset($wpaicg_settings['model']) ? $wpaicg_settings['model'] : get_option('wpaicg_shortcode_google_model', 'gemini-pro');
+                    } else {
+                        $wpaicg_ai_model = get_option('wpaicg_shortcode_google_model', 'gemini-pro');
+                    }
                 } else {
                     // Handle other providers or set a default value
                     $wpaicg_ai_model = 'gpt-3.5-turbo';
@@ -760,11 +828,12 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 $wpaicg_chat_proffesion = isset($wpaicg_chat_widget['proffesion']) && !empty($wpaicg_chat_widget['proffesion']) ? $wpaicg_chat_widget['proffesion'] : 'none';
                 $wpaicg_chat_remember_conversation = isset($wpaicg_chat_widget['remember_conversation']) && !empty($wpaicg_chat_widget['remember_conversation']) ? $wpaicg_chat_widget['remember_conversation'] : 'yes';
                 $wpaicg_chat_content_aware = isset($wpaicg_chat_widget['content_aware']) && !empty($wpaicg_chat_widget['content_aware']) ? $wpaicg_chat_widget['content_aware'] : 'yes';
-                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                 if ($wpaicg_provider === 'Azure') {
                     $wpaicg_ai_model = get_option('wpaicg_azure_deployment');
                 }  elseif ($wpaicg_provider === 'Google') {
                     $wpaicg_ai_model = get_option('wpaicg_widget_google_model', 'gemini-pro'); 
+                } elseif ($wpaicg_provider === 'OpenRouter') {
+                    $wpaicg_ai_model = get_option('wpaicg_widget_openrouter_model', 'openrouter/auto'); 
                 } else {
                     $wpaicg_ai_model = get_option('wpaicg_chat_model', 'gpt-3.5-turbo');
                 }                    
@@ -819,6 +888,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 if(isset($wpaicg_chat_widget['embedding_index']) && !empty($wpaicg_chat_widget['embedding_index'])){
                     $wpaicg_pinecone_environment = $wpaicg_chat_widget['embedding_index'];
                 }
+                $use_default_embedding = isset($wpaicg_chat_widget['use_default_embedding']) ? $wpaicg_chat_widget['use_default_embedding'] : true;
+                $selected_embedding_model = isset($wpaicg_chat_widget['embedding_model']) ? $wpaicg_chat_widget['embedding_model'] : "";
+                $selected_embedding_provider = isset($wpaicg_chat_widget['embedding_provider']) ? $wpaicg_chat_widget['embedding_provider'] : "";
             }
             if(isset($_REQUEST['bot_id']) && !empty($_REQUEST['bot_id'])){
                 $wpaicg_bot = get_post(sanitize_text_field($_REQUEST['bot_id']));
@@ -845,17 +917,14 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                     $wpaicg_chat_content_aware = isset($wpaicg_chat_widget['content_aware']) ? $wpaicg_chat_widget['content_aware'] : 'yes' ;
                     $wpaicg_chat_vectordb = isset($wpaicg_chat_widget['vectordb']) ? $wpaicg_chat_widget['vectordb'] : 'pinecone' ;
                     $wpaicg_chat_qdrant_collection = isset($wpaicg_chat_widget['qdrant_collection']) ? $wpaicg_chat_widget['qdrant_collection'] : '' ;
-                    
-                    
                     $wpaicg_ai_model = isset($wpaicg_chat_widget['model']) ? $wpaicg_chat_widget['model'] : 'gpt-3.5-turbo' ;
 
-
-                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI'); 
-
                     if ($wpaicg_provider === 'Azure') {
-                        $wpaicg_ai_model = get_option('wpaicg_azure_deployment', ''); 
+                        $wpaicg_ai_model = isset($wpaicg_chat_widget['model']) ? $wpaicg_chat_widget['model'] : '';
                     } elseif ($wpaicg_provider === 'Google') {
                         $wpaicg_ai_model = isset($wpaicg_chat_widget['model']) ? $wpaicg_chat_widget['model'] : 'gemini-pro';
+                    }  elseif ($wpaicg_provider === 'OpenRouter') {
+                        $wpaicg_ai_model = isset($wpaicg_chat_widget['model']) ? $wpaicg_chat_widget['model'] : 'openrouter/auto';
                     } else {
                         $wpaicg_ai_model = isset($wpaicg_chat_widget['model']) ? $wpaicg_chat_widget['model'] : 'gpt-3.5-turbo';
                     }
@@ -872,6 +941,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                     $wpaicg_chat_best_of = isset($wpaicg_chat_widget['best_of']) && !empty($wpaicg_chat_widget['best_of']) ? $wpaicg_chat_widget['best_of'] :$wpaicg_chat_best_of;
                     $wpaicg_chat_frequency_penalty = isset($wpaicg_chat_widget['frequency_penalty']) && !empty($wpaicg_chat_widget['frequency_penalty']) ? $wpaicg_chat_widget['frequency_penalty'] :$wpaicg_chat_frequency_penalty;
                     $wpaicg_chat_presence_penalty = isset($wpaicg_chat_widget['presence_penalty']) && !empty($wpaicg_chat_widget['presence_penalty']) ? $wpaicg_chat_widget['presence_penalty'] :$wpaicg_chat_presence_penalty;
+                    $use_default_embedding = isset($wpaicg_chat_widget['use_default_embedding']) ? $wpaicg_chat_widget['use_default_embedding'] : true;
+                    $selected_embedding_model = isset($wpaicg_chat_widget['embedding_model']) ? $wpaicg_chat_widget['embedding_model'] : "";
+                    $selected_embedding_provider = isset($wpaicg_chat_widget['embedding_provider']) ? $wpaicg_chat_widget['embedding_provider'] : "";
                     if (is_user_logged_in() && 
                         isset($wpaicg_chat_widget['user_limited']) && $wpaicg_chat_widget['user_limited'] && 
                         isset($wpaicg_chat_widget['user_tokens']) && $wpaicg_chat_widget['user_tokens'] > 0) {
@@ -939,10 +1011,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             $wpaicg_chat_token_id = false;
 
             // Check for banned IPs
-            $this->check_banned_ips($wpaicg_chat_source);
+            $this->check_banned_ips($wpaicg_chat_source, $wpaicg_provider);
 
             // Check for banned words
-            $this->check_banned_words($wpaicg_message, $wpaicg_chat_source);
+            $this->check_banned_words($wpaicg_message, $wpaicg_chat_source, $wpaicg_provider);
 
             if ($wpaicg_limited_tokens) {
                 $wpaicg_chat_token_log = $this->getUserTokenUsage($wpdb, $wpaicg_chat_source, $wpaicg_client_id);
@@ -954,7 +1026,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
 
                 if ($still_limited) {
                     $wpaicg_result = ['msg' => $wpaicg_token_limit_message, 'tokenLimitReached' => true];
-                    $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source);
+                    $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source, $wpaicg_provider);
 
                     if ($stream_nav_setting == 1) {
                         header('Content-Type: text/event-stream');
@@ -1022,7 +1094,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             /*End Check Log*/
 
             /* Disable Audio if provider is Azure  or Google */
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');  // Fetching the provider
 
             if ($wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google') {
                 // Fetch the existing options
@@ -1039,14 +1110,13 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             /*Check Moderation*/
             // Check if it's the pro version
             $is_pro = \WPAICG\wpaicg_util_core()->wpaicg_is_pro();
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
             // If it's not the pro version then disable moderation, if it is the pro version and the provider is not OpenAI then disable moderation. if its free version disable moderation regardless of the provider
             if (!$is_pro || $wpaicg_provider !== 'OpenAI') {
                 $wpaicg_moderation = false;
             }
 
             if(!empty($wpaicg_message) && $wpaicg_moderation){
-                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source);
+                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source, $wpaicg_provider);
                 $wpaicg_chat_pro->moderation($open_ai,$wpaicg_message, $wpaicg_moderation_model, $wpaicg_moderation_notice, $wpaicg_save_logs, $wpaicg_chat_log_id,$wpaicg_chat_log_data, $stream_nav_setting);
             }
             /*End Check Moderation*/
@@ -1064,10 +1134,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 // Check if vectordb is set to 'qdrant'
                 if ($wpaicg_chat_vectordb === 'qdrant') {
                     // Call the Qdrant specific function
-                    $wpaicg_embeddings_result = $this->wpaicg_embeddings_result_qdrant($open_ai, $wpaicg_qdrant_api_key, $wpaicg_qdrant_endpoint, $wpaicg_chat_qdrant_collection, $wpaicg_message, $wpaicg_chat_source,$wpaicg_chat_embedding_top, $namespace);
+                    $wpaicg_embeddings_result = $this->wpaicg_embeddings_result_qdrant($wpaicg_provider, $use_default_embedding,$selected_embedding_model,$selected_embedding_provider,$open_ai, $wpaicg_qdrant_api_key, $wpaicg_qdrant_endpoint, $wpaicg_chat_qdrant_collection, $wpaicg_message, $wpaicg_chat_source,$wpaicg_chat_embedding_top, $namespace);
                 } else {
                     // Continue with the current flow for Pinecone or other DB providers
-                    $wpaicg_embeddings_result = $this->wpaicg_embeddings_result($open_ai,$wpaicg_pinecone_api, $wpaicg_pinecone_environment, $wpaicg_message, $wpaicg_chat_embedding_top, $wpaicg_chat_source, $namespace);
+                    $wpaicg_embeddings_result = $this->wpaicg_embeddings_result($wpaicg_provider, $use_default_embedding,$selected_embedding_model,$selected_embedding_provider,$open_ai,$wpaicg_pinecone_api, $wpaicg_pinecone_environment, $wpaicg_message, $wpaicg_chat_embedding_top, $wpaicg_chat_source, $namespace);
                 }
 
                 if($wpaicg_embeddings_result['status'] == 'empty'){
@@ -1200,7 +1270,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 $wpaicg_result['greeting_message'] = $wpaicg_chat_greeting_message;
                 // check to see image is present in the request
                 $image_final_data = '';
-                if ($wpaicg_ai_model === 'gpt-4-vision-preview') {
+                // gpt-4-vision-preview or gpt-4o or openai/gpt-4o-2024-05-13
+                if ($wpaicg_ai_model === 'gpt-4-vision-preview' || $wpaicg_ai_model === 'gpt-4o' || $wpaicg_ai_model === 'openai/gpt-4-vision-preview' || $wpaicg_ai_model === 'openai/gpt-4o' || $wpaicg_ai_model === 'openai/gpt-4o-2024-05-13') {
                     if (isset($_FILES['image']) && empty($_FILES['image']['error'])) {
                         // Handle the image upload and get the URL or base64 string
                         $image_data = $this->handle_image_upload($_FILES['image']);
@@ -1308,7 +1379,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 }
 
                 // Determine stream navigation setting and modify the data request
-                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source);
+                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source, $wpaicg_provider);
                 if ($stream_nav_setting == 1) {
                     $wpaicg_data_request['stream'] = true;
                     header("Content-Type: text/event-stream");
@@ -1324,7 +1395,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 $apiFunction = in_array($wpaicg_ai_model, $chatEndpointModels) ? 'chat' : 'completion';
 
                 // Call the new function
-                $complete = $this->performOpenAiRequest($open_ai, $apiFunction, $wpaicg_data_request, $accumulatedData);
+                $complete = $this->performOpenAiRequest($wpaicg_provider, $open_ai, $apiFunction, $wpaicg_data_request, $accumulatedData);
 
                 // Process the response based on the stream navigation setting
                 if ($stream_nav_setting == 1) {
@@ -1360,8 +1431,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                         $wpaicg_data_request = false;
                     }
 
-                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-
                     // Ensure $wpaicg_data_request is an array
                     if (!is_array($wpaicg_data_request)) {
                         $wpaicg_data_request = array();
@@ -1372,8 +1441,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
 
                     $wpaicg_data_request['model'] = $wpaicg_ai_model;
 
-                    // Before saving the log, check if the model is gpt-4-vision-preview and an image file is present
-                    if ($wpaicg_ai_model === 'gpt-4-vision-preview' && isset($_FILES['image']) && empty($_FILES['image']['error'])) {
+                    // Before saving the log, check if the model is gpt-4-vision-preview and an image file is present openai/gpt-4o-2024-05-13
+                    if (($wpaicg_ai_model === 'gpt-4-vision-preview' || $wpaicg_ai_model === 'gpt-4o' || $wpaicg_ai_model === 'openai/gpt-4-vision-preview' || $wpaicg_ai_model === 'openai/gpt-4o' || $wpaicg_ai_model === 'openai/gpt-4o-2024-05-13') && isset($_FILES['image']) && empty($_FILES['image']['error'])) {
                         $wpaicg_img_processing_method = get_option('wpaicg_img_processing_method', 'url');
                         
                         // Proceed only if the image processing method is base64
@@ -1553,15 +1622,28 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
 
         public function getChatEndpointModels() {
             // List of models for the chat completions endpoint
-            $chatModels = ['gpt-4', 'gpt-4-32k', 'gpt-4-1106-preview', 'gpt-4-turbo','gpt-4-vision-preview', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'];
+            $chatModels = ['gpt-4', 'gpt-4-32k', 'gpt-4-1106-preview','gpt-4o', 'gpt-4-turbo','gpt-4-vision-preview', 'gpt-3.5-turbo', 'gpt-3.5-turbo-16k'];
             
             // Get custom models and Azure deployment model, if any
             $custom_models = get_option('wpaicg_custom_models', []);
             $wpaicg_azure_deployment = get_option('wpaicg_azure_deployment', '');
             $wpaicg_shortcode_google_model = get_option('wpaicg_shortcode_google_model', 'gemini-pro'); 
+            $wpaicg_widget_google_model = get_option('wpaicg_widget_google_model', 'gemini-pro');
+            $google_models = get_option('wpaicg_google_model_list', []);
+            // Retrieve and extract model IDs from wpaicg_openrouter_model_list
+            $openrouter_model_list = get_option('wpaicg_openrouter_model_list', []);
+            $openrouter_models = [];
+            if (is_array($openrouter_model_list)) {
+                foreach ($openrouter_model_list as $model) {
+                    if (isset($model['id'])) {
+                        $openrouter_models[] = $model['id'];
+                    }
+                }
+            }
+    
         
             // Merge and filter the list
-            return array_filter(array_merge($chatModels, $custom_models, [$wpaicg_azure_deployment], [$wpaicg_shortcode_google_model]));
+            return array_filter(array_merge($google_models,$chatModels, $custom_models,$openrouter_models, [$wpaicg_azure_deployment], [$wpaicg_shortcode_google_model], [$wpaicg_widget_google_model]));
         }
 
         public function getCompletionEndpointModels() {
@@ -1599,8 +1681,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
         
         
         
-        public function performOpenAiRequest($open_ai, $apiFunction, $wpaicg_data_request, &$accumulatedData) {
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+        public function performOpenAiRequest($wpaicg_provider, $open_ai, $apiFunction, $wpaicg_data_request, &$accumulatedData) {
             if ($wpaicg_provider == 'Google') {
                 // add source = chat to the request
                 $wpaicg_data_request['sourceModule'] = 'chat';
@@ -1705,19 +1786,24 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
         
             foreach ($chunks as $chunk) {
                 if (trim($chunk) != "") {
-                    $decodedChunk = json_decode(substr($chunk, strpos($chunk, "{")), true);
-                    if ($isChatEndpoint) {
-                        if (isset($decodedChunk['choices'][0]['delta']['content'])) {
-                            $completeData[] = $decodedChunk['choices'][0]['delta']['content'];
+                    $jsonStart = strpos($chunk, "{");
+                    if ($jsonStart !== false) {
+                        $decodedChunk = json_decode(substr($chunk, $jsonStart), true);
+                        if ($decodedChunk !== null) {
+                            if ($isChatEndpoint) {
+                                if (isset($decodedChunk['choices'][0]['delta']['content'])) {
+                                    $completeData[] = $decodedChunk['choices'][0]['delta']['content'];
+                                }
+                            } else {
+                                if (isset($decodedChunk['choices'][0]['text'])) {
+                                    $completeData[] = $decodedChunk['choices'][0]['text'];
+                                }
+                            }
+                            if (is_null($id) && isset($decodedChunk['id']) && isset($decodedChunk['created'])) {
+                                $id = $decodedChunk['id'];
+                                $created = $decodedChunk['created'];
+                            }
                         }
-                    } else {
-                        if (isset($decodedChunk['choices'][0]['text'])) {
-                            $completeData[] = $decodedChunk['choices'][0]['text'];
-                        }
-                    }
-                    if (is_null($id)) {
-                        $id = $decodedChunk['id'];
-                        $created = $decodedChunk['created'];
                     }
                 }
             }
@@ -1755,9 +1841,14 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             ];
         }
 
-        public function determine_stream_nav_setting($chat_source) {
+        public function determine_stream_nav_setting($chat_source, $wpaicg_provider) {
 
             global $wpdb;
+
+            // If the provider is Google, return '0' for streaming
+            if ($wpaicg_provider === 'Google') {
+                return '0';
+            }
 
             if ($chat_source === 'shortcode') {
                 return get_option('wpaicg_shortcode_stream', '1');
@@ -1818,7 +1909,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             return $ipAddress;
         }
 
-        public function check_banned_ips($wpaicg_chat_source) {
+        public function check_banned_ips($wpaicg_chat_source, $wpaicg_provider) {
             // Get the user's IP
             $user_ip = $this->getIpAddress();
         
@@ -1828,7 +1919,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
         
             // Check if the user's IP is in the banned list
             if (in_array($user_ip, $banned_ips)) {
-                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source);
+                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source, $wpaicg_provider);
                 $stream_ban_result = ['msg' => esc_html__('You are not allowed to access this feature.', 'gpt3-ai-content-generator'), 'ipBanned' => true];
         
                 if ($stream_nav_setting == 1) {
@@ -1852,7 +1943,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
         }
         
 
-        public function check_banned_words($message, $wpaicg_chat_source) {
+        public function check_banned_words($message, $wpaicg_chat_source, $wpaicg_provider) {
             // Retrieve the list of banned words from the database
             $banned_words = explode(',', get_option('wpaicg_banned_words', ''));
             $banned_words = array_map('trim', $banned_words); // Trim spaces
@@ -1868,7 +1959,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             // Check if any word in the message is a banned word
             foreach ($message_words as $word) {
                 if (in_array($word, $banned_words_lower)) {
-                    $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source);
+                    $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source, $wpaicg_provider);
                     $stream_ban_result = ['msg'    => esc_html__('Your message contains prohibited words. Please modify your message and try again.', 'gpt3-ai-content-generator'), 'messageFlagged' => true];
                     if ($stream_nav_setting == 1) {
                         header('Content-Type: text/event-stream');
@@ -1914,22 +2005,52 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             }
         }
 
-        public function wpaicg_embeddings_result($open_ai,$wpaicg_pinecone_api,$wpaicg_pinecone_environment,$wpaicg_message, $wpaicg_chat_embedding_top,$wpaicg_chat_source, $namespace = false)
+        public function wpaicg_embeddings_result($wpaicg_provider,$use_default_embedding,$selected_embedding_model,$selected_embedding_provider,$open_ai,$wpaicg_pinecone_api,$wpaicg_pinecone_environment,$wpaicg_message, $wpaicg_chat_embedding_top,$wpaicg_chat_source, $namespace = false)
         {
             $result = array('status' => 'error','data' => '');
             if(!empty($wpaicg_pinecone_api) && !empty($wpaicg_pinecone_environment) ) {
-                // Determine the model based on the provider
-                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-                // Determine the model to use based on the provider
-                if ($wpaicg_provider === 'Azure') {
-                    // Azure: Use the Azure embeddings model, defaulting to 'text-embedding-ada-002'
-                    $model = get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
-                } elseif ($wpaicg_provider === 'Google') {
-                    // Google: Use the Google embeddings model, defaulting to 'embedding-001'
-                    $model = get_option('wpaicg_google_embeddings', 'embedding-001');
+
+                // Determine the embedding engine and model
+                $embedding_engine = $open_ai; // default engine
+                $model = 'text-embedding-ada-002'; // default model
+
+                if (isset($use_default_embedding) && $use_default_embedding != 1) {
+                    // Custom embedding logic
+                    if (!empty($selected_embedding_model) && !empty($selected_embedding_provider)) {
+                        $model = $selected_embedding_model;
+                        try {
+                            $embedding_engine = WPAICG_Util::get_instance()->initialize_embedding_engine($selected_embedding_provider, $wpaicg_provider);
+                        } catch (\Exception $e) {
+                            $result['msg'] = $e->getMessage();
+                            return $result;
+                        }
+                    }
                 } else {
-                    // OpenAI: Use the OpenAI embeddings model, defaulting to 'text-embedding-3-small'
-                    $model = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
+                    switch ($wpaicg_provider) {
+                        case 'Azure':
+                            $model = get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
+                            break;
+                        case 'Google':
+                            $model = get_option('wpaicg_google_embeddings', 'embedding-001');
+                            break;
+                        default:
+                            $model = get_option('wpaicg_openai_embeddings', 'text-embedding-3-small');
+                            break;
+                    }
+            
+                    $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+                    if (!empty($main_embedding_model)) {
+                        $model_parts = explode(':', $main_embedding_model);
+                        if (count($model_parts) === 2) {
+                            $model = $model_parts[1];
+                            try {
+                                $embedding_engine = WPAICG_Util::get_instance()->initialize_embedding_engine($model_parts[0], $wpaicg_provider);
+                            } catch (\Exception $e) {
+                                $result['msg'] = $e->getMessage();
+                                return $result;
+                            }
+                        }
+                    }
                 }
 
                 // Prepare the API call parameters
@@ -1939,7 +2060,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 ];
 
                 // Make the API call
-                $response = $open_ai->embeddings($apiParams);
+                $response = $embedding_engine->embeddings($apiParams);
                 $response = json_decode($response, true);
                 if (isset($response['error']) && !empty($response['error'])) {
                     $result['data'] = $response['error']['message'];
@@ -1988,7 +2109,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                                 }
                             }
                             else{
-                                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source);
+                                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source, $wpaicg_provider);
                                 $stream_pinecone_error = ['msg'    => esc_html__($body_content, 'gpt3-ai-content-generator'), 'pineconeError' => true];
                                 if ($stream_nav_setting == 1) {
                                     header('Content-Type: text/event-stream');
@@ -2014,22 +2135,53 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
             }
             return $result;
         }
-        public function wpaicg_embeddings_result_qdrant($open_ai, $wpaicg_qdrant_api_key, $wpaicg_qdrant_endpoint, $wpaicg_chat_qdrant_collection, $wpaicg_message, $wpaicg_chat_source,$wpaicg_chat_embedding_top, $namespace = false)
+        public function wpaicg_embeddings_result_qdrant($wpaicg_provider, $use_default_embedding,$selected_embedding_model,$selected_embedding_provider,$open_ai, $wpaicg_qdrant_api_key, $wpaicg_qdrant_endpoint, $wpaicg_chat_qdrant_collection, $wpaicg_message, $wpaicg_chat_source,$wpaicg_chat_embedding_top, $namespace = false)
         {
             $result = array('status' => 'error','data' => '');
             if(!empty($wpaicg_qdrant_api_key) && !empty($wpaicg_qdrant_endpoint && !empty($wpaicg_chat_qdrant_collection))) {
-                // Determine the model based on the provider
-                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-                // Determine the model to use based on the provider
-                if ($wpaicg_provider === 'Azure') {
-                    // Azure: Use the Azure embeddings model, defaulting to 'text-embedding-ada-002'
-                    $model = get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
-                } elseif ($wpaicg_provider === 'Google') {
-                    // Google: Use the Google embeddings model, defaulting to 'embedding-001'
-                    $model = get_option('wpaicg_google_embeddings', 'embedding-001');
+
+                // Determine the embedding engine and model
+                $embedding_engine = $open_ai; // default engine
+                $model = 'text-embedding-ada-002'; // default model
+
+                if (isset($use_default_embedding) && $use_default_embedding != 1) {
+                    // Custom embedding logic
+                    if (!empty($selected_embedding_model) && !empty($selected_embedding_provider)) {
+                        $model = $selected_embedding_model;
+                        try {
+                            $embedding_engine = WPAICG_Util::get_instance()->initialize_embedding_engine($selected_embedding_provider, $wpaicg_provider);
+                        } catch (\Exception $e) {
+                            $result['msg'] = $e->getMessage();
+                            return $result;
+                        }
+                    }
                 } else {
-                    // OpenAI: Use the OpenAI embeddings model, defaulting to 'text-embedding-3-small'
-                    $model = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
+                    // Use default embedding logic
+                    switch ($wpaicg_provider) {
+                        case 'Azure':
+                            $model = get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
+                            break;
+                        case 'Google':
+                            $model = get_option('wpaicg_google_embeddings', 'embedding-001');
+                            break;
+                        default:
+                            $model = get_option('wpaicg_openai_embeddings', 'text-embedding-3-small');
+                            break;
+                    }
+            
+                    $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+                    if (!empty($main_embedding_model)) {
+                        $model_parts = explode(':', $main_embedding_model);
+                        if (count($model_parts) === 2) {
+                            $model = $model_parts[1];
+                            try {
+                                $embedding_engine = WPAICG_Util::get_instance()->initialize_embedding_engine($model_parts[0], $wpaicg_provider);
+                            } catch (\Exception $e) {
+                                $result['msg'] = $e->getMessage();
+                                return $result;
+                            }
+                        }
+                    }
                 }
 
                 // Prepare the API call parameters
@@ -2037,9 +2189,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                     'input' => $wpaicg_message,
                     'model' => $model
                 ];
-                
+
                 // Make the API call
-                $response = $open_ai->embeddings($apiParams);
+                $response = $embedding_engine->embeddings($apiParams);
                 $response = json_decode($response, true);
                 if (isset($response['error']) && !empty($response['error'])) {
                     $result['data'] = $response['error']['message'];
@@ -2101,7 +2253,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                                 $errror_message_from_api = isset($body['status']['error']) ? $body['status']['error'] : esc_html__('No results from Qdrant.', 'gpt3-ai-content-generator');
                                 $errror_message_from_api = esc_html__('Response from Qdrant: ', 'gpt3-ai-content-generator') . $errror_message_from_api;
                                 $result['status'] = 'error';
-                                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source);
+                                $stream_nav_setting = $this->determine_stream_nav_setting($wpaicg_chat_source, $wpaicg_provider);
                                 $stream_pinecone_error = ['msg'    => $errror_message_from_api, 'pineconeError' => true];
                                 if ($stream_nav_setting == 1) {
                                     header('Content-Type: text/event-stream');
@@ -2123,7 +2275,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Chat')) {
                 }
             }
             else{
-                $result['data'] = esc_html__('Something wrong with Qdrant setup. Check your Qdrant settings.','gpt3-ai-content-generator');
+                $result['data'] = esc_html__('Something wrong with Qdrant setup3. Check your Qdrant settings.','gpt3-ai-content-generator');
             }
             return $result;
         }

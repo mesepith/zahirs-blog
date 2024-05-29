@@ -33,6 +33,7 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
         public $wpai_target_url;
         public $wpai_target_url_cta;
         public $wpai_cta_pos;
+        public $google_safety_settings;
 
         public static function get_instance() {
             if (is_null(self::$instance)) {
@@ -46,6 +47,47 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
             $this->initialize_settings();
         }
 
+        public function listModels() {
+            if (empty($this->apiKey)) {
+                return null;  // Return null if API key is not set
+            }
+        
+            $url = "https://generativelanguage.googleapis.com/v1beta/models?key={$this->apiKey}";
+            $models = [];
+            do {
+                $response = wp_remote_get($url, [
+                    'timeout' => $this->timeout,
+                    'headers' => ['Content-Type' => 'application/json']
+                ]);
+        
+                if (is_wp_error($response)) {
+                    return $response->get_error_message();
+                }
+        
+                $body = wp_remote_retrieve_body($response);
+                $data = json_decode($body, true);
+        
+                if (isset($data['error'])) {
+                    return $data;
+                }
+        
+                foreach ($data['models'] as $model) {
+                    if (isset($model['name'])) {
+                        $modelParts = explode('/', $model['name']);
+                        $modelId = end($modelParts);
+                        // Check if the model name contains "gemini"
+                        if (strpos(strtolower($modelId), 'gemini') !== false) {
+                            $models[] = $modelId;  // Include the model if it contains "gemini"
+                        }
+                    }
+                }
+        
+                $url = !empty($data['nextPageToken']) ? "https://generativelanguage.googleapis.com/v1beta/models?key={$this->apiKey}&pageToken={$data['nextPageToken']}" : null;
+            } while (!empty($url));
+        
+            return $models;  // Return only the models array
+        }
+        
         private function initialize_settings() {
             global $wpdb;
             $wpaicgTable = $wpdb->prefix . 'wpaicg';
@@ -54,13 +96,31 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
             if ($wpaicg_settings) {
                 // Assign the values
                 $this->apiKey = get_option('wpaicg_google_model_api_key', '');
-                $this->model = get_option('wpaicg_google_model', 'gemini-pro');
+                $this->model = get_option('wpaicg_google_default_model', 'gemini-pro');
                 
                 foreach($wpaicg_settings as $key => $value) {
                     if (property_exists($this, $key)) {
                         $this->$key = $value;
                     }
                 }
+                // Initialize Google Safety Settings
+                $this->initialize_google_safety_settings();
+            }
+        }
+
+        private function initialize_google_safety_settings() {
+            $default_safety_settings = [
+                ['category' => 'HARM_CATEGORY_HARASSMENT', 'threshold' => 'BLOCK_NONE'],
+                ['category' => 'HARM_CATEGORY_HATE_SPEECH', 'threshold' => 'BLOCK_NONE'],
+                ['category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold' => 'BLOCK_NONE'],
+                ['category' => 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold' => 'BLOCK_NONE'],
+            ];
+
+            $this->google_safety_settings = get_option('wpaicg_google_safety_settings', $default_safety_settings);
+
+            // Validate settings
+            if (empty($this->google_safety_settings)) {
+                $this->google_safety_settings = $default_safety_settings;
             }
         }
 
@@ -91,7 +151,6 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
                 $messagesContent = array_reduce($opts['messages'], function ($carry, $item) {
                     return $carry . (empty($carry) ? '' : "\n") . $item['content'];
                 }, '');
-
                 return $this->send_google_request($messagesContent, $opts['model'], $opts['temperature'], $opts['top_p'], $opts['max_tokens'], 'chat');
             } 
             // If source module is form, handle it accordingly
@@ -105,61 +164,6 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
             }
         }
 
-        public function send_google_stream_request($content, $model, $temperature, $top_p, $max_tokens, $sourceModule) {
-
-
-            $url = "https://generativelanguage.googleapis.com/v1/models/" . $model . ":streamGenerateContent?key=" . $this->apiKey . "&alt=sse";
-
-            $postData = json_encode(array(
-                "contents" => [
-                    ["role" => "user", "parts" => [["text" => $content]]]
-                ],
-                "generationConfig" => [
-                    "temperature" => $temperature, 
-                    "topK" => 1, 
-                    "topP" => $top_p, 
-                    "maxOutputTokens" => $max_tokens,
-                    "stopSequences" => []
-                ]
-            ));
-        
-            $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        
-            // Enable streaming
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-            // Initialize a variable to track the presence of 'promptFeedback' in the current stream.
-            $promptFeedbackReceived = false;
-
-            curl_setopt($ch, CURLOPT_WRITEFUNCTION, function($curl, $data) use (&$promptFeedbackReceived) {
-
-                // Check if 'promptFeedback' is present in the received data.
-                if (strpos($data, '"promptFeedback":') !== false) {
-                    if ($promptFeedbackReceived) {
-                        $finaldata = 'Error: Received multiple promptFeedback in the same stream.';
-                        return call_user_func($this->stream_method, $this, $finaldata);
-                    } else {
-                        // Mark that 'promptFeedback' has been received for the current stream.
-                        $promptFeedbackReceived = true;
-                        return call_user_func($this->stream_method, $this, $data);
-                    }
-                } else {
-                    return call_user_func($this->stream_method, $this, $data);
-                }
-                
-            });
-
-            // Execute the request
-            curl_exec($ch);
-            if(curl_errno($ch)){
-                throw new \Exception(curl_error($ch));
-            }
-            curl_close($ch);
-        }
-
         public function send_google_request($title, $model, $temperature, $top_p, $max_tokens, $sourceModule = null) {
             if (empty($this->apiKey)) {
                 return 'Error: Google API key is not set';
@@ -171,39 +175,21 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
                 'timeout' => $this->timeout
             );
 
-            // Construct the request URL and body based on the model
-            switch ($model) {
-                case 'text-bison-001':
-                    $url = "https://generativelanguage.googleapis.com/v1beta3/models/text-bison-001:generateText?key={$this->apiKey}";
-                    $args['body'] = json_encode(array("prompt" => array("text" => $title)));
-                    break;
-                case 'chat-bison-001':
-                    $url = "https://generativelanguage.googleapis.com/v1beta2/models/chat-bison-001:generateMessage?key={$this->apiKey}";
-                    $args['body'] = json_encode(array("prompt" => array("messages" => array(array("content" => $title)))));
-                    break;
-                case 'gemini-pro':
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$this->apiKey}";
 
-                    $url = "https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={$this->apiKey}";
-
-                    $args['body'] = json_encode(array(
-                        "contents" => [
-                            ["role" => "user", "parts" => [["text" => $title]]]
-                        ],
-                        "generationConfig" => [
-                            "temperature" => $temperature, 
-                            "topK" => 1, 
-                            "topP" => $top_p, 
-                            "maxOutputTokens" => $max_tokens, 
-                            "stopSequences" => []
-                        ],
-                        "safetySettings" => [
-                            ["category" => "HARM_CATEGORY_HARASSMENT", "threshold" => "BLOCK_MEDIUM_AND_ABOVE"]
-                        ]
-                    ));
-                    break;
-                default:
-                    return 'Error: Invalid model selected';
-            }
+            $args['body'] = json_encode(array(
+                "contents" => [
+                    ["role" => "user", "parts" => [["text" => $title]]]
+                ],
+                "generationConfig" => [
+                    "temperature" => $temperature, 
+                    "topK" => 1, 
+                    "topP" => $top_p, 
+                    "maxOutputTokens" => $max_tokens, 
+                    "stopSequences" => []
+                ],
+                "safetySettings" => $this->google_safety_settings
+            ));
 
             $response = wp_remote_post($url, $args);
             $processedResponse = $this->handle_response($response, $sourceModule);
@@ -226,7 +212,6 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
                     $dataLength = mb_strlen($processedResponse['data'], 'UTF-8');
                 } else {
                     $dataLength = 0; // Default length, adjust as needed
-                    // {"headers":{},"body":"{\n  \"candidates\": [\n    {\n      \"finishReason\": \"RECITATION\",\n      \"index\": 0\n    }\n  ],\n  \"promptFeedback\": {\n    \"safetyRatings\": [\n      {\n        \"category\": \"HARM_CATEGORY_SEXUALLY_EXPLICIT\",\n        \"probability\": \"NEGLIGIBLE\"\n      },\n      {\n        \"category\": \"HARM_CATEGORY_HATE_SPEECH\",\n        \"probability\": \"NEGLIGIBLE\"\n      },\n      {\n        \"category\": \"HARM_CATEGORY_HARASSMENT\",\n        \"probability\": \"NEGLIGIBLE\"\n      },\n      {\n        \"category\": \"HARM_CATEGORY_DANGEROUS_CONTENT\",\n        \"probability\": \"NEGLIGIBLE\"\n      }\n    ]\n  }\n}\n","response":{"code":200,"message":"OK"},"cookies":[],"filename":null,"http_response":{"data":null,"headers":null,"status":null}}
                     $firstCandidate = json_decode($response['body'], true)['candidates'][0];
                     $finishReason = '';
                     if (isset($firstCandidate['finishReason'])) {
@@ -277,10 +262,33 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
         
             if (isset($decodedResponse['error'])) {
                 $errorMsg = isset($decodedResponse['error']['message']) ? $decodedResponse['error']['message'] : 'Unknown error from Google API';
-                error_log('Parsed error message: ' . $errorMsg);
                 // if source module is form then return this: return ['error' => 'Response from Google: ' . $errorMsg];
                 if ($sourceModule === 'form') {
                     return ['error' => 'Response from Google: ' . $errorMsg];
+                } elseif ($sourceModule === 'chat') {
+                    return json_encode([
+                        "id" => 'chatcmpl-' . bin2hex(random_bytes(16)),
+                        "object" => "chat.completion",
+                        "created" => time(),
+                        "model" => "your_model_here",
+                        "choices" => [
+                            [
+                                "index" => 0,
+                                "message" => [
+                                    "role" => "assistant",
+                                    "content" => 'Response from Google: ' . $errorMsg
+                                ],
+                                "logprobs" => null,
+                                "finish_reason" => "stop"
+                            ]
+                        ],
+                        "usage" => [
+                            "prompt_tokens" => 0,
+                            "completion_tokens" => 0,
+                            "total_tokens" => 0
+                        ],
+                        "system_fingerprint" => "fp_" . bin2hex(random_bytes(8))
+                    ]);
                 } else {
                     return ['status' => 'error', 'msg' => 'Response from Google: ' . $errorMsg];
                 }
@@ -292,11 +300,27 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
             // Logic to handle candidates and extract text
             if (isset($decodedResponse['candidates']) && is_array($decodedResponse['candidates'])) {
                 $firstCandidate = $decodedResponse['candidates'][0];
+
+                // Check for the finishReason 'SAFETY'
+                if (isset($firstCandidate['finishReason']) && $firstCandidate['finishReason'] === 'SAFETY') {
+                    // Return a fixed message if the finish reason is 'SAFETY'
+                    return ['status' => 'success', 'data' => 'Sorry, but it is not allowed to generate this content due to safety concerns. Please try again.'];
+                }
+
                 if (isset($firstCandidate['content']['parts'][0]['text'])) {
                     $completeText = $firstCandidate['content']['parts'][0]['text'];
                     // Parse the markdown. if sourceModule is template or editor or content then dont parse markdown
                     if ($sourceModule !== 'template' && $sourceModule !== 'editor' && $sourceModule !== 'content' && $sourceModule !== 'form' && $sourceModule !== 'chat') {
                         $completeText = $this->parse_markdown($completeText);
+                    }
+                    // content or template
+                    if ($sourceModule !== 'content' && $sourceModule !== 'template') {
+                        // replace all the new lines with <br> tag
+                        $completeText = str_replace("\n", "<br>", $completeText);
+                        // replace **text** with <strong>text</strong>
+                        $completeText = preg_replace('/\*\*(.*?)\*\*/s', '<strong>$1</strong>', $completeText);
+                        // replace ## text with <h2>text</h2>
+                        $completeText = preg_replace('/## (.*?)\n/', '<h2>$1</h2>', $completeText);
                     }
                     $completeText = $completeText;
                     return ['status' => 'success', 'data' => $completeText];
@@ -371,7 +395,7 @@ if (!class_exists('\\WPAICG\\WPAICG_Google')) {
             $content = $apiParams['input'];
 
             // Construct the request URL
-            $url = "https://generativelanguage.googleapis.com/v1/models/{$model}:embedContent?key={$this->apiKey}";
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:embedContent?key={$this->apiKey}";
 
             // Prepare the request body
             $postData = [

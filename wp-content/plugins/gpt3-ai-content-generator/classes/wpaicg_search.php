@@ -109,6 +109,20 @@ if(!class_exists('\\WPAICG\\WPAICG_Search')) {
                     $model = get_option('wpaicg_google_embeddings', 'embedding-001');
                     break;
             }
+
+            $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+            if (!empty($main_embedding_model)) {
+                $model_parts = explode(':', $main_embedding_model);
+                if (count($model_parts) === 2) {
+                    $model = $model_parts[1];
+                    try {
+                        $open_ai = WPAICG_Util::get_instance()->initialize_embedding_engine($model_parts[0]);
+                    } catch (\Exception $e) {
+                        $result['msg'] = $e->getMessage();
+                        return $result;
+                    }
+                }
+            }
         
             // Prepare the OpenAI API call parameters
             $apiParams = [
@@ -187,6 +201,20 @@ if(!class_exists('\\WPAICG\\WPAICG_Search')) {
                     case 'Google':
                         $model = get_option('wpaicg_google_embeddings', 'embedding-001');
                         break;
+                }
+
+                $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+                if (!empty($main_embedding_model)) {
+                    $model_parts = explode(':', $main_embedding_model);
+                    if (count($model_parts) === 2) {
+                        $model = $model_parts[1];
+                        try {
+                            $open_ai = WPAICG_Util::get_instance()->initialize_embedding_engine($model_parts[0]);
+                        } catch (\Exception $e) {
+                            $result['msg'] = $e->getMessage();
+                            return $result;
+                        }
+                    }
                 }
 
                 // Prepare the API call parameters

@@ -32,6 +32,27 @@ if(!class_exists('\\WPAICG\\WPAICG_Image')) {
                 wp_schedule_event( time(), 'hourly', 'wpaicg_remove_image_tokens_limited' );
             }
             add_action( 'wpaicg_remove_image_tokens_limited', array( $this, 'wpaicg_remove_tokens_limit' ) );
+            add_action('wp_ajax_wpaicg_delete_all_image_logs', [$this,'wpaicg_delete_all_image_logs']);
+        }
+
+        public function wpaicg_delete_all_image_logs() {
+            check_ajax_referer('wpaicg_delete_all_image_logs_nonce', 'nonce');
+            
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(['message' => 'You do not have sufficient permissions']);
+                return;
+            }
+        
+            global $wpdb;
+            $wpaicgFormLogTable = $wpdb->prefix . 'wpaicg_image_logs';
+        
+            $result = $wpdb->query("TRUNCATE TABLE `$wpaicgFormLogTable`");
+        
+            if ($result === false) {
+                wp_send_json_error(['message' => 'Failed to delete logs']);
+            } else {
+                wp_send_json_success(['message' => 'All logs have been deleted successfully']);
+            }
         }
 
         public function wpaicg_remove_tokens_limit()

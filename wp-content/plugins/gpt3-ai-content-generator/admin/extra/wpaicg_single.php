@@ -3,17 +3,15 @@
 if ( !defined( 'ABSPATH' ) ) {
     exit;
 }
-// Prompt, parameter details for the custom mode
-$gpt4_models = [
-    'gpt-4'                => 'GPT-4',
-    'gpt-4-turbo'          => 'GPT-4 Turbo',
-    'gpt-4-vision-preview' => 'GPT-4 Vision',
-];
-$gpt35_models = [
-    'gpt-3.5-turbo'          => 'GPT-3.5 Turbo',
-    'gpt-3.5-turbo-16k'      => 'GPT-3.5 Turbo 16K',
-    'gpt-3.5-turbo-instruct' => 'GPT-3.5 Turbo Instruct',
-];
+$gpt4_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt4_models;
+$gpt35_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt35_models;
+// Prepare the models in a grouped format
+$openai_models = array(
+    'groups' => array(
+        'GPT-4 Models'   => $gpt4_models,
+        'GPT-3.5 Models' => $gpt35_models,
+    ),
+);
 $custom_models = get_option( 'wpaicg_custom_models', [] );
 $wpaicg_parameters = array(
     'type'              => 'topic',
@@ -28,8 +26,8 @@ $wpaicg_parameters = array(
     'best_of'           => 1,
     'frequency_penalty' => '0.01',
     'presence_penalty'  => '0.01',
-    'prompt_title'      => esc_html__( 'Suggest [count] title for an article about [topic]', 'gpt3-ai-content-generator' ),
-    'prompt_section'    => esc_html__( 'Write [count] consecutive headings for an article about [title]', 'gpt3-ai-content-generator' ),
+    'prompt_title'      => esc_html__( 'Suggest [count] title for an article about [topic]. Return only the titles without any additional text or explanation.', 'gpt3-ai-content-generator' ),
+    'prompt_section'    => esc_html__( 'Write [count] consecutive headings for an article about [title]. Return only the headings without any additional text or explanation.', 'gpt3-ai-content-generator' ),
     'prompt_content'    => esc_html__( 'Write a comprehensive article about [title], covering the following subtopics [sections]. Each subtopic should have at least [count] paragraphs. Use a cohesive structure to ensure smooth transitions between ideas. Include relevant statistics, examples, and quotes to support your arguments and engage the reader.', 'gpt3-ai-content-generator' ),
     'prompt_meta'       => esc_html__( 'Write a meta description about [title]. Max: 155 characters.', 'gpt3-ai-content-generator' ),
     'prompt_excerpt'    => esc_html__( 'Generate an excerpt for [title]. Max: 55 words.', 'gpt3-ai-content-generator' ),
@@ -444,28 +442,28 @@ echo esc_html__( 'Example', 'gpt3-ai-content-generator' );
 echo esc_html__( 'Write a blog post about the latest mobile phones and their features. Include an introduction that highlights the importance of mobile phones in today\'s world. In the body of the post, discuss the latest mobile phone trends, such as foldable screens, 5G connectivity, and high refresh rate displays. Also, mention the most popular mobile phone brands and their latest releases. Don\'t forget to discuss the benefits and drawbacks of each phone and how they compare to one another. In the conclusion, summarize the key points of the post.', 'gpt3-ai-content-generator' );
 ?>"</p>
             <button class="button button-primary button-hero btn-start-record" style="display: inline-flex; align-items: center;" <?php 
-echo ( $wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google' ? 'disabled' : '' );
+echo ( $wpaicg_provider != 'OpenAI' ? 'disabled' : '' );
 ?>><span class="dashicons dashicons-microphone"></span><?php 
 echo esc_html__( 'Speak', 'gpt3-ai-content-generator' );
 ?></button>
             <button class="button button-primary button-hero btn-pause-record" style="display: none; align-items: center;" <?php 
-echo ( $wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google' ? 'disabled' : '' );
+echo ( $wpaicg_provider != 'OpenAI' ? 'disabled' : '' );
 ?>><span class="dashicons dashicons-controls-pause"></span><?php 
 echo esc_html__( 'Pause', 'gpt3-ai-content-generator' );
 ?></button>
             <button class="button button-link-delete button-hero btn-stop-record" style="display: none; align-items: center;" <?php 
-echo ( $wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google' ? 'disabled' : '' );
+echo ( $wpaicg_provider != 'OpenAI' ? 'disabled' : '' );
 ?>><span class="dashicons dashicons-saved"></span><?php 
 echo esc_html__( 'Stop', 'gpt3-ai-content-generator' );
 ?></button>
             <button class="button button-link-delete button-hero btn-abort-record" style="display: none; align-items: center;" <?php 
-echo ( $wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google' ? 'disabled' : '' );
+echo ( $wpaicg_provider != 'OpenAI' ? 'disabled' : '' );
 ?>><span class="dashicons dashicons-no"></span><?php 
 echo esc_html__( 'Cancel', 'gpt3-ai-content-generator' );
 ?></button>
-            <!-- Azure or Google -->
+            <!-- Not OpenAI -->
             <?php 
-if ( $wpaicg_provider == 'Azure' || $wpaicg_provider == 'Google' ) {
+if ( $wpaicg_provider != 'OpenAI' ) {
     ?>
                 <p style="color:red;">
                     <?php 
@@ -611,24 +609,10 @@ if ( $wpaicg_single_logs->have_posts() ) {
         ) );
         $wpaicg_provider = get_post_meta( $wpaicg_single_log->ID, 'wpaicg_provider', true );
         // Define pricing per 1K tokens
-        $pricing = array(
-            'gpt-4'                  => 0.06,
-            'gpt-4-32k'              => 0.12,
-            'gpt-4-1106-preview'     => 0.01,
-            'gpt-4-turbo'            => 0.01,
-            'gpt-4-vision-preview'   => 0.01,
-            'gpt-3.5-turbo'          => 0.002,
-            'gpt-3.5-turbo-instruct' => 0.002,
-            'gpt-3.5-turbo-16k'      => 0.004,
-            'text-davinci-003'       => 0.02,
-            'text-curie-001'         => 0.002,
-            'text-babbage-001'       => 0.0005,
-            'text-ada-001'           => 0.0004,
-            'gemini-pro'             => 0.000375,
-        );
+        $pricing = \WPAICG\WPAICG_Util::get_instance()->model_pricing;
         $wpaicg_estimated = 0;
         // Calculate estimated cost
-        if ( !empty( $wpaicg_usage_token ) ) {
+        if ( !empty( $wpaicg_usage_token ) && is_numeric( $wpaicg_usage_token ) ) {
             if ( array_key_exists( $wpaicg_ai_model, $pricing ) ) {
                 $wpaicg_estimated = $pricing[$wpaicg_ai_model] * $wpaicg_usage_token / 1000;
             } else {
@@ -1701,8 +1685,9 @@ echo esc_html__( 'Provider', 'gpt3-ai-content-generator' );
 ?></label>
                             <select name="template[provider]" class="wpaicg_custom_template_provider">
                                 <option value="openai" selected>OpenAI</option>
-                                <option value="azure">Azure</option>
                                 <option value="google">Google</option>
+                                <option value="openrouter">OpenRouter</option>
+                                <option value="azure">Microsoft</option>
                             </select>
                         </div>
                         <div class="nice-form-group">
@@ -1748,10 +1733,101 @@ echo esc_attr( $wpaicg_parameters['azure_deployment'] );
                         </div>
                         <!-- Google Models Dropdown -->
                         <div class="nice-form-group" style="display:none;" id="google-models-field">
+                            <?php 
+$wpaicg_google_model_list = get_option( 'wpaicg_google_model_list', ['gemini-pro'] );
+$template_google_model = get_option( 'template[google_model]', 'gemini-pro' );
+?>
                             <select name="template[google_model]" class="wpaicg_custom_template_google_model regular-text">
-                                <option value="gemini-pro"><?php 
-echo esc_html__( 'Gemini Pro', 'gpt3-ai-content-generator' );
-?></option>
+                                <?php 
+if ( isset( $wpaicg_google_model_list ) && is_array( $wpaicg_google_model_list ) && count( $wpaicg_google_model_list ) > 0 ) {
+    foreach ( $wpaicg_google_model_list as $model ) {
+        // Define words that trigger disabling the option
+        $disabledWords = ['vision'];
+        // Add words that should disable the option
+        $shouldBeDisabled = false;
+        foreach ( $disabledWords as $word ) {
+            if ( strpos( $model, $word ) !== false ) {
+                $shouldBeDisabled = true;
+                break;
+                // Break the loop if any word is found
+            }
+        }
+        ?>
+                                    <option value="<?php 
+        echo esc_attr( $model );
+        ?>" <?php 
+        selected( $model, $template_google_model );
+        ?> <?php 
+        echo ( $shouldBeDisabled ? 'disabled' : '' );
+        ?>>
+                                        <?php 
+        echo esc_html( ucwords( str_replace( '-', ' ', $model ) ) );
+        // Convert save format to display format
+        ?>
+                                    </option>
+                                <?php 
+    }
+} else {
+    ?>
+                            <option value="gemini-pro" <?php 
+    selected( 'gemini-pro', $template_google_model );
+    ?>><?php 
+    echo esc_html__( 'Gemini Pro', 'gpt3-ai-content-generator' );
+    ?></option>
+                            <?php 
+}
+?>
+                            </select>
+                        </div>
+
+                        <!-- OpenRouter Models Dropdown -->
+                        <div class="nice-form-group" style="display:none;" id="openrouter-models-field">
+                            <?php 
+$openrouter_models = get_option( 'wpaicg_openrouter_model_list', [] );
+$template_openrouter_model = get_option( 'template[openrouter_model]', '' );
+// Group the models by provider
+$grouped_models = [];
+foreach ( $openrouter_models as $model ) {
+    $provider = explode( '/', $model['id'] )[0];
+    // Extract the provider name
+    if ( !isset( $grouped_models[$provider] ) ) {
+        $grouped_models[$provider] = [];
+    }
+    $grouped_models[$provider][] = $model;
+}
+// Sort the providers alphabetically
+ksort( $grouped_models );
+?>
+                            <select name="template[openrouter_model]" class="wpaicg_custom_template_openrouter_model regular-text">
+                                <?php 
+foreach ( $grouped_models as $provider => $models ) {
+    ?>
+                                    <optgroup label="<?php 
+    echo esc_attr( $provider );
+    ?>">
+                                        <?php 
+    // Sort the models alphabetically by name within each provider
+    usort( $models, function ( $a, $b ) {
+        return strcmp( $a["name"], $b["name"] );
+    } );
+    foreach ( $models as $model ) {
+        ?>
+                                            <option value="<?php 
+        echo esc_attr( $model['id'] );
+        ?>" <?php 
+        selected( $model['id'], $template_openrouter_model );
+        ?>>
+                                                <?php 
+        echo esc_html( $model['name'] );
+        ?>
+                                            </option>
+                                        <?php 
+    }
+    ?>
+                                    </optgroup>
+                                <?php 
+}
+?>
                             </select>
                         </div>
 
@@ -1878,6 +1954,9 @@ echo esc_html__( 'OpenAI', 'gpt3-ai-content-generator' );
 ?></option>
                                 <option value="google"><?php 
 echo esc_html__( 'Google', 'gpt3-ai-content-generator' );
+?></option>
+                                <option value="openrouter"><?php 
+echo esc_html__( 'OpenRouter', 'gpt3-ai-content-generator' );
 ?></option>
                                 <option value="togetherai"><?php 
 echo esc_html__( 'Together AI', 'gpt3-ai-content-generator' );
@@ -2335,7 +2414,6 @@ echo admin_url( 'admin-ajax.php' );
             let selected = selection.find('option:selected');
             let parameters = selected.attr('data-parameters');
             parameters = JSON.parse(parameters);
-            console.log(parameters);
             if(val > 0){
                 $('.wpaicg_custom_template_title').val(selected.text().trim());
                 $('.wpaicg_custom_template_title').after('<input class="wpaicg_custom_template_id" type="hidden" name="id" value="'+val+'">');
@@ -2360,19 +2438,28 @@ echo admin_url( 'admin-ajax.php' );
             const modelSelectDiv = $('.wpaicg_custom_template_model').closest('.nice-form-group');
             const azureFieldDiv = $('#azure-deployment-field');
             const googleModelsDiv = $('#google-models-field'); // Google models div
+            const openrouterModelsDiv = $('#openrouter-models-field'); // OpenRouter models div
 
             if (provider === 'azure') {
                 modelSelectDiv.hide();
                 azureFieldDiv.show();
                 googleModelsDiv.hide(); // Hide Google models
+                openrouterModelsDiv.hide(); // Hide OpenRouter models
             } else if (provider === 'google') {
                 modelSelectDiv.hide();
                 azureFieldDiv.hide();
                 googleModelsDiv.show(); // Show Google models
+                openrouterModelsDiv.hide(); // Hide OpenRouter models
+            } else if (provider === 'openrouter') {
+                modelSelectDiv.hide();
+                azureFieldDiv.hide();
+                googleModelsDiv.hide(); // Hide Google models
+                openrouterModelsDiv.show(); // Show OpenRouter models
             } else { // Default to OpenAI
                 modelSelectDiv.show();
                 azureFieldDiv.hide();
                 googleModelsDiv.hide(); // Hide Google models
+                openrouterModelsDiv.hide(); // Hide OpenRouter models
             }
         }
         
@@ -2738,9 +2825,10 @@ echo esc_html__( 'Please generate content first', 'gpt3-ai-content-generator' );
                 let provider = $('.wpaicg_custom_template_provider').val();
                 let google_model = $('.wpaicg_custom_template_google_model').val();
                 let azure_deployment = $('.wpaicg_custom_template_azure_deployment').val();
+                let openrouter_model = $('.wpaicg_custom_template_openrouter_model').val();
                 $.ajax({
                     url: wpaicg_template_ajax_url,
-                    data: {action: 'wpaicg_template_post',post_type: post_type, model: model, provider:provider, google_model: google_model, azure_deployment: azure_deployment, duration: duration, title: title, excerpt: excerpt, content: content, description: description, tokens:wpaicg_tokens, words: wpaicg_words_count,'nonce': '<?php 
+                    data: {action: 'wpaicg_template_post',post_type: post_type, model: model, provider:provider, google_model: google_model, openrouter_model: openrouter_model,azure_deployment: azure_deployment, duration: duration, title: title, excerpt: excerpt, content: content, description: description, tokens:wpaicg_tokens, words: wpaicg_words_count,'nonce': '<?php 
 echo wp_create_nonce( 'wpaicg-ajax-nonce' );
 ?>'},
                     type: 'POST',
@@ -2832,6 +2920,16 @@ echo sprintf(
 echo sprintf( 
     /* translators: 1: minimum max token value, 2: maximum max token value */
     esc_html__( 'For gpt-4, please enter a valid max token value between %1$d and %2$d.', 'gpt3-ai-content-generator' ),
+    0,
+    8192
+ );
+?>';
+            }
+            if(!has_error && model === 'gpt-4o' && (max_tokens > 8192 || max_tokens < 0)){
+                has_error = '<?php 
+echo sprintf( 
+    /* translators: 1: minimum max token value, 2: maximum max token value */
+    esc_html__( 'For gpt-4o, please enter a valid max token value between %1$d and %2$d.', 'gpt3-ai-content-generator' ),
     0,
     8192
  );
@@ -3524,6 +3622,9 @@ echo esc_html__( 'Continue', 'gpt3-ai-content-generator' );
     })
 </script>
 <script>
+    var openaiModels = <?php 
+echo json_encode( $openai_models );
+?>;
     jQuery(document).ready(function ($){
         // Define the prompts
         var prompts = [
@@ -3703,7 +3804,7 @@ echo esc_html__( 'Select a prompt', 'gpt3-ai-content-generator' );
             modelSelect.empty(); // Clear existing options
 
             // Check if the models object has groups
-            if(models.hasOwnProperty('groups')) {
+            if (models.hasOwnProperty('groups')) {
                 $.each(models.groups, function(group, groupModels) {
                     var optgroup = $('<optgroup>').attr('label', group);
                     $.each(groupModels, function(value, label) {
@@ -3725,88 +3826,100 @@ echo esc_html__( 'Select a prompt', 'gpt3-ai-content-generator' );
             }
         }
 
-        // Update your model definitions to include groups
-    var openaiModels = {
-        groups: {
-            'GPT-4 Models': {
-                'gpt-4': 'GPT-4',
-                'gpt-4-turbo': 'GPT-4 Turbo',
-                'gpt-4-vision-preview': 'GPT-4 Vision'
-            },
-            'GPT-3.5 Models': {
-                'gpt-3.5-turbo': 'GPT-3.5 Turbo',
-                'gpt-3.5-turbo-16k': 'GPT-3.5 Turbo 16K',
-                'gpt-3.5-turbo-instruct': 'GPT-3.5 Turbo Instruct'
+        var togetheraiModels = {
+            groups: {
+                'Mistral Models': {
+                    'mistralai/Mixtral-8x7B-Instruct-v0.1': 'Mixtral (8x7B) Instruct',
+                    'mistralai/Mistral-7B-Instruct-v0.1': 'Mistral (7B) Instruct'
+                },
+                'Meta Models': {
+                    'togethercomputer/llama-2-70b-chat': 'LLaMA-2 Chat (70B)',
+                    'togethercomputer/llama-2-13b-chat': 'LLaMA-2 Chat (13B)',
+                    'togethercomputer/llama-2-7b-chat': 'LLaMA-2 Chat (7B)'
+                },
+                '01-ai Models': {
+                    'zero-one-ai/Yi-34B-Chat': 'Yi Chat (34B)'
+                },
+                'Stanford': {
+                    'togethercomputer/alpaca-7b': 'Alpaca (7B)'
+                }
             }
-        }
-    };
+        };
 
-    var togetheraiModels = {
-        groups: {
-            'Mistral Models': {
-                'mistralai/Mixtral-8x7B-Instruct-v0.1': 'Mixtral (8x7B) Instruct',
-                'mistralai/Mistral-7B-Instruct-v0.1': 'Mistral (7B) Instruct'
-            },
-            'Meta Models': {
-                'togethercomputer/llama-2-70b-chat': 'LLaMA-2 Chat (70B)',
-                'togethercomputer/llama-2-13b-chat': 'LLaMA-2 Chat (13B)',
-                'togethercomputer/llama-2-7b-chat': 'LLaMA-2 Chat (7B)'
-            },
-            '01-ai Models': {
-                'zero-one-ai/Yi-34B-Chat': 'Yi Chat (34B)'
-            },
-            'Stanford': {
-                'togethercomputer/alpaca-7b': 'Alpaca (7B)'
+        var googleModels = {
+            groups: {
+                'Chat Models': {
+                    'gemini-pro': 'Gemini Pro',
+                    'chat-bison-001': 'Chat Bison-001'
+                },
+                'Text Models': {
+                    'text-bison-001': 'Text Bison-001'
+                }
             }
-        }
-    };
+        };
 
-    var googleModels = {
-        groups: {
-            'Chat Models': {
-                'gemini-pro': 'Gemini Pro',
-                'chat-bison-001': 'Chat Bison-001'
-            },
-            'Text Models': {
-                'text-bison-001': 'Text Bison-001'
+        // Function to fetch and update OpenRouter models
+        function fetchOpenRouterModels() {
+            const openrouterModels = <?php 
+echo json_encode( get_option( 'wpaicg_openrouter_model_list', [] ) );
+?>;
+            var modelOptions = {};
+
+            if (openrouterModels.length === 0) {
+                modelOptions['openrouter/auto'] = 'OpenRouter Auto';
+            } else {
+                // Group models by provider
+                const groupedModels = openrouterModels.reduce((groups, model) => {
+                    const provider = model.id.split('/')[0];
+                    if (!groups[provider]) {
+                        groups[provider] = {};
+                    }
+                    groups[provider][model.id] = model.name;
+                    return groups;
+                }, {});
+
+                modelOptions.groups = groupedModels;
             }
-        }
-    };
 
-
-    $('#provider_select').on('change', function() {
-        var selectedProvider = $(this).val();
-        var modelOptions;
-
-        // Selecting model options based on provider
-        if (selectedProvider === 'openai') {
-            modelOptions = openaiModels;
-        } else if (selectedProvider === 'google') {
-            modelOptions = googleModels;
-        } else if (selectedProvider === 'togetherai') {
-            modelOptions = togetheraiModels;
+            updateModelDropdown(modelOptions);
         }
 
-        updateModelDropdown(modelOptions);
+        $('#provider_select').on('change', function() {
+            var selectedProvider = $(this).val();
+            var modelOptions;
 
-        // Show or hide the API key link based on provider
-        if (selectedProvider === 'google') {
-            $('#add_api_key_link').show();
-            $('#add_togetherai_api_key_link').hide();
-            $('#api_key_field').hide();
-            $('#api_key_field_togetherai').hide();
-        } else if (selectedProvider === 'togetherai') {
-            $('#add_togetherai_api_key_link').show();
-            $('#add_api_key_link').hide();
-            $('#api_key_field').hide();
-            $('#api_key_field_togetherai').hide();
-        } else {
-            $('#add_api_key_link').hide();
-            $('#add_togetherai_api_key_link').hide();
-            $('#api_key_field').hide();
-            $('#api_key_field_togetherai').hide();
-        }
-    });
+            // Selecting model options based on provider
+            if (selectedProvider === 'openai') {
+                modelOptions = openaiModels;
+            } else if (selectedProvider === 'google') {
+                modelOptions = googleModels;
+            } else if (selectedProvider === 'togetherai') {
+                modelOptions = togetheraiModels;
+            } else if (selectedProvider === 'openrouter') {
+                fetchOpenRouterModels();
+                return; // Exit the function as models are fetched asynchronously
+            }
+
+            updateModelDropdown(modelOptions);
+
+            // Show or hide the API key link based on provider
+            if (selectedProvider === 'google') {
+                $('#add_api_key_link').show();
+                $('#add_togetherai_api_key_link').hide();
+                $('#api_key_field').hide();
+                $('#api_key_field_togetherai').hide();
+            } else if (selectedProvider === 'togetherai') {
+                $('#add_togetherai_api_key_link').show();
+                $('#add_api_key_link').hide();
+                $('#api_key_field').hide();
+                $('#api_key_field_togetherai').hide();
+            } else {
+                $('#add_api_key_link').hide();
+                $('#add_togetherai_api_key_link').hide();
+                $('#api_key_field').hide();
+                $('#api_key_field_togetherai').hide();
+            }
+        });
 
 
         // Initial model dropdown update
@@ -3917,8 +4030,11 @@ echo wp_create_nonce( 'wpaicg-save-togetherai-api' );
             var btn = $(this);
             var title = $('.wpaicg_prompt').val();
             var selectedModel = $('#model_select').val();
+            console.log(selectedModel);
             var selectedProvider = $('#provider_select').val();
-            if(selectedProvider === 'openai'){
+            console.log(selectedProvider);
+            // openai or openrouter
+            if(selectedProvider === 'openai' || selectedProvider === 'openrouter'){
                 if(!wpaicg_generator_working && title !== ''){
                 var count_line = 0;
                 var wpaicg_generator_result = $('.wpaicg_generator_result');
@@ -3932,7 +4048,7 @@ echo wp_create_nonce( 'wpaicg-save-togetherai-api' );
 echo esc_html( add_query_arg( 'wpaicg_stream', 'yes', site_url() . '/index.php' ) );
 ?>&title='+title+'&nonce=<?php 
 echo wp_create_nonce( 'wpaicg-ajax-nonce' );
-?>');
+?>'+'&engine='+selectedModel+'&provider='+selectedProvider);
                 var editor = tinyMCE.get('wpaicg_generator_result');
                 var basicEditor = true;
                 if ( $('#wp-wpaicg_generator_result-wrap').hasClass('tmce-active') && editor ) {

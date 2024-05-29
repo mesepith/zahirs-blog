@@ -49,7 +49,7 @@ $total = $wpdb->get_var( $total_query );
 $items_per_page = 10;
 $offset = ( $wpaicg_log_page * $items_per_page ) - $items_per_page;
 $wpaicg_logs = $wpdb->get_results($query . " ORDER BY created_at DESC LIMIT {$offset}, {$items_per_page}");
-$totalPage         = ceil($total / $items_per_page);
+$totalPage = ceil($total / $items_per_page);
 ?>
 <style>
     .wpaicg_modal{
@@ -69,6 +69,9 @@ $totalPage         = ceil($total / $items_per_page);
     <div class="wpaicg-d-flex mb-5">
         <input style="width: 100%" value="<?php echo esc_html($search)?>" class="regular-text" name="search" type="text" placeholder="<?php echo esc_html__('Type for search','gpt3-ai-content-generator')?>">
         <button class="button button-primary"><?php echo esc_html__('Search','gpt3-ai-content-generator')?></button>
+        <?php if ($total > 0) : ?>
+        <button id="delete-all" class="button button-secondary" style="color: white;background: #9d0000;border: #9d0000;margin-left: 5px;"><?php echo esc_html__('Delete All','gpt3-ai-content-generator')?></button>
+        <?php endif; ?>
     </div>
 </form>
 <table class="wp-list-table widefat fixed striped table-view-list posts">
@@ -108,21 +111,12 @@ $totalPage         = ceil($total / $items_per_page);
             }
             
             // Define pricing per 1K tokens
-            $pricing = array(
-                'gpt-4' => 0.06,
-                'gpt-4-32k' => 0.12,
-                'gpt-4-1106-preview' => 0.01,
-                'gpt-4-turbo' => 0.01,
-                'gpt-4-vision-preview' => 0.01,
-                'gpt-3.5-turbo' => 0.002,
-                'gpt-3.5-turbo-instruct' => 0.002,
-                'gpt-3.5-turbo-16k' => 0.004,
-                'text-davinci-003' => 0.02,
-                'text-curie-001' => 0.002,
-                'text-babbage-001' => 0.0005,
-                'text-ada-001' => 0.0004,
-                'gemini-pro' => 0.000375
-            );
+            $pricing = \WPAICG\WPAICG_Util::get_instance()->model_pricing;
+            $google_models = get_option('wpaicg_google_model_list', array());
+
+            foreach ($google_models as $google_model) {
+                $pricing[$google_model] = 0.002;
+            }
 
             // Calculate estimated cost
             if (array_key_exists($wpaicg_ai_model, $pricing)) {
@@ -278,4 +272,26 @@ $totalPage         = ceil($total / $items_per_page);
             $('.wpaicg-overlay, .wpaicg_modal').show();
         });
     });
+</script>
+<script>
+jQuery(document).ready(function($) {
+    $('#delete-all').click(function() {
+        if (confirm('Are you sure you want to delete all logs? This action cannot be undone.')) {
+            $.ajax({
+                url: ajaxurl, // Make sure ajaxurl is defined globally
+                type: 'POST',
+                data: {
+                    action: 'wpaicg_delete_all_logs', // The action hook for backend
+                    nonce: '<?php echo wp_create_nonce("wpaicg_delete_all_logs_nonce"); ?>'
+                },
+                success: function(response) {
+                    alert(response.data.message);
+                    if (response.success) {
+                        location.reload(); // Reload the page to update the log table
+                    }
+                }
+            });
+        }
+    });
+});
 </script>

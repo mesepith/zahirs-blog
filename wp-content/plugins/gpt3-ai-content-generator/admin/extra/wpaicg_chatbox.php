@@ -167,36 +167,34 @@ $wpaicg_openai_voice_speed = isset($wpaicg_settings['openai_voice_speed']) && !e
 $wpaicg_google_api_key = get_option('wpaicg_google_api_key', '');
 $wpaicg_input_font_color = isset($wpaicg_settings['input_font_color']) && !empty($wpaicg_settings['input_font_color']) ? $wpaicg_settings['input_font_color'] : '#495057';
 $wpaicg_footer_color = isset($wpaicg_settings['footer_color']) && !empty($wpaicg_settings['footer_color']) ? $wpaicg_settings['footer_color'] : '#ffffff';
+$wpaicg_autoload_chat_conversations = get_option('wpaicg_autoload_chat_conversations', 0);
+
+
 ?>
 <style>
-    /* Styling the scrollbar track (part the thumb slides within) */
-    ::-webkit-scrollbar-track {
+    /* Styling the scrollbar track within the chatbot window only */
+    .wpaicg-chat-shortcode ::-webkit-scrollbar-track {
         background-color: <?php echo esc_html($wpaicg_settings['bgcolor'])?>; /* Light grey track */
         border-radius: 10px;
     }
 
-    /* Styling the scrollbar thumb (the part that you drag) */
-    ::-webkit-scrollbar-thumb {
+    /* Styling the scrollbar thumb within the chatbot window only */
+    .wpaicg-chat-shortcode ::-webkit-scrollbar-thumb {
         background-color: #888; /* Dark grey thumb */
         border-radius: 10px;
         border: 3px solid <?php echo esc_html($wpaicg_settings['bgcolor'])?>; /* White border around thumb */
     }
 
-    /* Styling the scrollbar thumb on hover */
-    ::-webkit-scrollbar-thumb:hover {
+    /* Styling the scrollbar thumb on hover within the chatbot window only */
+    .wpaicg-chat-shortcode ::-webkit-scrollbar-thumb:hover {
         background-color: #555; /* Black thumb on hover */
     }
 
-    /* Setting the width of the scrollbar */
-    ::-webkit-scrollbar {
+    /* Setting the width of the scrollbar within the chatbot window only */
+    .wpaicg-chat-shortcode ::-webkit-scrollbar {
         width: 8px; /* Narrow width */
-    }
-
-    /* For vertical scroll */
-    ::-webkit-scrollbar {
         height: 8px; /* For horizontal scrolling */
     }
-
     .wpaicg-conversation-starters {
         display: flex;
         flex-wrap: wrap;
@@ -694,6 +692,7 @@ if($wpaicg_chat_fullscreen || $wpaicg_chat_download_btn || $wpaicg_chat_clear_bt
      data-openai_output_format="<?php echo esc_html($wpaicg_openai_output_format)?>"
      data-openai_voice_speed="<?php echo esc_html($wpaicg_openai_voice_speed)?>"
      data-openai_stream_nav="<?php echo esc_html($wpaicg_stream_nav_setting) ?>"
+     data-autoload_chat_conversations="<?php echo esc_html($wpaicg_autoload_chat_conversations)?>"
      data-type="shortcode"
 >
 <?php if($wpaicg_has_action_bar): ?>

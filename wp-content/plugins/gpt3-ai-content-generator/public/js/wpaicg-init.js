@@ -40,8 +40,19 @@ let wpaicgInit = {
     },
     searchExpand: function(element){
         let item = element.closest('.wpaicg-search-item');
-        item.getElementsByClassName('wpaicg-search-item-excerpt')[0].style.display = 'none';
-        item.getElementsByClassName('wpaicg-search-item-full')[0].style.display = 'block';
+        if (item) {
+            let excerpt = item.getElementsByClassName('wpaicg-search-item-excerpt')[0];
+            let full = item.getElementsByClassName('wpaicg-search-item-full')[0];
+            
+            if (excerpt && full) {
+                excerpt.style.display = 'none';
+                full.style.display = 'block';
+            } else {
+                console.error("Excerpt or full element not found.");
+            }
+        } else {
+            console.error("Item not found.");
+        }
     },
     searchData: function (wpaicgSearchResult,wpaicgSearchSource,wpaicgSearchField){
         let search = wpaicgSearchField.value;

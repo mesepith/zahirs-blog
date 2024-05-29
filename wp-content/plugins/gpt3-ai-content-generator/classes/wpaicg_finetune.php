@@ -41,11 +41,45 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
             // ajax_pagination_finetune
             add_action('wp_ajax_ajax_pagination_finetune', [$this, 'ajax_pagination_finetune']);
             add_action('wp_ajax_ajax_pagination_training', [$this, 'ajax_pagination_training']);
+            // wpaicg_fetch_google_models
+            add_action('wp_ajax_wpaicg_fetch_google_models', [$this, 'wpaicg_fetch_google_models']);
 
             add_filter('mime_types', function ($mime_types) {
                 $mime_types['jsonl'] = 'application/octet-stream';
                 return $mime_types;
             });
+        }
+
+        public function wpaicg_fetch_google_models()
+        {
+            if (!current_user_can('manage_options')) {
+                wp_send_json(['status' => 'error', 'msg' => esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator')]);
+            }
+        
+            if (!wp_verify_nonce($_POST['nonce'], 'wpaicg-ajax-nonce')) {
+                wp_send_json(['status' => 'error', 'msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $api_key = get_option('wpaicg_google_model_api_key');
+            if (empty($api_key)) {
+                wp_send_json(['status' => 'error', 'msg' => 'Google API key is not configured. Please enter your Google API key in the settings and save it first.']);
+            }
+        
+            $google_ai = WPAICG_Google::get_instance();
+            $model_list = $google_ai->listModels();
+        
+            if (is_wp_error($model_list)) {
+                wp_send_json(['status' => 'error', 'msg' => $model_list->get_error_message()]);
+            }
+
+            // Check if the response is an error response from the Google API
+            if (isset($model_list['error'])) {
+                $api_error_msg = $model_list['error']['message'];
+                wp_send_json(['status' => 'error', 'msg' => $api_error_msg]);
+            }
+        
+            update_option('wpaicg_google_model_list', $model_list);
+            wp_send_json(['status' => 'success', 'msg' => 'Models updated successfully']);
         }
 
         public function wpaicgUploadOpenAI($file, $open_ai)
@@ -902,9 +936,12 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
             $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
             $open_ai = WPAICG_OpenAI::get_instance()->openai();
             // if provider not openai then assing azure to $open_ai
-            if ($wpaicg_provider != 'OpenAI') {
+            if ($wpaicg_provider == 'Azure') {
                 $open_ai = WPAICG_AzureAI::get_instance()->azureai();
+            } else {
+                $open_ai = WPAICG_OpenAI::get_instance()->openai();
             }
+            
             if (!$open_ai) {
                 $wpaicg_result['msg'] = esc_html__('Missing API Setting', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);

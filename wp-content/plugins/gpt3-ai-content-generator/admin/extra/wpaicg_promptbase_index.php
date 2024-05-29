@@ -29,8 +29,8 @@ $pineconeindexes = get_option('wpaicg_pinecone_indexes','');
 $pineconeindexes = empty($pineconeindexes) ? array() : json_decode($pineconeindexes,true);
 
 // Define the model categories and their members.
-$gpt4_models = ['gpt-4','gpt-4-turbo','gpt-4-vision-preview'];
-$gpt35_models = ['gpt-3.5-turbo', 'gpt-3.5-turbo-16k', 'gpt-3.5-turbo-instruct'];
+$gpt4_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt4_models;
+$gpt35_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt35_models;
 $custom_models = get_option('wpaicg_custom_models', []);
 
 $current_model = ''; 
@@ -68,7 +68,7 @@ if(file_exists(WPAICG_PLUGIN_DIR.'admin/data/prompts.json')){
 }
 
 $sql = "SELECT p.ID as id,p.post_title as title,p.post_author as author, p.post_content as description";
-$wpaicg_meta_keys = array('prompt','editor','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
+$wpaicg_meta_keys = array('prompt','editor','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
 foreach($wpaicg_meta_keys as $wpaicg_meta_key){
 //    $sql .= ",(SELECT ".$wpaicg_meta_key.".meta_value FROM ".$wpdb->postmeta." ".$wpaicg_meta_key." WHERE ".$wpaicg_meta_key.".meta_key='wpaicg_prompt_".$wpaicg_meta_key."' AND p.ID=".$wpaicg_meta_key.".post_id LIMIT 1) as ".$wpaicg_meta_key;
     $sql .= ", (".$wpdb->prepare("SELECT ".$wpaicg_meta_key.".meta_value FROM ".$wpdb->postmeta." ".$wpaicg_meta_key." WHERE ".$wpaicg_meta_key.".meta_key=%s AND p.ID=".$wpaicg_meta_key.".post_id LIMIT 1",
@@ -390,18 +390,18 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
                         <!-- Display dropdown for OpenAI -->
                         <select name="engine" class="wpaicg-w-100 wpaicg-create-prompt-engine" required>
                             <optgroup label="GPT-4">
-                                <?php foreach ($gpt4_models as $model): ?>
-                                    <option value="<?php echo esc_attr($model); ?>"><?php echo esc_html($model); ?></option>
+                                <?php foreach ($gpt4_models as $value => $display_name): ?>
+                                    <option value="<?php echo esc_attr($value); ?>"<?php selected($value, $current_model); ?>><?php echo esc_html($display_name); ?></option>
                                 <?php endforeach; ?>
                             </optgroup>
                             <optgroup label="GPT-3.5">
-                                <?php foreach ($gpt35_models as $model): ?>
-                                    <option value="<?php echo esc_attr($model); ?>"><?php echo esc_html($model); ?></option>
+                                <?php foreach ($gpt35_models as $value => $display_name): ?>
+                                    <option value="<?php echo esc_attr($value); ?>"<?php selected($value, $current_model); ?>><?php echo esc_html($display_name); ?></option>
                                 <?php endforeach; ?>
                             </optgroup>
                             <optgroup label="Custom Models">
                                 <?php foreach ($custom_models as $model): ?>
-                                    <option value="<?php echo esc_attr($model); ?>"><?php echo esc_html($model); ?></option>
+                                    <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $current_model); ?>><?php echo esc_html($model); ?></option>
                                 <?php endforeach; ?>
                             </optgroup>
                         </select>
@@ -410,10 +410,45 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
                     <select name="engine" class="wpaicg-w-100 wpaicg-create-prompt-engine" required>
                         <optgroup label="Google Models">
                             <?php foreach ($wpaicg_google_model_list as $model): ?>
-                                <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                <?php if (stripos($model, 'vision') !== false): ?>
+                                    <!-- Option disabled if it contains the word 'vision' -->
+                                    <option value="<?php echo esc_attr($model); ?>" disabled><?php echo esc_html($model); ?></option>
+                                <?php else: ?>
+                                    <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                <?php endif; ?>
                             <?php endforeach; ?>
                         </optgroup>
                     </select>
+                    <?php elseif ($wpaicg_provider == 'OpenRouter'): ?>
+                        <!-- Display dropdown for OpenRouter -->
+                        <?php
+                        $openrouter_models = get_option('wpaicg_openrouter_model_list', []);
+                        $openrouter_grouped_models = [];
+                        foreach ($openrouter_models as $openrouter_model) {
+                            $openrouter_provider = explode('/', $openrouter_model['id'])[0];
+                            if (!isset($openrouter_grouped_models[$openrouter_provider])) {
+                                $openrouter_grouped_models[$openrouter_provider] = [];
+                            }
+                            $openrouter_grouped_models[$openrouter_provider][] = $openrouter_model;
+                        }
+                        ksort($openrouter_grouped_models);
+
+                        $openrouter_selected_model = get_option('wpaicg_widget_openrouter_model', 'openrouter/auto');
+                        ?>
+                        <select name="engine" class="wpaicg-w-100 wpaicg-create-prompt-engine" required>
+                            <?php
+                            foreach ($openrouter_grouped_models as $openrouter_provider => $openrouter_models): ?>
+                                <optgroup label="<?php echo esc_attr($openrouter_provider); ?>">
+                                    <?php
+                                    usort($openrouter_models, function($a, $b) {
+                                        return strcmp($a["name"], $b["name"]);
+                                    });
+                                    foreach ($openrouter_models as $openrouter_model): ?>
+                                        <option value="<?php echo esc_attr($openrouter_model['id']); ?>"<?php selected($openrouter_model['id'], $openrouter_selected_model); ?>><?php echo esc_html($openrouter_model['name']); ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endforeach; ?>
+                        </select>
                     <?php else: ?>
                         <!-- Display readonly text field for AzureAI -->
                         <input type="text" 
@@ -509,6 +544,31 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
                         <option value="after"><?php echo esc_html__('After Prompt','gpt3-ai-content-generator')?></option>
                         <option value="before"><?php echo esc_html__('Before Prompt','gpt3-ai-content-generator')?></option>
                     </select>
+                </div>
+                <div class="wpaicg-grid-1 wpaicg-context-use_default_embedding_model" style="display: none">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Use Default Model','gpt3-ai-content-generator')?></strong>
+                    <select name="use_default_embedding_model" class="wpaicg-w-100 wpaicg-create-prompt-use_default_embedding_model">
+                        <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
+                        <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
+                    </select>
+                </div>
+                <div class="wpaicg-grid-1 wpaicg-context-selected_embedding_model">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Embedding Model','gpt3-ai-content-generator')?></strong>
+                    <select name="selected_embedding_model" class="wpaicg-w-100 wpaicg-create-prompt-selected_embedding_model">
+                        <?php
+                        $embedding_models = \WPAICG\WPAICG_Util::get_instance()->get_embedding_models();
+                        $embedding_model = '';
+                        foreach ($embedding_models as $provider => $models) {
+                            echo '<optgroup label="' . esc_attr($provider) . '">';
+                            foreach ($models as $model => $dimension) {
+                                $selected = ($model === $embedding_model) ? 'selected' : '';
+                                echo '<option value="' . esc_attr($model) . '" data-provider="' . esc_attr($provider) . '" ' . $selected . '>' . esc_html($model) . ' (' . esc_html($dimension) . ')</option>';
+                            }
+                            echo '</optgroup>';
+                        }
+                        ?>
+                    </select>
+                    <input type="hidden" id="selected_embedding_provider" name="selected_embedding_provider" class="wpaicg-w-100 wpaicg-create-prompt-selected_embedding_provider">
                 </div>
             </div>
         </div>
@@ -711,7 +771,11 @@ endif;
                         if ($wpaicg_provider == 'Azure') {
                             $wpaicg_engine = get_option('wpaicg_azure_deployment', '');
                         }  elseif ($wpaicg_provider == 'Google') {
-                            $wpaicg_engine = get_option('wpaicg_google_default_model', 'gemini-pro');
+                            $wpaicg_google_default_model = get_option('wpaicg_google_default_model', 'gemini-pro');
+                            $wpaicg_engine = isset($wpaicg_item['engine']) && !empty($wpaicg_item['engine']) ? $wpaicg_item['engine'] : $wpaicg_google_default_model;
+                        } elseif ($wpaicg_provider == 'OpenRouter') {
+                            $wpaicg_openrouter_default_model = get_option('wpaicg_openrouter_default_model', 'openrouter/auto');
+                            $wpaicg_engine = isset($wpaicg_item['engine']) && !empty($wpaicg_item['engine']) ? $wpaicg_item['engine'] : $wpaicg_openrouter_default_model;
                         }
                         $wpaicg_max_tokens = isset($wpaicg_item['max_tokens']) && !empty($wpaicg_item['max_tokens']) ? $wpaicg_item['max_tokens'] : $this->wpaicg_max_tokens;
                         $wpaicg_temperature = isset($wpaicg_item['temperature']) && !empty($wpaicg_item['temperature']) ? $wpaicg_item['temperature'] : $this->wpaicg_temperature;
@@ -769,6 +833,9 @@ endif;
                             data-response="<?php echo esc_html(@$wpaicg_item['response']);?>"
                             data-header="<?php echo isset($wpaicg_item['header']) ? esc_html($wpaicg_item['header']) : '';?>"
                             data-embeddings="<?php echo isset($wpaicg_item['embeddings']) ? esc_html($wpaicg_item['embeddings']) : 'no';?>"
+                            data-use_default_embedding_model = "<?php echo isset($wpaicg_item['use_default_embedding_model']) ? esc_html($wpaicg_item['use_default_embedding_model']) : 'yes';?>"
+                            data-selected_embedding_model="<?php echo isset($wpaicg_item['selected_embedding_model']) ? esc_html($wpaicg_item['selected_embedding_model']) : '';?>"
+                            data-selected_embedding_provider = "<?php echo isset($wpaicg_item['selected_embedding_provider']) ? esc_html($wpaicg_item['selected_embedding_provider']) : '';?>"
                             data-vectordb="<?php echo isset($wpaicg_item['vectordb']) ? esc_html($wpaicg_item['vectordb']) : '';?>"
                             data-suffix_position="<?php echo isset($wpaicg_item['suffix_position']) ? esc_html($wpaicg_item['suffix_position']) : 'after';?>"
                             data-collections="<?php echo isset($wpaicg_item['collections']) ? esc_html($wpaicg_item['collections']) : '';?>"
@@ -864,27 +931,62 @@ endif;
                             <!-- Display dropdown for OpenAI -->
                             <select name="engine" class="wpaicg-w-100 wpaicg-create-prompt-engine" required>
                                 <optgroup label="GPT-4">
-                                    <?php foreach ($gpt4_models as $model): ?>
-                                        <option value="<?php echo esc_attr($model); ?>"><?php echo esc_html($model); ?></option>
+                                    <?php foreach ($gpt4_models as $value => $display_name): ?>
+                                        <option value="<?php echo esc_attr($value); ?>"<?php selected($value, $current_model); ?>><?php echo esc_html($display_name); ?></option>
                                     <?php endforeach; ?>
                                 </optgroup>
                                 <optgroup label="GPT-3.5">
-                                    <?php foreach ($gpt35_models as $model): ?>
-                                        <option value="<?php echo esc_attr($model); ?>"><?php echo esc_html($model); ?></option>
+                                    <?php foreach ($gpt35_models as $value => $display_name): ?>
+                                        <option value="<?php echo esc_attr($value); ?>"<?php selected($value, $current_model); ?>><?php echo esc_html($display_name); ?></option>
                                     <?php endforeach; ?>
                                 </optgroup>
                                 <optgroup label="Custom Models">
                                     <?php foreach ($custom_models as $model): ?>
-                                        <option value="<?php echo esc_attr($model); ?>"><?php echo esc_html($model); ?></option>
+                                        <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $current_model); ?>><?php echo esc_html($model); ?></option>
                                     <?php endforeach; ?>
                                 </optgroup>
+                            </select>
+                            <?php elseif ($wpaicg_provider == 'OpenRouter'): ?>
+                            <!-- Display dropdown for OpenRouter -->
+                            <?php
+                            $openrouter_models = get_option('wpaicg_openrouter_model_list', []);
+                            $openrouter_grouped_models = [];
+                            foreach ($openrouter_models as $openrouter_model) {
+                                $openrouter_provider = explode('/', $openrouter_model['id'])[0];
+                                if (!isset($openrouter_grouped_models[$openrouter_provider])) {
+                                    $openrouter_grouped_models[$openrouter_provider] = [];
+                                }
+                                $openrouter_grouped_models[$openrouter_provider][] = $openrouter_model;
+                            }
+                            ksort($openrouter_grouped_models);
+
+                            $openrouter_selected_model = get_option('wpaicg_widget_openrouter_model', 'openrouter/auto');
+                            ?>
+                            <select name="engine" class="wpaicg-w-100 wpaicg-create-prompt-engine" required>
+                                <?php
+                                foreach ($openrouter_grouped_models as $openrouter_provider => $openrouter_models): ?>
+                                    <optgroup label="<?php echo esc_attr($openrouter_provider); ?>">
+                                        <?php
+                                        usort($openrouter_models, function($a, $b) {
+                                            return strcmp($a["name"], $b["name"]);
+                                        });
+                                        foreach ($openrouter_models as $openrouter_model): ?>
+                                            <option value="<?php echo esc_attr($openrouter_model['id']); ?>"<?php selected($openrouter_model['id'], $openrouter_selected_model); ?>><?php echo esc_html($openrouter_model['name']); ?></option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                <?php endforeach; ?>
                             </select>
                         <?php elseif ($wpaicg_provider == 'Google'): ?>
                         <!-- Display dropdown for Google AI -->
                         <select name="engine" class="wpaicg-w-100 wpaicg-create-prompt-engine" required>
                             <optgroup label="Google Models">
                                 <?php foreach ($wpaicg_google_model_list as $model): ?>
-                                    <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                    <?php if (stripos($model, 'vision') !== false): ?>
+                                        <!-- Option disabled if it contains the word 'vision' -->
+                                        <option value="<?php echo esc_attr($model); ?>" disabled><?php echo esc_html($model); ?></option>
+                                    <?php else: ?>
+                                        <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </optgroup>
                         </select>
@@ -1080,7 +1182,7 @@ endif;
             $('.wpaicg_modal_title').html('<?php echo esc_html__('Edit your Prompt','gpt3-ai-content-generator')?>');
             $('.wpaicg_modal_content').html('<form action="" method="post" class="wpaicg-create-prompt-form">'+wpaicgPromptContent.html()+'</form>');
             var form = $('.wpaicg-create-prompt-form');
-            var wpaicg_prompt_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
+            var wpaicg_prompt_keys = ['engine','editor','title','description','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
             for(var i = 0; i < wpaicg_prompt_keys.length;i++){
                 var wpaicg_prompt_key = wpaicg_prompt_keys[i];
                 var wpaicg_prompt_key_value = item.attr('data-'+wpaicg_prompt_key);
@@ -1108,6 +1210,25 @@ endif;
             $('.wpaicg_modal').show();
         });
 
+        // Handle change event for the 'use_default_embedding_model' dropdown
+        $(document).on('change', 'select[name="use_default_embedding_model"]', function() {
+            var selectedOption = $(this).val();
+            var selected_embedding_model_container = $('.wpaicg-context-selected_embedding_model');
+
+            if (selectedOption === 'no') {
+                selected_embedding_model_container.show();
+            } else {
+                selected_embedding_model_container.hide();
+            }
+        });
+
+        $(document).on('change', '.wpaicg-create-prompt-selected_embedding_model', function() {
+            var selectedOption = $(this).find('option:selected');
+            var provider = selectedOption.data('provider');
+            $('#selected_embedding_provider').val(provider);
+        });
+
+
         // if embeddings is yes then display the vector db section
         $(document).on('change', '.wpaicg-create-prompt-embeddings', function(e) {
             var embeddings = $(e.currentTarget).val();
@@ -1116,6 +1237,9 @@ endif;
             var suffixTextContainer = $('.wpaicg-context-suffix');
             var suffixPositionContainer = $('.wpaicg-context-suffix-position');
             var embeddingsLimitContainer = $('.wpaicg-embeddings-limit');
+            var selected_embedding_model_container = $('.wpaicg-context-selected_embedding_model');
+
+            var use_default_embedding_model = $('.wpaicg-context-use_default_embedding_model');
 
             if (embeddings === 'yes') {
                 vectorDBSection.show(); // Show the Vector DB section
@@ -1129,6 +1253,8 @@ endif;
                 suffixTextContainer.hide(); // Hide the context suffix
                 suffixPositionContainer.hide(); // Hide the context suffix position
                 embeddingsLimitContainer.hide(); // Hide the embeddings limit
+                use_default_embedding_model.hide(); // Hide the default embedding model
+                selected_embedding_model_container.hide(); // Hide the selected embedding model 
             }
         });
 
@@ -1145,6 +1271,10 @@ endif;
             var suffixTextContainer = $('.wpaicg-context-suffix');
             var suffixPositionContainer = $('.wpaicg-context-suffix-position');
             var embeddingsLimitContainer = $('.wpaicg-embeddings-limit');
+            var use_default_embedding_model = $('.wpaicg-context-use_default_embedding_model');
+            var selected_embedding_model_container = $('.wpaicg-context-selected_embedding_model');
+            // get use_default_embedding_model value using find and parent
+            var useDefaultModel = $(this).parent().parent().find('select[name="use_default_embedding_model"]').val();
 
             // Define a message for no collections or indexes
             var noCollectionsMessage = '<p class="wpaicg-no-items-message"><?php echo esc_html__('No collections available', 'gpt3-ai-content-generator'); ?></p>';
@@ -1158,8 +1288,17 @@ endif;
 
                 // Populate the collections dropdown
                 $.each(qdrantCollections, function(index, collection) {
-                    var isSelected = (collection === savedCollection) ? ' selected' : '';
-                    collectionsDropdown.append('<option value="' + collection + '"' + isSelected + '>' + collection + '</option>');
+                    var name, dimension, displayName, selectedAttribute;
+                    if (typeof collection === 'object' && collection.name) {
+                        name = collection.name;
+                        dimension = collection.dimension ? ' (' + collection.dimension + ')' : '';
+                        displayName = name + dimension;
+                    } else {
+                        name = collection; // Assume collection is a string if not an object with a 'name' property
+                        displayName = collection;
+                    }
+                    selectedAttribute = (name === savedCollection) ? ' selected' : '';
+                    collectionsDropdown.append('<option value="' + name + '"' + selectedAttribute + '>' + displayName + '</option>');
                 });
 
                 collectionsDropdownContainer.show(); // Show the Collections dropdown
@@ -1168,6 +1307,12 @@ endif;
                 suffixTextContainer.show();
                 suffixPositionContainer.show();
                 embeddingsLimitContainer.show(); // Show the embeddings limit
+                use_default_embedding_model.show(); // Show the default embedding model
+                if (useDefaultModel === 'no') {
+                    selected_embedding_model_container.show();
+                } else {
+                    selected_embedding_model_container.hide();
+                }
             } else if (vectordb === 'pinecone' && pineconeIndexes.length > 0) {
                 indexDropdown.empty(); // Clear existing options
                 // Populate the Pinecone Indexes dropdown
@@ -1181,12 +1326,20 @@ endif;
                 suffixTextContainer.show();
                 suffixPositionContainer.show();
                 embeddingsLimitContainer.show(); // Show the embeddings limit
+                use_default_embedding_model.show(); // Show the default embedding model
+                if (useDefaultModel === 'no') {
+                    selected_embedding_model_container.show();
+                } else {
+                    selected_embedding_model_container.hide();
+                }
             } else {
                 collectionsDropdownContainer.hide(); // Hide the Collections dropdown
                 pineconeIndexesContainer.hide(); // Hide the Pinecone Indexes dropdown
                 suffixTextContainer.hide(); // Hide the context suffix
                 suffixPositionContainer.hide(); // Hide the context suffix position
                 embeddingsLimitContainer.hide(); // Hide the embeddings limit
+                use_default_embedding_model.hide(); // Hide the default embedding model
+                selected_embedding_model_container.hide();
                 // Display message if no collections or indexes are available
                 if (vectordb === 'qdrant') {
                     collectionsDropdownContainer.after(noCollectionsMessage);
@@ -1206,7 +1359,7 @@ endif;
             $('.wpaicg_modal_title').html('<?php echo esc_html__('Customize your Prompt','gpt3-ai-content-generator')?>');
             $('.wpaicg_modal_content').html('<form action="" method="post" class="wpaicg-create-prompt-form">'+wpaicgPromptContent.html()+'</form>');
             var form = $('.wpaicg-create-prompt-form');
-            var wpaicg_prompt_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','embeddings_limit','suffix_position','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
+            var wpaicg_prompt_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','embeddings_limit','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','suffix_position','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
             for(var i = 0; i < wpaicg_prompt_keys.length;i++){
                 var wpaicg_prompt_key = wpaicg_prompt_keys[i];
                 var wpaicg_prompt_key_value = item.attr('data-'+wpaicg_prompt_key);
@@ -1236,6 +1389,29 @@ endif;
             var frequency_penalty = form.find('.wpaicg-create-prompt-frequency_penalty').val();
             var presence_penalty = form.find('.wpaicg-create-prompt-presence_penalty').val();
             var error_message = false;
+            var useDefault = form.find('.wpaicg-create-prompt-use_default_embedding_model').val();
+    
+            if (useDefault === 'yes') {
+                // Clear values if the default use is selected
+                form.find('.wpaicg-create-prompt-selected_embedding_provider').val('');
+                form.find('.wpaicg-create-prompt-selected_embedding_model').val('');
+            } else {
+                // Determine the provider based on the model if not using default
+                var selected_embedding_model = form.find('.wpaicg-create-prompt-selected_embedding_model').val();
+                var provider;
+                if (selected_embedding_model === 'embedding-001' || selected_embedding_model === 'text-embedding-004') {
+                    provider = 'Google';
+                } else if (selected_embedding_model === 'text-embedding-3-small' || 
+                        selected_embedding_model === 'text-embedding-3-large' || 
+                        selected_embedding_model === 'text-embedding-ada-002') {
+                    provider = 'OpenAI';
+                } else {
+                    provider = 'Azure';
+                }
+                
+                // Update the hidden input with the provider
+                form.find('.wpaicg-create-prompt-selected_embedding_provider').val(provider);
+            }
             var data = form.serialize();
             if(max_tokens !== '' && (parseFloat(max_tokens) < 1 || parseFloat(max_tokens) > 8000)){
                 error_message = '<?php echo sprintf(esc_html__('Please enter a valid max token value between %d and %d.','gpt3-ai-content-generator'),1,8000)?>';
@@ -1300,7 +1476,7 @@ endif;
         var wpaicgPromptItem = $('.wpaicg-prompt-item');
         var wpaicgPromptSearch = $('.wpaicg-prompt-search');
         var wpaicgPromptItems = $('.wpaicg-prompt-items');
-        var wpaicgPromptSettings = ['engine','max_tokens','temperature','top_p','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','best_of','frequency_penalty','presence_penalty','stop','post_title','id','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','copy_text'];
+        var wpaicgPromptSettings = ['engine','max_tokens','temperature','top_p','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','best_of','frequency_penalty','presence_penalty','stop','post_title','id','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','copy_text'];
         var wpaicgPromptDefaultContent = $('.wpaicg-prompt-modal-content');
         var wpaicgPromptEditor = false;
         var eventGenerator = false;
@@ -1742,9 +1918,6 @@ endif;
                 if(max_tokens === ''){
                     error_message = '<?php echo esc_html__('Please enter max tokens','gpt3-ai-content-generator')?>';
                 }
-                else if(parseFloat(max_tokens) < 1 || parseFloat(max_tokens) > 4000){
-                    error_message = '<?php echo sprintf(esc_html__('Please enter a valid max token value between %d and %d.','gpt3-ai-content-generator'),1,4000)?>';
-                }
                 else if(temperature === ''){
                     error_message = '<?php echo esc_html__('Please enter temperature','gpt3-ai-content-generator')?>';
                 }
@@ -1821,10 +1994,28 @@ endif;
                         else{
                             currentContent = $('.wpaicg-prompt-response-element').html();
                         }
-                                                    // if e.data is [DONE] then close the event source
+                        // if e.data is [DONE] then close the event source
                         if (e.data === "[DONE]") {
                             stopOpenAIGenerator();
-                        } else {
+                        } 
+                        else if (e.data === "[LIMITED]") {
+                                wpaicg_limited_token = true;
+                                count_line += 1;
+                                if(response_type === 'textarea') {
+                                    if (basicEditor) {
+                                        $('#editor-' + wpaicgEditorNumber).val(currentContent + "<br /><br />");
+                                    } else {
+                                        editor.setContent(currentContent + "<br /><br />");
+                                    }
+                                }
+                                else{
+                                    $('.wpaicg-prompt-response-element').append("<br>");
+                                }
+                                wpaicg_response_events = 0;
+                                stopOpenAIGenerator();
+                            }
+                        
+                        else {
                             var resultData = JSON.parse(e.data);
 
                             // Check if the response contains the finish_reason property and if it's set to "stop"

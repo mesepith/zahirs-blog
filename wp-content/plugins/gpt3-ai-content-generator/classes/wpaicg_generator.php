@@ -206,6 +206,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Generator')) {
                 $this->wpaicg_engine = get_option('wpaicg_azure_deployment', '');
             } elseif ($wpaicg_provider === 'Google') {
                 $this->wpaicg_engine = get_option('wpaicg_google_default_model', 'gemini-pro');
+            } elseif ($wpaicg_provider === 'OpenRouter') {
+                $this->wpaicg_engine = get_option('wpaicg_openrouter_default_model', 'openai/gpt-4o');
             }
 
             $this->wpaicg_allowed_html_content_post = wp_kses_allowed_html( 'post' );
@@ -220,13 +222,13 @@ if(!class_exists('\\WPAICG\\WPAICG_Generator')) {
                 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                 // Define the array of DALL-E sources
                 $dalle_sources = ['dalle', 'dalle2', 'dalle3', 'dalle3hd'];
-                if ($wpaicg_provider === 'Google' && in_array($this->wpaicg_image_source, $dalle_sources)) {
+                if (in_array($wpaicg_provider, ['Google', 'OpenRouter']) && in_array($this->wpaicg_image_source, $dalle_sources)) {
                     $this->wpaicg_image_source = '';
                 }
-                if ($wpaicg_provider === 'Google' && in_array($this->wpaicg_featured_image_source, $dalle_sources)) {
+                if (in_array($wpaicg_provider, ['Google', 'OpenRouter']) && in_array($this->wpaicg_featured_image_source, $dalle_sources)) {
                     $this->wpaicg_featured_image_source = '';
                 }
-
+                
                 $this->wpaicg_language = sanitize_text_field( $open_ai->wpai_language );
                 $this->wpaicg_add_intro = intval( $open_ai->wpai_add_intro );
                 $this->wpaicg_add_conclusion = intval( $open_ai->wpai_add_conclusion );
@@ -280,12 +282,13 @@ if(!class_exists('\\WPAICG\\WPAICG_Generator')) {
                 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                 // Define the array of DALL-E sources
                 $dalle_sources = ['dalle', 'dalle2', 'dalle3', 'dalle3hd'];
-                if ($wpaicg_provider === 'Google' && in_array($this->wpaicg_image_source, $dalle_sources)) {
+                if (in_array($wpaicg_provider, ['Google', 'OpenRouter']) && in_array($this->wpaicg_image_source, $dalle_sources)) {
                     $this->wpaicg_image_source = '';
                 }
-                if ($wpaicg_provider === 'Google' && in_array($this->wpaicg_featured_image_source, $dalle_sources)) {
+                if (in_array($wpaicg_provider, ['Google', 'OpenRouter']) && in_array($this->wpaicg_featured_image_source, $dalle_sources)) {
                     $this->wpaicg_featured_image_source = '';
                 }
+                
                 $this->wpaicg_language = sanitize_text_field( $_REQUEST["wpai_language"] );
                 $this->wpaicg_add_intro = intval( sanitize_text_field($_REQUEST["wpai_add_intro"] ));
                 $this->wpaicg_add_conclusion = intval( sanitize_text_field($_REQUEST["wpai_add_conclusion"] ));
@@ -1500,8 +1503,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Generator')) {
         {
             $this->openai = $openai;
         }
-
-        public function wpaicg_request($opts)
+        
+        public function wpaicg_request($opts,$wpaicg_provider = null)
         {
             $result = array('status' => 'error','tokens' => 0, 'length' => 0);
             if(!isset($opts['model']) || empty($opts['model'])){
@@ -1524,9 +1527,15 @@ if(!class_exists('\\WPAICG\\WPAICG_Generator')) {
                 );
                 unset($opts['prompt']);
                 unset($opts['best_of']);
-                // if  $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI'); is set to Google then set opts provider to google
-                if (get_option('wpaicg_provider', 'OpenAI') === 'Google') {
-                    $opts['provider'] = 'google';
+                // Determine the provider
+                if ($wpaicg_provider === null) {
+                    if (get_option('wpaicg_provider', 'OpenAI') === 'Google') {
+                        $opts['provider'] = 'google';
+                    }
+                } else {
+                    if ($wpaicg_provider === 'Google') {
+                        $opts['provider'] = 'google';
+                    } 
                 }
                 $complete = $this->openai->chat($opts);
             }

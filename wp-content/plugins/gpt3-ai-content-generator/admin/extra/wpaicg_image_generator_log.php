@@ -24,11 +24,11 @@ if(!empty($search)) {
 }
 
 $query = "SELECT * FROM ".$wpdb->prefix."wpaicg_image_logs WHERE 1=1".$where;
-$total_query = "SELECT COUNT(1) FROM (${query}) AS combined_table";
+$total_query = "SELECT COUNT(1) FROM ({$query}) AS combined_table";
 $total = $wpdb->get_var( $total_query );
 $items_per_page = 20;
 $offset = ( $wpaicg_log_page * $items_per_page ) - $items_per_page;
-$wpaicg_logs = $wpdb->get_results( $query . " ORDER BY created_at DESC LIMIT ${offset}, ${items_per_page}" );
+$wpaicg_logs = $wpdb->get_results( $query . " ORDER BY created_at DESC LIMIT {$offset}, {$items_per_page}" );
 $totalPage         = ceil($total / $items_per_page);
 ?>
 <style>
@@ -40,6 +40,9 @@ $totalPage         = ceil($total / $items_per_page);
     <div class="wpaicg-d-flex mb-5">
         <input style="width: 100%" value="<?php echo esc_html($search)?>" class="regular-text" name="search" type="text" placeholder="<?php echo esc_html__('Type for search','gpt3-ai-content-generator')?>">
         <button class="button button-primary"><?php echo esc_html__('Search','gpt3-ai-content-generator')?></button>
+        <?php if ($total > 0) : ?>
+        <button id="delete-all" class="button button-secondary" style="color: white;background: #9d0000;border: #9d0000;margin-left: 5px;"><?php echo esc_html__('Delete All','gpt3-ai-content-generator')?></button>
+        <?php endif; ?>
     </div>
 </form>
 <table class="wp-list-table widefat fixed striped table-view-list posts">
@@ -98,4 +101,26 @@ $totalPage         = ceil($total / $items_per_page);
 <script>
     jQuery(document).ready(function ($){
     })
+</script>
+<script>
+jQuery(document).ready(function($) {
+    $('#delete-all').click(function() {
+        if (confirm('Are you sure you want to delete all logs? This action cannot be undone.')) {
+            $.ajax({
+                url: ajaxurl, // Make sure ajaxurl is defined globally
+                type: 'POST',
+                data: {
+                    action: 'wpaicg_delete_all_image_logs', // The action hook for backend
+                    nonce: '<?php echo wp_create_nonce("wpaicg_delete_all_image_logs_nonce"); ?>'
+                },
+                success: function(response) {
+                    alert(response.data.message);
+                    if (response.success) {
+                        location.reload(); // Reload the page to update the log table
+                    }
+                }
+            });
+        }
+    });
+});
 </script>

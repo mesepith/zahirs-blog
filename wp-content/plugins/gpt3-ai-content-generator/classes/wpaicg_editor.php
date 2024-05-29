@@ -141,15 +141,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Editor')) {
                     wp_send_json($wpaicg_result);
                 }
 
-                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-
-                if ($wpaicg_provider === 'OpenAI') {
-                    $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-16k');
-                } elseif ($wpaicg_provider === 'Azure') {
-                    $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                } elseif ($wpaicg_provider === 'Google') {
-                    $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
-                }
+                $ai_provider_info = \WPAICG\WPAICG_Util::get_instance()->get_default_ai_provider();
+                $wpaicg_provider = $ai_provider_info['provider'];
+                $wpaicg_ai_model = $ai_provider_info['model'];
 
                 if ($wpaicg_provider == 'Google') {
 

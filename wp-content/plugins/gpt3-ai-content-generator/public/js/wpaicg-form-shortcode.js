@@ -432,6 +432,7 @@ var wpaicgPlayGround = {
             currentContent = wpaicg_PlayGround.getContent(wpaicgFormData.response,formID);
 
             if (e.data === "[LIMITED]") {
+                console.log('Limited token');
                 wpaicg_limited_token = true;
                 count_line += 1;
                 wpaicg_PlayGround.setContent(wpaicgFormData.response,formID,currentContent + wpaicg_break_newline);
@@ -455,7 +456,6 @@ var wpaicgPlayGround = {
             }
             else {
                 var result = JSON.parse(e.data);
-                console.log(result);
 
                 // Check if the response contains the finish_reason property and if it's set to "stop"
                 var hasFinishReason = result.choices && 

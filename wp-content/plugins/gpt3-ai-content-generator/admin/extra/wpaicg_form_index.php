@@ -28,13 +28,13 @@ if (!is_array($qdrant_collections)) {
 $pineconeindexes = get_option('wpaicg_pinecone_indexes','');
 $pineconeindexes = empty($pineconeindexes) ? array() : json_decode($pineconeindexes,true);
 
+$gpt4_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt4_models;
+$gpt35_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt35_models;
+$engineMaxTokens = \WPAICG\WPAICG_Util::get_instance()->max_token_values;
 
-// Define the model categories and their members.
-$gpt4_models = ['gpt-4','gpt-4-turbo','gpt-4-vision-preview'];
-$gpt35_models = ['gpt-3.5-turbo', 'gpt-3.5-turbo-16k', 'gpt-3.5-turbo-instruct'];
 $custom_models = get_option('wpaicg_custom_models', []);
 
-$current_model = '';
+$current_model = 'gpt-3.5-turbo';
 
 $wpaicg_authors = array('default' => array('name' => 'AI Power','count' => 0));
 if(file_exists(WPAICG_PLUGIN_DIR.'admin/data/gptcategories.json')){
@@ -69,7 +69,7 @@ if(file_exists(WPAICG_PLUGIN_DIR.'admin/data/gptforms.json')){
 }
 
 $sql = "SELECT p.ID as id,p.post_title as title,p.post_author as author, p.post_content as description";
-$wpaicg_meta_keys = array('fields','editor','prompt','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
+$wpaicg_meta_keys = array('fields','editor','prompt','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','bgcolor','header','embeddings','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
 
 foreach ($wpaicg_meta_keys as $wpaicg_meta_key) {
     $sql .= $wpdb->prepare(
@@ -472,13 +472,13 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
                         <!-- Display dropdown for OpenAI -->
                         <select name="engine" class="wpaicg-w-100 wpaicg-create-template-engine" required>
                             <optgroup label="GPT-4">
-                                <?php foreach ($gpt4_models as $model): ?>
-                                    <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $current_model); ?>><?php echo esc_html($model); ?></option>
+                                <?php foreach ($gpt4_models as $value => $display_name): ?>
+                                    <option value="<?php echo esc_attr($value); ?>"<?php selected($value, $current_model); ?>><?php echo esc_html($display_name); ?></option>
                                 <?php endforeach; ?>
                             </optgroup>
                             <optgroup label="GPT-3.5">
-                                <?php foreach ($gpt35_models as $model): ?>
-                                    <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $current_model); ?>><?php echo esc_html($model); ?></option>
+                                <?php foreach ($gpt35_models as $value => $display_name): ?>
+                                    <option value="<?php echo esc_attr($value); ?>"<?php selected($value, $current_model); ?>><?php echo esc_html($display_name); ?></option>
                                 <?php endforeach; ?>
                             </optgroup>
                             <optgroup label="Custom Models">
@@ -487,14 +487,49 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
                                 <?php endforeach; ?>
                             </optgroup>
                         </select>
-                        <?php elseif ($wpaicg_provider == 'Google'): ?>
+                    <?php elseif ($wpaicg_provider == 'Google'): ?>
                         <!-- Display dropdown for Google AI -->
                         <select name="engine" class="wpaicg-w-100 wpaicg-create-template-engine" required>
                             <optgroup label="Google Models">
                                 <?php foreach ($wpaicg_google_model_list as $model): ?>
-                                    <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                    <?php if (stripos($model, 'vision') !== false): ?>
+                                        <!-- Option disabled if it contains the word 'vision' -->
+                                        <option value="<?php echo esc_attr($model); ?>" disabled><?php echo esc_html($model); ?></option>
+                                    <?php else: ?>
+                                        <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                    <?php endif; ?>
                                 <?php endforeach; ?>
                             </optgroup>
+                        </select>
+                    <?php elseif ($wpaicg_provider == 'OpenRouter'): ?>
+                        <!-- Display dropdown for OpenRouter -->
+                        <?php
+                        $openrouter_models = get_option('wpaicg_openrouter_model_list', []);
+                        $openrouter_grouped_models = [];
+                        foreach ($openrouter_models as $openrouter_model) {
+                            $openrouter_provider = explode('/', $openrouter_model['id'])[0];
+                            if (!isset($openrouter_grouped_models[$openrouter_provider])) {
+                                $openrouter_grouped_models[$openrouter_provider] = [];
+                            }
+                            $openrouter_grouped_models[$openrouter_provider][] = $openrouter_model;
+                        }
+                        ksort($openrouter_grouped_models);
+
+                        $openrouter_selected_model = get_option('wpaicg_widget_openrouter_model', 'openrouter/auto');
+                        ?>
+                        <select name="engine" class="wpaicg-w-100 wpaicg-create-template-engine" required>
+                            <?php
+                            foreach ($openrouter_grouped_models as $openrouter_provider => $openrouter_models): ?>
+                                <optgroup label="<?php echo esc_attr($openrouter_provider); ?>">
+                                    <?php
+                                    usort($openrouter_models, function($a, $b) {
+                                        return strcmp($a["name"], $b["name"]);
+                                    });
+                                    foreach ($openrouter_models as $openrouter_model): ?>
+                                        <option value="<?php echo esc_attr($openrouter_model['id']); ?>"<?php selected($openrouter_model['id'], $openrouter_selected_model); ?>><?php echo esc_html($openrouter_model['name']); ?></option>
+                                    <?php endforeach; ?>
+                                </optgroup>
+                            <?php endforeach; ?>
                         </select>
                     <?php else: ?>
                         <!-- Display readonly text field for AzureAI -->
@@ -564,14 +599,14 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
                 </div>
                 <!-- Placeholder for Collections Dropdown -->
                 <div class="wpaicg-grid-1 wpaicg-collections-dropdown" style="display: none">
-                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Collections', 'gpt3-ai-content-generator'); ?></strong>
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Collection', 'gpt3-ai-content-generator'); ?></strong>
                     <select name="collections" class="wpaicg-w-100 wpaicg-create-template-collections">
                         <!-- Options will be dynamically added here -->
                     </select>
                 </div>
                 <!-- Placeholder for Pinecone Indexes Dropdown -->
                 <div class="wpaicg-grid-1 wpaicg-pineconeindexes-dropdown" style="display: none">
-                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Indexes', 'gpt3-ai-content-generator'); ?></strong>
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Index', 'gpt3-ai-content-generator'); ?></strong>
                     <select name="pineconeindexes" class="wpaicg-w-100 wpaicg-create-template-pineconeindexes">
                         <!-- Options will be dynamically added here -->
                     </select>
@@ -597,6 +632,31 @@ $allowed_tags = array_merge( $kses_defaults, $svg_args );
                         <option value="after"><?php echo esc_html__('After Prompt','gpt3-ai-content-generator')?></option>
                         <option value="before"><?php echo esc_html__('Before Prompt','gpt3-ai-content-generator')?></option>
                     </select>
+                </div>
+                <div class="wpaicg-grid-1 wpaicg-context-use_default_embedding_model" style="display: none">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Use Default Model','gpt3-ai-content-generator')?></strong>
+                    <select name="use_default_embedding_model" class="wpaicg-w-100 wpaicg-create-template-use_default_embedding_model">
+                        <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
+                        <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
+                    </select>
+                </div>
+                <div class="wpaicg-grid-1 wpaicg-context-selected_embedding_model">
+                    <strong class="wpaicg-d-block mb-5"><?php echo esc_html__('Embedding Model','gpt3-ai-content-generator')?></strong>
+                    <select name="selected_embedding_model" class="wpaicg-w-100 wpaicg-create-template-selected_embedding_model">
+                        <?php
+                        $embedding_models = \WPAICG\WPAICG_Util::get_instance()->get_embedding_models();
+                        $embedding_model = '';
+                        foreach ($embedding_models as $provider => $models) {
+                            echo '<optgroup label="' . esc_attr($provider) . '">';
+                            foreach ($models as $model => $dimension) {
+                                $selected = ($model === $embedding_model) ? 'selected' : '';
+                                echo '<option value="' . esc_attr($model) . '" data-provider="' . esc_attr($provider) . '" ' . $selected . '>' . esc_html($model) . ' (' . esc_html($dimension) . ')</option>';
+                            }
+                            echo '</optgroup>';
+                        }
+                        ?>
+                    </select>
+                    <input type="hidden" id="selected_embedding_provider" name="selected_embedding_provider" class="wpaicg-w-100 wpaicg-create-template-selected_embedding_provider">
                 </div>
             </div>
         </div>
@@ -799,9 +859,12 @@ endif;
                         if ($wpaicg_provider == 'Azure') {
                             $wpaicg_engine = get_option('wpaicg_azure_deployment', '');
                         } elseif ($wpaicg_provider == 'Google') {
-                            $wpaicg_engine = get_option('wpaicg_google_default_model', 'gemini-pro');
+                            $wpaicg_google_default_model = get_option('wpaicg_google_default_model', 'gemini-pro');
+                            $wpaicg_engine = isset($wpaicg_item['engine']) && !empty($wpaicg_item['engine']) ? $wpaicg_item['engine'] : $wpaicg_google_default_model;
+                        } elseif ($wpaicg_provider == 'OpenRouter') {
+                            $wpaicg_openrouter_default_model = get_option('wpaicg_openrouter_default_model', 'openrouter/auto');
+                            $wpaicg_engine = isset($wpaicg_item['engine']) && !empty($wpaicg_item['engine']) ? $wpaicg_item['engine'] : $wpaicg_openrouter_default_model;
                         }
-
                         $wpaicg_max_tokens = isset($wpaicg_item['max_tokens']) && !empty($wpaicg_item['max_tokens']) ? $wpaicg_item['max_tokens'] : $this->wpaicg_max_tokens;
                         $wpaicg_temperature = isset($wpaicg_item['temperature']) && !empty($wpaicg_item['temperature']) ? $wpaicg_item['temperature'] : $this->wpaicg_temperature;
                         $wpaicg_top_p = isset($wpaicg_item['top_p']) && !empty($wpaicg_item['top_p']) ? $wpaicg_item['top_p'] : $this->wpaicg_top_p;
@@ -866,6 +929,9 @@ endif;
                             data-editor="<?php echo isset($wpaicg_item['editor']) && $wpaicg_item['editor'] == 'div' ? 'div' : 'textarea'?>"
                             data-header="<?php echo isset($wpaicg_item['header']) ? esc_html($wpaicg_item['header']) : '';?>"
                             data-embeddings="<?php echo isset($wpaicg_item['embeddings']) ? esc_html($wpaicg_item['embeddings']) : 'no';?>"
+                            data-use_default_embedding_model="<?php echo isset($wpaicg_item['use_default_embedding_model']) ? esc_html($wpaicg_item['use_default_embedding_model']) : 'yes';?>"
+                            data-selected_embedding_model = "<?php echo isset($wpaicg_item['selected_embedding_model']) ? esc_html($wpaicg_item['selected_embedding_model']) : '';?>"
+                            data-selected_embedding_provider = "<?php echo isset($wpaicg_item['selected_embedding_provider']) ? esc_html($wpaicg_item['selected_embedding_provider']) : '';?>"
                             data-vectordb="<?php echo isset($wpaicg_item['vectordb']) ? esc_html($wpaicg_item['vectordb']) : '';?>"
                             data-suffix_position="<?php echo isset($wpaicg_item['suffix_position']) ? esc_html($wpaicg_item['suffix_position']) : 'after';?>"
                             data-collections="<?php echo isset($wpaicg_item['collections']) ? esc_html($wpaicg_item['collections']) : '';?>"
@@ -963,30 +1029,63 @@ endif;
                             <!-- Display dropdown for OpenAI -->
                             <select name="engine" class="wpaicg-w-100 wpaicg-create-template-engine" required>
                                 <optgroup label="GPT-4">
-                                    <?php foreach ($gpt4_models as $model): ?>
-                                        <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $current_model); ?>><?php echo esc_html($model); ?></option>
+                                    <?php foreach ($gpt4_models as $value => $display_name): ?>
+                                        <option value="<?php echo esc_attr($value); ?>"<?php selected($value, $current_model); ?>><?php echo esc_html($display_name); ?></option>
                                     <?php endforeach; ?>
                                 </optgroup>
                                 <optgroup label="GPT-3.5">
-                                    <?php foreach ($gpt35_models as $model): ?>
-                                        <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $current_model); ?>><?php echo esc_html($model); ?></option>
+                                    <?php foreach ($gpt35_models as $value => $display_name): ?>
+                                        <option value="<?php echo esc_attr($value); ?>"<?php selected($value, $current_model); ?>><?php echo esc_html($display_name); ?></option>
                                     <?php endforeach; ?>
                                 </optgroup>
-
                                 <optgroup label="Custom Models">
                                     <?php foreach ($custom_models as $model): ?>
                                         <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $current_model); ?>><?php echo esc_html($model); ?></option>
                                     <?php endforeach; ?>
                                 </optgroup>
                             </select>
-                            <?php elseif ($wpaicg_provider == 'Google'): ?>
+                        <?php elseif ($wpaicg_provider == 'Google'): ?>
                             <!-- Display dropdown for Google AI -->
                             <select name="engine" class="wpaicg-w-100 wpaicg-create-template-engine" required>
                                 <optgroup label="Google Models">
                                     <?php foreach ($wpaicg_google_model_list as $model): ?>
-                                        <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                        <?php if (stripos($model, 'vision') !== false): ?>
+                                            <!-- Option disabled if it contains the word 'vision' -->
+                                            <option value="<?php echo esc_attr($model); ?>" disabled><?php echo esc_html($model); ?></option>
+                                        <?php else: ?>
+                                            <option value="<?php echo esc_attr($model); ?>"<?php selected($model, $wpaicg_google_default_model); ?>><?php echo esc_html($model); ?></option>
+                                        <?php endif; ?>
                                     <?php endforeach; ?>
                                 </optgroup>
+                            </select>
+                        <?php elseif ($wpaicg_provider == 'OpenRouter'): ?>
+                            <!-- Display dropdown for OpenRouter -->
+                            <?php
+                            $openrouter_models = get_option('wpaicg_openrouter_model_list', []);
+                            $openrouter_grouped_models = [];
+                            foreach ($openrouter_models as $openrouter_model) {
+                                $openrouter_provider = explode('/', $openrouter_model['id'])[0];
+                                if (!isset($openrouter_grouped_models[$openrouter_provider])) {
+                                    $openrouter_grouped_models[$openrouter_provider] = [];
+                                }
+                                $openrouter_grouped_models[$openrouter_provider][] = $openrouter_model;
+                            }
+                            ksort($openrouter_grouped_models);
+
+                            ?>
+                            <select name="engine" class="wpaicg-w-100 wpaicg-create-template-engine" required>
+                                <?php
+                                foreach ($openrouter_grouped_models as $openrouter_provider => $openrouter_models): ?>
+                                    <optgroup label="<?php echo esc_attr($openrouter_provider); ?>">
+                                        <?php
+                                        usort($openrouter_models, function($a, $b) {
+                                            return strcmp($a["name"], $b["name"]);
+                                        });
+                                        foreach ($openrouter_models as $openrouter_model): ?>
+                                            <option value="<?php echo esc_attr($openrouter_model['id']); ?>"<?php selected($openrouter_model['id'], $wpaicg_openrouter_default_model); ?>><?php echo esc_html($openrouter_model['name']); ?></option>
+                                        <?php endforeach; ?>
+                                    </optgroup>
+                                <?php endforeach; ?>
                             </select>
                         <?php else: ?>
                             <!-- Display readonly text field for AzureAI -->
@@ -1017,11 +1116,11 @@ endif;
     </form>
 </div>
 
-
 <script>
     var qdrantCollections = <?php echo json_encode($qdrant_collections); ?>;
     var qdrantDefaultCollection = "<?php echo esc_js($qdrant_default_collection); ?>";
     var pineconeIndexes = <?php echo json_encode($pineconeindexes); ?>;
+    var engineMaxTokens = <?php echo json_encode($engineMaxTokens); ?>;
 
     jQuery(document).ready(function ($){
         let prompt_id;
@@ -1155,6 +1254,24 @@ endif;
             })
         }
 
+        $(document).on('change', '.wpaicg-create-template-selected_embedding_model', function() {
+            var selectedOption = $(this).find('option:selected');
+            var provider = selectedOption.data('provider');
+            $('#selected_embedding_provider').val(provider);
+        });
+
+        // Handle change event for the 'use_default_embedding_model' dropdown
+        $(document).on('change', 'select[name="use_default_embedding_model"]', function() {
+            var selectedOption = $(this).val();
+            var selected_embedding_model_container = $('.wpaicg-context-selected_embedding_model');
+
+            if (selectedOption === 'no') {
+                selected_embedding_model_container.show();
+            } else {
+                selected_embedding_model_container.hide();
+            }
+        });
+
         // if embeddings is yes then display the vector db section
         $(document).on('change', '.wpaicg-create-template-embeddings', function(e) {
             var embeddings = $(e.currentTarget).val();
@@ -1163,6 +1280,9 @@ endif;
             var suffixTextContainer = $('.wpaicg-context-suffix');
             var suffixPositionContainer = $('.wpaicg-context-suffix-position');
             var embeddingsLimitContainer = $('.wpaicg-embeddings-limit');
+            // use_default_embedding_model
+            var use_default_embedding_model = $('.wpaicg-context-use_default_embedding_model');
+            var selected_embedding_model_container = $('.wpaicg-context-selected_embedding_model');
 
             if (embeddings === 'yes') {
                 vectorDBSection.show(); // Show the Vector DB section
@@ -1176,11 +1296,10 @@ endif;
                 suffixTextContainer.hide(); // Hide the context suffix
                 suffixPositionContainer.hide(); // Hide the context suffix position
                 embeddingsLimitContainer.hide(); // Hide the embeddings limit
+                use_default_embedding_model.hide(); // Hide the default embedding model
+                selected_embedding_model_container.hide();
             }
         });
-
-        // Trigger the change event on page load to set the initial visibility of the Vector DB section
-        $('.wpaicg-create-template-embeddings').trigger('change');
 
         // Change event for vectordb selection to show/hide collections dropdown
         $(document).on('change', '.wpaicg-create-template-vectordb', function() {
@@ -1192,7 +1311,11 @@ endif;
             var suffixTextContainer = $('.wpaicg-context-suffix');
             var suffixPositionContainer = $('.wpaicg-context-suffix-position');
             var embeddingsLimitContainer = $('.wpaicg-embeddings-limit');
-
+            var use_default_embedding_model = $('.wpaicg-context-use_default_embedding_model');
+            var selected_embedding_model_container = $('.wpaicg-context-selected_embedding_model');
+            // get use_default_embedding_model value using find and parent
+            var useDefaultModel = $(this).parent().parent().find('select[name="use_default_embedding_model"]').val();
+            
             // Define a message for no collections or indexes
             var noCollectionsMessage = '<p class="wpaicg-no-items-message"><?php echo esc_html__('No collections available', 'gpt3-ai-content-generator'); ?></p>';
             var noIndexesMessage = '<p class="wpaicg-no-items-message"><?php echo esc_html__('No indexes available', 'gpt3-ai-content-generator'); ?></p>';
@@ -1204,8 +1327,19 @@ endif;
 
                 // Populate the collections dropdown
                 $.each(qdrantCollections, function(index, collection) {
-                    var selectedAttribute = collection === qdrantDefaultCollection ? ' selected' : '';
-                    collectionsDropdown.append('<option value="' + collection + '"' + selectedAttribute + '>' + collection + '</option>');
+                    var name, dimension, displayName, selectedAttribute;
+                    // Check if the collection is an object (new structure) or just a string (old structure)
+                    if (typeof collection === 'object' && collection.name) {
+                        name = collection.name;
+                        dimension = collection.dimension ? ' (' + collection.dimension + ')' : '';
+                        displayName = name + dimension;
+                    } else {
+                        // Handle as a string (old structure)
+                        name = collection;
+                        displayName = collection;
+                    }
+                    selectedAttribute = (name === qdrantDefaultCollection) ? ' selected' : '';
+                    collectionsDropdown.append('<option value="' + name + '"' + selectedAttribute + '>' + displayName + '</option>');
                 });
 
                 collectionsDropdownContainer.show(); // Show the Collections dropdown
@@ -1214,6 +1348,12 @@ endif;
                 suffixTextContainer.show();
                 suffixPositionContainer.show();
                 embeddingsLimitContainer.show(); // Show the embeddings limit
+                use_default_embedding_model.show(); // Show the default embedding model
+                if (useDefaultModel === 'no') {
+                    selected_embedding_model_container.show();
+                } else {
+                    selected_embedding_model_container.hide();
+                }
             } else if (vectordb === 'pinecone' && pineconeIndexes.length > 0) {
                 indexDropdown.empty(); // Clear existing options
                 // Populate the Pinecone Indexes dropdown
@@ -1227,12 +1367,20 @@ endif;
                 suffixTextContainer.show();
                 suffixPositionContainer.show();
                 embeddingsLimitContainer.show(); // Show the embeddings limit
+                use_default_embedding_model.show(); // Show the default embedding model
+                if (useDefaultModel === 'no') {
+                    selected_embedding_model_container.show();
+                } else {
+                    selected_embedding_model_container.hide();
+                }
             } else {
                 collectionsDropdownContainer.hide(); // Hide the Collections dropdown
                 pineconeIndexesContainer.hide(); // Hide the Pinecone Indexes dropdown
                 suffixTextContainer.hide(); // Hide the context suffix
                 suffixPositionContainer.hide(); // Hide the context suffix position
                 embeddingsLimitContainer.hide(); // Hide the embeddings limit
+                use_default_embedding_model.hide(); // Hide the default embedding model
+                selected_embedding_model_container.hide();
                 // Display message if no collections or indexes are available
                 if (vectordb === 'qdrant') {
                     collectionsDropdownContainer.after(noCollectionsMessage);
@@ -1241,10 +1389,13 @@ endif;
                 }
             }
         });
-
+        
+        // Trigger the change event on page load to set the initial visibility of the Vector DB section
+        $('.wpaicg-create-template-embeddings').trigger('change');
         // Initially trigger vectordb change to apply logic based on default selected value
         $('.wpaicg-create-template-vectordb').trigger('change');
-
+        // Initial call to update the provider when the page loads or when modal content is dynamically loaded
+        $('.wpaicg-create-template-selected_embedding_model').trigger('change');
 
         $(document).on('click','.wpaicg-create-form-field', function(e){
             $('.wpaicg-create-template-form .wpaicg-template-fields').append(wpaicgCreateField.html());
@@ -1284,7 +1435,6 @@ endif;
             $('.wpaicg-create-template-form .wpaicg-create-template-category').val('generation');
             $('.wpaicg-create-template-form .wpaicg-template-icons span[data-key=robot]').addClass('icon_selected');
             $('.wpaicg-overlay').show();
-            //$('.wpaicg_modal').css('height','60%');
             $('.wpaicg_modal').show();
         })
         $(document).on('click','.wpaicg-template-item .wpaicg-template-action-delete',function (e){
@@ -1302,7 +1452,7 @@ endif;
             $('.wpaicg_modal_title').html('<?php echo esc_html__('Edit your Template','gpt3-ai-content-generator')?>');
             $('.wpaicg_modal_content').html('<form action="" method="post" class="wpaicg-create-template-form">'+wpaicgTemplateContent.html()+'</form>');
             var form = $('.wpaicg-create-template-form');
-            var wpaicg_template_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','embeddings_limit','suffix_position','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
+            var wpaicg_template_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','embeddings_limit','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','suffix_position','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
             for(var i = 0; i < wpaicg_template_keys.length;i++){
                 var wpaicg_template_key = wpaicg_template_keys[i];
                 var wpaicg_template_key_value = item.attr('data-'+wpaicg_template_key);
@@ -1345,6 +1495,7 @@ endif;
             var savedCollection = item.attr('data-collections');
             // Retrieve the saved pinecone index for the item being edited
             var savedPineconeIndex = item.attr('data-pineconeindexes');
+
             // if embeddings is yes then display the vector db section
             if (form.find('.wpaicg-create-template-embeddings').val() === 'yes') {
                 form.find('.wpaicg-vectordb-container').show();
@@ -1353,9 +1504,17 @@ endif;
                     form.find('.wpaicg-create-template-collections').empty(); // Clear existing options
 
                     $.each(qdrantCollections, function(index, collection) {
-                        // Set the selected attribute based on whether this collection matches the saved state
-                        var isSelected = (collection === savedCollection) ? ' selected' : '';
-                        form.find('.wpaicg-create-template-collections').append('<option value="' + collection + '"' + isSelected + '>' + collection + '</option>');
+                        var name, dimension, displayName, selectedAttribute;
+                        if (typeof collection === 'object' && collection.name) {
+                            name = collection.name;
+                            dimension = collection.dimension ? ' (' + collection.dimension + ')' : '';
+                            displayName = name + dimension;
+                        } else {
+                            name = collection; // For older structure where collection is just a string
+                            displayName = collection;
+                        }
+                        selectedAttribute = (name === savedCollection) ? ' selected' : '';
+                        form.find('.wpaicg-create-template-collections').append('<option value="' + name + '"' + selectedAttribute + '>' + displayName + '</option>');
                     });
                     form.find('.wpaicg-collections-dropdown').show(); // Show the Collections dropdown
                     // hide the pinecone indexes dropdown
@@ -1366,6 +1525,14 @@ endif;
                     form.find('.wpaicg-context-suffix-position').show();
                     // display wpaicg-embeddings-limit
                     form.find('.wpaicg-embeddings-limit').show();
+                    // display the default embedding model
+                    form.find('.wpaicg-context-use_default_embedding_model').show();
+                    // display the selected embedding model
+                    if (form.find('.wpaicg-create-template-use_default_embedding_model').val() === 'no') {
+                        form.find('.wpaicg-context-selected_embedding_model').show();
+                    } else {
+                        form.find('.wpaicg-context-selected_embedding_model').hide();
+                    }
 
                 } else if (form.find('.wpaicg-create-template-vectordb').val() === 'pinecone') {
                     // Populate the Pinecone Indexes dropdown
@@ -1385,6 +1552,14 @@ endif;
                     form.find('.wpaicg-context-suffix-position').show();
                     // display wpaicg-embeddings-limit
                     form.find('.wpaicg-embeddings-limit').show();
+                    // display the default embedding model
+                    form.find('.wpaicg-context-use_default_embedding_model').show();
+                    // display the selected embedding model
+                    if (form.find('.wpaicg-create-template-use_default_embedding_model').val() === 'no') {
+                        form.find('.wpaicg-context-selected_embedding_model').show();
+                    } else {
+                        form.find('.wpaicg-context-selected_embedding_model').hide();
+                    }
                 }
                 else {
                     form.find('.wpaicg-collections-dropdown').hide(); // Hide the Collections dropdown
@@ -1392,6 +1567,9 @@ endif;
                     form.find('.wpaicg-context-suffix').hide(); // Hide the context suffix
                     form.find('.wpaicg-context-suffix-position').hide(); // Hide the context suffix position
                     form.find('.wpaicg-embeddings-limit').hide(); // Hide the embeddings limit
+                    // hide the default embedding model
+                    form.find('.wpaicg-context-use_default_embedding_model').hide();
+                    form.find('.wpaicg-context-selected_embedding_model').hide();
                 }
 
             } else {
@@ -1401,6 +1579,9 @@ endif;
                 form.find('.wpaicg-context-suffix').hide(); // Hide the context suffix
                 form.find('.wpaicg-context-suffix-position').hide(); // Hide the context suffix position
                 form.find('.wpaicg-embeddings-limit').hide(); // Hide the embeddings limit
+                // hide the default embedding model
+                form.find('.wpaicg-context-use_default_embedding_model').hide();
+                form.find('.wpaicg-context-selected_embedding_model').hide();
             }
 
             $('.wpaicg-create-template-form .wpaicg-create-template-color').wpColorPicker();
@@ -1417,7 +1598,7 @@ endif;
             $('.wpaicg_modal_title').html('<?php echo esc_html__('Customize your Template','gpt3-ai-content-generator')?>');
             $('.wpaicg_modal_content').html('<form action="" method="post" class="wpaicg-create-template-form">'+wpaicgTemplateContent.html()+'</form>');
             var form = $('.wpaicg-create-template-form');
-            var wpaicg_template_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
+            var wpaicg_template_keys = ['engine','editor','title','description','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','prompt','response','category','icon','color','bgcolor','header','embeddings','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons'];
             for(var i = 0; i < wpaicg_template_keys.length;i++){
                 var wpaicg_template_key = wpaicg_template_keys[i];
                 var wpaicg_template_key_value = item.attr('data-'+wpaicg_template_key);
@@ -1474,24 +1655,34 @@ endif;
             $('.wpaicg_modal').show();
         });
         $(document).on('submit','.wpaicg-create-template-form', function(e){
+            e.preventDefault(); // Prevent the form from submitting for debugging
             var form = $(e.currentTarget);
+            var selected_embedding_provider = $('#selected_embedding_provider').val(); // Fetch the value directly from the input
             var btn = form.find('.wpaicg-create-template-save');
-
-            // Lookup object for context sizes of different models
-            var engineMaxTokens = {
-                'gpt-4': 8192,
-                'gpt-4-32k': 32768,
-                'gpt-3.5-turbo': 4096,
-                'gpt-4-turbo': 4096,
-                'gpt-3.5-turbo-16k': 16384,
-                'gpt-3.5-turbo-instruct': 4096,
-                'text-davinci-003': 4000,
-                'text-curie-001': 2048,
-                'text-babbage-001': 2048,
-                'text-ada-001': 2048
-            };
-
             var engine = form.find('.wpaicg-create-template-engine').val();
+            var useDefault = form.find('.wpaicg-create-template-use_default_embedding_model').val();
+    
+            if (useDefault === 'yes') {
+                // Clear values if the default use is selected
+                form.find('.wpaicg-create-template-selected_embedding_provider').val('');
+                form.find('.wpaicg-create-template-selected_embedding_model').val('');
+            } else {
+                // Determine the provider based on the model if not using default
+                var selected_embedding_model = form.find('.wpaicg-create-template-selected_embedding_model').val();
+                var provider;
+                if (selected_embedding_model === 'embedding-001' || selected_embedding_model === 'text-embedding-004') {
+                    provider = 'Google';
+                } else if (selected_embedding_model === 'text-embedding-3-small' || 
+                        selected_embedding_model === 'text-embedding-3-large' || 
+                        selected_embedding_model === 'text-embedding-ada-002') {
+                    provider = 'OpenAI';
+                } else {
+                    provider = 'Azure';
+                }
+                
+                // Update the hidden input with the provider
+                form.find('.wpaicg-create-template-selected_embedding_provider').val(provider);
+            }
 
             // Fetch context size based on the selected engine, if it is a custom model, use the default value: 4096.
             var maxValidToken = engineMaxTokens[engine] || 4096;
@@ -1587,7 +1778,7 @@ endif;
         var wpaicgTemplateItem = $('.wpaicg-template-item');
         var wpaicgTemplateSearch = $('.wpaicg-template-search');
         var wpaicgTemplateItems = $('.wpaicg-template-items');
-        var wpaicgTemplateSettings = ['engine','max_tokens','temperature','top_p','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','best_of','frequency_penalty','presence_penalty','stop','post_title','id','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','copy_text'];
+        var wpaicgTemplateSettings = ['engine','max_tokens','temperature','top_p','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','best_of','frequency_penalty','presence_penalty','stop','post_title','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','id','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','copy_text'];
         var wpaicgTemplateDefaultContent = $('.wpaicg-template-modal-content');
         var wpaicgTemplateEditor = false;
         var eventGenerator = false;
@@ -1905,7 +2096,6 @@ endif;
             });
         });
 
-
         $(document).on('input','.wpaicg-template-form .wpaicg-template-max_tokens input', function(e){
             var maxtokens = $(e.currentTarget).val();
             var wpaicg_estimated_cost = maxtokens !== '' ? parseFloat(maxtokens)*0.002/1000 : 0;
@@ -2099,26 +2289,14 @@ endif;
             var template_title = form.find('.wpaicg-template-title').val();
             var response_type = form.find('.wpaicg-template-response-type').val();
             if(template_title !== '') {
+                // trim the title
+                template_title = template_title.trim();
                 var max_tokens = form.find('.wpaicg-template-max_tokens input').val();
                 var temperature = form.find('.wpaicg-template-temperature input').val();
                 var top_p = form.find('.wpaicg-template-top_p input').val();
                 var best_of = form.find('.wpaicg-template-best_of input').val();
                 var frequency_penalty = form.find('.wpaicg-template-frequency_penalty input').val();
                 var presence_penalty = form.find('.wpaicg-template-presence_penalty input').val();
-
-                // Lookup object for context sizes of different models
-                var engineMaxTokens = {
-                    'gpt-4': 8192,
-                    'gpt-4-32k': 32768,
-                    'gpt-4-turbo': 4096,
-                    'gpt-3.5-turbo': 4096,
-                    'gpt-3.5-turbo-16k': 16384,
-                    'gpt-3.5-turbo-instruct': 4096,
-                    'text-davinci-003': 4000,
-                    'text-curie-001': 2048,
-                    'text-babbage-001': 2048,
-                    'text-ada-001': 2048
-                };
 
                 var max_tokens = form.find('.wpaicg-template-max_tokens input').val();
                 var engine = form.find('.wpaicg-template-engine select').val();
@@ -2256,7 +2434,25 @@ endif;
                             // if e.data is [DONE] then close the event source
                             if (e.data === "[DONE]") {
                                 stopOpenAIGenerator();
-                            } else 
+                            }   else if (e.data === "[LIMITED]") {
+                                    console.log('Limited token');
+                                    wpaicg_limited_token = true;
+                                    count_line += 1;
+                                    if(response_type === 'textarea') {
+                                        if (basicEditor) {
+                                            $('#editor-' + wpaicgEditorNumber).val(currentContent + '<br /><br />');
+                                        } else {
+                                            editor.setContent(currentContent + '<br /><br />');
+                                        }
+                                    }
+                                    else{
+                                        $('.wpaicg-template-response-element').append('<br />');
+                                    }
+                                    wpaicg_response_events = 0;
+                                    stopOpenAIGenerator();
+                                }
+                    
+                            else 
                             {
                                 var resultData = JSON.parse(e.data);
 
@@ -2283,6 +2479,7 @@ endif;
                                     wpaicg_response_events = 0;
                                 }
                                 else if (e.data === "[LIMITED]") {
+                                    console.log('Limited token');
                                     wpaicg_limited_token = true;
                                     count_line += 1;
                                     if(response_type === 'textarea') {
@@ -2392,4 +2589,3 @@ endif;
         })
     })
 </script>
-

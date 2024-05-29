@@ -61,10 +61,19 @@ if(!class_exists('\\WPAICG\\WPAICG_Regenerate_Title')) {
                 $result['msg'] = isset($complete['msg']) ? $complete['msg'] : 'Something went wrong';
             } else {
                 $responseData = trim($complete['data']);
+                error_log($responseData);
                 $responseData = preg_replace('/\n$/', '', preg_replace('/^\n/', '', preg_replace('/[\r\n]+/', "\n", $responseData)));
+                // remove <br> tags
+                $responseData = preg_replace('/<br[^>]*>/', "\n", $responseData);
                 $titleList = preg_split("/\r\n|\n|\r/", $responseData);
                 $titleList = preg_replace('/^\\d+\\.\\s/', '', $titleList);
                 $titleList = preg_replace('/\\.$/', '', $titleList);
+                //remove empty lines
+                $titleList = array_filter($titleList, function($item) {
+                    return !empty($item);
+                });
+                // trim
+                $titleList = array_map('trim', $titleList);
         
                 if ($titleList && is_array($titleList) && count($titleList)) {
                     $newlist = array_map(function($item) {
@@ -129,15 +138,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Regenerate_Title')) {
                 $prompt = isset($wpaicg_languages['regenerate_prompt']) && !empty($wpaicg_languages['regenerate_prompt']) ? $wpaicg_languages['regenerate_prompt'] : 'Suggest me 5 different title for: %s.';
                 $prompt = sprintf($prompt, $title);
 
-                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-            
-                if ($wpaicg_provider === 'OpenAI') {
-                    $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-16k');
-                } elseif ($wpaicg_provider === 'Azure') {
-                    $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                } elseif ($wpaicg_provider === 'Google') {
-                    $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
-                }
+                $ai_provider_info = \WPAICG\WPAICG_Util::get_instance()->get_default_ai_provider();
+                $wpaicg_provider = $ai_provider_info['provider'];
+                $wpaicg_ai_model = $ai_provider_info['model'];
 
                 $legacy_models = array(
                     "text-davinci-001", "davinci", "babbage", "text-babbage-001", "curie-instruct-beta",

@@ -67,7 +67,7 @@ $wpaicg_qdrant_endpoint = get_option('wpaicg_qdrant_endpoint', '');
     <div class="wpaicg_create_collection_form" style="display: none;">
         <div class="nice-form-group">
             <input style="width: 50%;" type="text" class="wpaicg_new_collection_name" placeholder="Enter new collection name" />
-            <button style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button button-primary wpaicg_submit_new_collection">Create</button>
+            <button style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button button-primary wpaicg_submit_new_collection_for_troubleshoot">Create</button>
         </div>
     </div>
     <input type="hidden" id="selected_qdrant_collection" value="">
@@ -351,7 +351,7 @@ $wpaicg_qdrant_endpoint = get_option('wpaicg_qdrant_endpoint', '');
         });
 
         // Event handler for the submit button in the new collection form
-        $('.wpaicg_submit_new_collection').click(function() {
+        $('.wpaicg_submit_new_collection_for_troubleshoot').click(function() {
             var button = $(this);
             var collectionName = $('.wpaicg_new_collection_name').val();
             if (!collectionName) {

@@ -23,21 +23,7 @@ $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 $azure_deployment_name = get_option('wpaicg_azure_deployment', '');
 
 // Define pricing per 1K tokens
-$pricing = array(
-    'gpt-4' => 0.06,
-    'gpt-4-32k' => 0.12,
-    'gpt-4-1106-preview' => 0.01,
-    'gpt-4-turbo' => 0.01,
-    'gpt-4-vision-preview' => 0.01,
-    'gpt-3.5-turbo' => 0.002,
-    'gpt-3.5-turbo-instruct' => 0.002,
-    'gpt-3.5-turbo-16k' => 0.004,
-    'text-davinci-003' => 0.02,
-    'text-curie-001' => 0.002,
-    'text-babbage-001' => 0.0005,
-    'text-ada-001' => 0.0004,
-    'gemini-pro' => 0.000375
-);
+$pricing = \WPAICG\WPAICG_Util::get_instance()->model_pricing;
 
 // Retrieve custom models from WordPress option
 $custom_models = get_option('wpaicg_custom_models', array());
@@ -45,6 +31,12 @@ $custom_models = get_option('wpaicg_custom_models', array());
 // Add custom models to the pricing array with a fixed cost of $0.008
 foreach ($custom_models as $custom_model) {
     $pricing[$custom_model] = 0.008;
+}
+
+$google_models = get_option('wpaicg_google_model_list', array());
+
+foreach ($google_models as $google_model) {
+    $pricing[$google_model] = 0.002;
 }
 
 // Add the Azure deployment name to the pricing array

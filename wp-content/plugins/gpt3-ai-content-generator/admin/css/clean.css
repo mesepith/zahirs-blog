@@ -907,7 +907,7 @@ details summary::-webkit-details-marker {
   display: none;
 }
 
-.advanced-settings {
+.advanced-settings, .safety-settings {
   display: inline-block;
   padding: 0.5em 1.26em;
   border-radius: 5px;
@@ -920,10 +920,10 @@ details summary::-webkit-details-marker {
   user-select: none;
   cursor: pointer;
 }
-.advanced-settings:hover {
+.advanced-settings:hover, .safety-settings:hover {
   background: #0ea271;
 }
-.advanced-settings svg {
+.advanced-settings svg, .safety-settings svg {
   display: inline-block;
   vertical-align: -15%;
   margin-right: 0.25em;

@@ -3,67 +3,35 @@
 if ( !defined( 'ABSPATH' ) ) {
     exit;
 }
+?>
+<style>
+@keyframes rotation {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.rotating {
+    animation: rotation 2s infinite linear;
+}
+</style>
+
+<?php 
 $wpaicg_save_setting_success = false;
 $wpaicg_reset_setting_success = false;
 if ( isset( $_POST['wpaicg_submit'] ) ) {
     check_admin_referer( 'wpaicg_setting_save' );
     if ( isset( $_POST['wpaicg_provider'] ) ) {
         update_option( 'wpaicg_provider', sanitize_text_field( $_POST['wpaicg_provider'] ) );
-        // Check if the provider is Azure or Google
-        if ( $_POST['wpaicg_provider'] === 'Azure' || $_POST['wpaicg_provider'] === 'Google' ) {
-            // Fetch the current options
-            $wpaicg_chat_shortcode_options = get_option( 'wpaicg_chat_shortcode_options', array() );
-            $wpaicg_chat_widget = get_option( 'wpaicg_chat_widget', array() );
-            // Set audio_enable and moderation to false
-            $wpaicg_chat_shortcode_options['audio_enable'] = false;
-            $wpaicg_chat_shortcode_options['moderation'] = false;
-            // set image_enable to false
-            $wpaicg_chat_shortcode_options['image_enable'] = false;
-            // Set audio_enable to false for wpaicg_chat_widget
-            $wpaicg_chat_widget['audio_enable'] = false;
-            $wpaicg_chat_widget['moderation'] = false;
-            // set image_enable to false for wpaicg_chat_widget
-            $wpaicg_chat_widget['image_enable'] = false;
-            // Update the option
-            update_option( 'wpaicg_chat_shortcode_options', $wpaicg_chat_shortcode_options );
-            update_option( 'wpaicg_chat_widget', $wpaicg_chat_widget );
-            // Fetch all chatbots from wp_posts
-            global $wpdb;
-            $chatbots = $wpdb->get_results( "SELECT ID, post_content FROM {$wpdb->posts} WHERE post_type='wpaicg_chatbot'" );
-            // Loop through each chatbot
-            foreach ( $chatbots as $chatbot ) {
-                $content = json_decode( $chatbot->post_content, true );
-                // Decode the post_content
-                if ( isset( $content['moderation'] ) ) {
-                    $content['moderation'] = "0";
-                    // Set moderation to false
-                    // Update the wp_posts entry
-                    $updated_content = json_encode( $content );
-                    $wpdb->update( $wpdb->posts, array(
-                        'post_content' => $updated_content,
-                    ), array(
-                        'ID' => $chatbot->ID,
-                    ) );
-                }
-                // set image_enable to false
-                if ( isset( $content['image_enable'] ) ) {
-                    $content['image_enable'] = "0";
-                    // Set image_enable to false
-                    // Update the wp_posts entry
-                    $updated_content = json_encode( $content );
-                    $wpdb->update( $wpdb->posts, array(
-                        'post_content' => $updated_content,
-                    ), array(
-                        'ID' => $chatbot->ID,
-                    ) );
-                }
-            }
-        }
     }
     $option_mappings = [
         'wpaicg_ai_model'                        => 'wpaicg_ai_model',
         'wpaicg_sleep_time'                      => 'wpaicg_sleep_time',
         'wpaicg_google_model'                    => 'wpaicg_google_default_model',
+        'wpaicg_openrouter_model'                => 'wpaicg_openrouter_default_model',
         'wpaicg_azure_endpoint'                  => 'wpaicg_azure_endpoint',
         'wpaicg_azure_deployment'                => 'wpaicg_azure_deployment',
         'wpaicg_azure_embeddings'                => 'wpaicg_azure_embeddings',
@@ -147,33 +115,11 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
     // Check and update the featured image source option
     update_image_source_option( 'wpaicg_featured_image_source', 'wpaicg_pexels_api' );
     update_image_source_option( 'wpaicg_featured_image_source', 'wpaicg_pixabay_api' );
-    // Define the maximum tokens allowed per model for each provider
-    $model_max_tokens = [
-        'OpenAI' => [
-            'gpt-4'                  => 8191,
-            'gpt-4-0125-preview'     => 4095,
-            'gpt-4-turbo'            => 4095,
-            'gpt-4-1106-preview'     => 4095,
-            'gpt-4-turbo-preview'    => 4095,
-            'gpt-4-turbo'            => 4095,
-            'gpt-4-32k'              => 8191,
-            'gpt-4-vision-preview'   => 4095,
-            'gpt-3.5-turbo'          => 4095,
-            'gpt-3.5-turbo-instruct' => 4095,
-            'gpt-3.5-turbo-16k'      => 16384,
-        ],
-        'Google' => [
-            'gemini-pro' => 2048,
-        ],
-    ];
     // Get the current provider and model
     $current_provider = get_option( 'wpaicg_provider', 'OpenAI' );
     // Get the current model based on the provider
     $current_model = ( $current_provider === 'OpenAI' ? get_option( 'wpaicg_ai_model', 'gpt-3.5-turbo' ) : (( $current_provider === 'Google' ? get_option( 'wpaicg_google_default_model', 'gemini-pro' ) : '' )) );
     // Default model for Google or other providers
-    // Determine the max tokens based on provider and model
-    $max_allowed_tokens = ( isset( $model_max_tokens[$current_provider][$current_model] ) ? $model_max_tokens[$current_provider][$current_model] : 1500 );
-    // Default to 1500 if model not found
     $settings_to_update = [
         'wpaicg_temperature'     => [
             'key'    => 'temperature',
@@ -181,11 +127,7 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
         ],
         'wpaicg_max_tokens'      => [
             'key'    => 'max_tokens',
-            'filter' => function ( $value ) use($max_allowed_tokens) {
-                $value = intval( $value );
-                return max( 1, min( $value, $max_allowed_tokens ) );
-                // Enforce minimum and maximum limits
-            },
+            'filter' => 'floatval',
         ],
         'wpaicg_top_p'           => [
             'key'    => 'top_p',
@@ -334,10 +276,27 @@ if ( isset( $_POST['wpaicg_submit'] ) ) {
     update_api_key_option( 'wpaicg_pexels_api', 'wpaicg_pexels_api' );
     update_api_key_option( 'wpaicg_pixabay_api', 'wpaicg_pixabay_api' );
     update_api_key_option( 'wpaicg_sd_api_key', 'wpaicg_sd_api_key' );
+    update_api_key_option( 'wpaicg_openrouter_api_key', 'wpaicg_openrouter_api_key' );
+    // Save Google Safety Settings
+    if ( $_POST['wpaicg_provider'] === 'Google' && isset( $_POST['google_safety_settings'] ) ) {
+        $safety_settings = [];
+        foreach ( $_POST['google_safety_settings'] as $category => $threshold ) {
+            $safety_settings[] = [
+                'category'  => sanitize_text_field( $category ),
+                'threshold' => sanitize_text_field( $threshold ),
+            ];
+        }
+        update_option( 'wpaicg_google_safety_settings', $safety_settings );
+    }
     // save the google model list
     if ( isset( $_POST['wpaicg_google_model_list'] ) ) {
         $google_model_list = explode( ',', $_POST['wpaicg_google_model_list'] );
         update_option( 'wpaicg_google_model_list', $google_model_list );
+    }
+    // save the openrouter model list
+    if ( isset( $_POST['wpaicg_openrouter_model_list'] ) ) {
+        $openrouter_models = explode( ',', $_POST['wpaicg_openrouter_model_list'] );
+        update_option( 'wpaicg_openrouter_model_list', $openrouter_models );
     }
     $wpaicg_save_setting_success = true;
 }
@@ -457,6 +416,8 @@ if ( isset( $_POST['wpaicg_reset'] ) ) {
     update_option( 'wpaicg_search_result_font_color', '#000000' );
     update_option( 'wpaicg_search_result_bg_color', '#ffffff' );
     update_option( 'wpaicg_search_loading_color', '#cccccc' );
+    // openrouter api
+    update_option( 'wpaicg_openrouter_api_key', '' );
     $wpaicg_reset_setting_success = true;
 }
 // Keep this block below the form submission handling
@@ -502,6 +463,10 @@ $wpaicg_google_api_key = get_option( 'wpaicg_google_model_api_key', '' );
 $wpaicg_google_model_list = get_option( 'wpaicg_google_model_list', ['gemini-pro'] );
 // Get Google model list
 $wpaicg_google_default_model = get_option( 'wpaicg_google_default_model', 'gemini-pro' );
+$wpaicg_openrouter_api_key = get_option( 'wpaicg_openrouter_api_key', '' );
+// Get OpenRouter API Key
+$wpaicg_openrouter_model_list = get_option( 'wpaicg_openrouter_model_list', [] );
+// Get OpenRouter model list
 $wpaicg_azure_api_key = get_option( 'wpaicg_azure_api_key', '' );
 $wpaicg_azure_endpoint = get_option( 'wpaicg_azure_endpoint', '' );
 $wpaicg_azure_deployment = get_option( 'wpaicg_azure_deployment', '' );
@@ -1151,6 +1116,9 @@ selected( $wpaicg_provider, 'OpenAI' );
                         <option value="Google" <?php 
 selected( $wpaicg_provider, 'Google' );
 ?>>Google</option>
+                        <option value="OpenRouter" <?php 
+selected( $wpaicg_provider, 'OpenRouter' );
+?>>OpenRouter</option>
                         <option value="Azure" <?php 
 selected( $wpaicg_provider, 'Azure' );
 ?>>Microsoft</option>
@@ -1183,16 +1151,8 @@ echo esc_html__( 'Model', 'gpt3-ai-content-generator' );
 ?></label>
                         <select id="wpaicg_ai_model" name="wpaicg_ai_model" class="specific-select">
                             <?php 
-$gpt4_models = [
-    'gpt-4'                => 'GPT-4',
-    'gpt-4-turbo'          => 'GPT-4 Turbo',
-    'gpt-4-vision-preview' => 'GPT-4 Vision',
-];
-$gpt35_models = [
-    'gpt-3.5-turbo'          => 'GPT-3.5 Turbo',
-    'gpt-3.5-turbo-16k'      => 'GPT-3.5 Turbo 16K',
-    'gpt-3.5-turbo-instruct' => 'GPT-3.5 Turbo Instruct',
-];
+$gpt4_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt4_models;
+$gpt35_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt35_models;
 $custom_models_serialized = get_option( 'wpaicg_custom_models', '' );
 $custom_models = maybe_unserialize( $custom_models_serialized );
 // Initialize $custom_models as an empty array if it's not an array
@@ -1257,9 +1217,9 @@ foreach ( $custom_models as $value => $name ) {
 ?>
                             </optgroup>
                         </select>
-                        <a class="wpaicg_sync_finetune" href="javascript:void(0)"><?php 
-echo esc_html__( 'Sync', 'gpt3-ai-content-generator' );
-?></a>
+                        <button id="syncButton" class="button button-primary wpaicg_sync_finetune" type="button" style="line-height: 3.5;height: 40px">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1286,26 +1246,51 @@ echo esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' );
 echo esc_html__( 'Model', 'gpt3-ai-content-generator' );
 ?></label>
                         <select id="wpaicg_google_model" name="wpaicg_google_model" class="specific-select">
-                            <?php 
-foreach ( $wpaicg_google_model_list as $model ) {
-    ?>
+                        <?php 
+if ( isset( $wpaicg_google_model_list ) && is_array( $wpaicg_google_model_list ) && count( $wpaicg_google_model_list ) > 0 ) {
+    foreach ( $wpaicg_google_model_list as $model ) {
+        // Define words that trigger disabling the option
+        $disabledWords = ['vision'];
+        // Add words that should disable the option
+        $shouldBeDisabled = false;
+        foreach ( $disabledWords as $word ) {
+            if ( strpos( $model, $word ) !== false ) {
+                $shouldBeDisabled = true;
+                break;
+                // Break the loop if any word is found
+            }
+        }
+        ?>
                                 <option value="<?php 
-    echo esc_attr( $model );
-    ?>" <?php 
-    selected( $model, $wpaicg_google_default_model );
-    ?>>
+        echo esc_attr( $model );
+        ?>" <?php 
+        selected( $model, $wpaicg_google_default_model );
+        ?> <?php 
+        echo ( $shouldBeDisabled ? 'disabled' : '' );
+        ?>>
                                     <?php 
-    echo esc_html( ucwords( str_replace( '-', ' ', $model ) ) );
-    // Convert save format to display format
-    ?>
+        echo esc_html( ucwords( str_replace( '-', ' ', $model ) ) );
+        // Convert save format to display format
+        ?>
                                 </option>
                             <?php 
+    }
+} else {
+    ?>
+                        <option value="gemini-pro" <?php 
+    selected( 'gemini-pro', $wpaicg_google_default_model );
+    ?>><?php 
+    echo esc_html__( 'Gemini Pro', 'gpt3-ai-content-generator' );
+    ?></option>
+                        <?php 
 }
 ?>
                         </select>
-                        <a href="https://docs.aipower.org/docs/ai-engine/google#setting-up-ai-power-plugin" target="_blank">?</a>
+                        <button id="syncGoogleButton" class="button button-primary wpaicg_sync_google_models" type="button" style="line-height: 3.5;height: 40px">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        </button>
                         <input type="hidden" name="wpaicg_google_model_list" value="<?php 
-echo esc_attr( implode( ',', $wpaicg_google_model_list ) );
+echo ( isset( $wpaicg_google_model_list ) && is_array( $wpaicg_google_model_list ) ? esc_attr( implode( ',', $wpaicg_google_model_list ) ) : '' );
 ?>">
                     </div>
                 </div>
@@ -1363,14 +1348,78 @@ echo esc_attr( $wpaicg_azure_embeddings );
                     </div>
                 </div>
             </div>
+            <!-- OPENROUTER SPECIFIC FIELDS -->
+            <div id="openrouter_specific_fields" style="display: none;">
+                <!-- OPENROUTER API KEY -->
+                <div class="unique-page-container">
+                    <div class="nice-form-group">
+                        <label><?php 
+echo esc_html__( 'Api Key', 'gpt3-ai-content-generator' );
+?></label>
+                        <input type="text" id="wpaicg_openrouter_api_key" class="specific-textfield" name="wpaicg_openrouter_api_key" value="<?php 
+echo esc_attr( $wpaicg_openrouter_api_key );
+?>" onfocus="unmaskValue(this)" onblur="maskValue(this)" >
+                        <a href="https://openrouter.ai/keys" target="_blank"><?php 
+echo esc_html__( 'Get Your Api Key', 'gpt3-ai-content-generator' );
+?></a>
+                    </div>
+                </div>
+                <!-- OPENROUTER MODEL LIST -->
+                <div class="unique-page-container">
+                    <div class="nice-form-group">
+                        <label><?php 
+echo esc_html__( 'Model', 'gpt3-ai-content-generator' );
+?></label>
+                        <select id="wpaicg_openrouter_model" name="wpaicg_openrouter_model" class="specific-select">
+                            <?php 
+$openrouter_models = get_option( 'wpaicg_openrouter_model_list', [] );
+// Group the models by provider
+$grouped_models = [];
+foreach ( $openrouter_models as $model ) {
+    $provider = explode( '/', $model['id'] )[0];
+    // Extract the provider name
+    if ( !isset( $grouped_models[$provider] ) ) {
+        $grouped_models[$provider] = [];
+    }
+    $grouped_models[$provider][] = $model;
+}
+// Sort the providers alphabetically
+ksort( $grouped_models );
+// Display models grouped by provider
+foreach ( $grouped_models as $provider => $models ) {
+    echo '<optgroup label="' . esc_attr( $provider ) . '">';
+    // Sort the models alphabetically by name within each provider
+    usort( $models, function ( $a, $b ) {
+        return strcmp( $a["name"], $b["name"] );
+    } );
+    foreach ( $models as $model ) {
+        echo '<option value="' . esc_attr( $model['id'] ) . '" ' . selected( $model['id'], get_option( 'wpaicg_openrouter_default_model' ), false ) . '>' . esc_html( $model['name'] ) . '</option>';
+    }
+    echo '</optgroup>';
+}
+?>
+                        </select>
+                        <button id="syncButton" class="button button-primary wpaicg_sync_openrouter_models" type="button" style="line-height: 3.5;height: 40px">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
             <p></p>
-            <!-- ADVANCE SETTINGS -->
-            <div class="advanced-settings" id="toggleSingleSettings" data-target="single-settings-container">
-                <?php 
+            <div class="advance-button-container">
+                <!-- ADVANCE SETTINGS -->
+                <div class="advanced-settings" id="toggleSingleSettings" data-target="single-settings-container">
+                    <?php 
 echo esc_html__( 'Advance Settings', 'gpt3-ai-content-generator' );
 ?>
+                </div>
+                <!-- TOGGLE SAFETY SETTINGS BUTTON -->
+                <div class="safety-settings" id="toggleGoogleSafetySettings" data-target="google_safety_settings" style="display: none;">
+                    <?php 
+echo esc_html__( 'Safety Settings', 'gpt3-ai-content-generator' );
+?>
+                </div>
             </div>
-
             <div class="single-settings-container" style="display: none;">
                 <!-- MAX TOKENS -->
                 <div class="unique-page-container">
@@ -1466,6 +1515,78 @@ echo esc_attr( $current_best_of );
 ?></output>
                 </div>
             </div>
+            <!-- GOOGLE SAFETY SETTINGS -->
+            <div id="google_safety_settings" style="display: none;">
+                <?php 
+$safety_categories = [
+    'HARM_CATEGORY_HARASSMENT'        => 'Harassment',
+    'HARM_CATEGORY_HATE_SPEECH'       => 'Hate Speech',
+    'HARM_CATEGORY_SEXUALLY_EXPLICIT' => 'Sexually Explicit',
+    'HARM_CATEGORY_DANGEROUS_CONTENT' => 'Dangerous Content',
+];
+$thresholds = [
+    'BLOCK_NONE'             => 'Block None',
+    'BLOCK_ONLY_HIGH'        => 'Block Few',
+    'BLOCK_MEDIUM_AND_ABOVE' => 'Block Some',
+    'BLOCK_LOW_AND_ABOVE'    => 'Block Most',
+];
+$google_safety_settings = get_option( 'wpaicg_google_safety_settings', [
+    [
+        'category'  => 'HARM_CATEGORY_HARASSMENT',
+        'threshold' => 'BLOCK_NONE',
+    ],
+    [
+        'category'  => 'HARM_CATEGORY_HATE_SPEECH',
+        'threshold' => 'BLOCK_NONE',
+    ],
+    [
+        'category'  => 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        'threshold' => 'BLOCK_NONE',
+    ],
+    [
+        'category'  => 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        'threshold' => 'BLOCK_NONE',
+    ]
+] );
+$google_safety_settings = array_column( $google_safety_settings, 'threshold', 'category' );
+?>
+                <?php 
+foreach ( $safety_categories as $category => $label ) {
+    ?>
+                <div class="unique-page-container">
+                    <div class="nice-form-group">
+                        <label for="<?php 
+    echo esc_attr( $category );
+    ?>"><?php 
+    echo esc_html__( $label, 'gpt3-ai-content-generator' );
+    ?></label>
+                        <select id="<?php 
+    echo esc_attr( $category );
+    ?>" name="google_safety_settings[<?php 
+    echo esc_attr( $category );
+    ?>]" class="specific-select">
+                            <?php 
+    foreach ( $thresholds as $value => $option ) {
+        ?>
+                                <option value="<?php 
+        echo esc_attr( $value );
+        ?>" <?php 
+        selected( ( isset( $google_safety_settings[$category] ) ? $google_safety_settings[$category] : 'BLOCK_NONE' ), $value );
+        ?>>
+                                    <?php 
+        echo esc_html__( $option, 'gpt3-ai-content-generator' );
+        ?>
+                                </option>
+                            <?php 
+    }
+    ?>
+                        </select>
+                    </div>
+                </div>
+                <?php 
+}
+?>
+            </div>
             <details> 
                 <summary>
                     <input type="submit" value="<?php 
@@ -1495,76 +1616,75 @@ echo esc_html__( 'This tab allows you to set and save default values for both Ex
             <h1><?php 
 echo esc_html__( 'Language, Style and Tone', 'gpt3-ai-content-generator' );
 ?></h1>
-            <!-- LANGUAGE -->
-            <div class="unique-page-container">
-                <div class="nice-form-group">
-                    <label><?php 
+            <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: -1em;">
+                <!-- LANGUAGE -->
+                <div class="unique-page-container">
+                    <div class="nice-form-group">
+                        <label><?php 
 echo esc_html__( 'Language', 'gpt3-ai-content-generator' );
 ?></label>
-                    <select class="specific-select" id="wpai_language" name="wpai_language">
-                        <?php 
+                        <select class="specific-select" id="wpai_language" name="wpai_language" style="width: 162px;">
+                            <?php 
 foreach ( $languages as $code => $displayName ) {
     ?>
-                            <option value="<?php 
+                                <option value="<?php 
     echo esc_attr( $code );
     ?>" <?php 
     echo ( esc_attr( $code ) === $currentLanguage ? 'selected' : '' );
     ?>><?php 
     echo esc_html( $displayName );
     ?></option>
-                        <?php 
+                            <?php 
 }
 ?>
-                    </select>
-                    <a href="https://docs.aipower.org/docs/content-writer/express-mode/language-style-tone#language" target="_blank">?</a>
+                        </select>
+                    </div>
                 </div>
-            </div>
-            <!-- STYLE -->
-            <div class="unique-page-container">
-                <div class="nice-form-group">
-                    <label><?php 
+                <!-- STYLE -->
+                <div class="unique-page-container">
+                    <div class="nice-form-group">
+                        <label><?php 
 echo esc_html__( 'Writing Style', 'gpt3-ai-content-generator' );
 ?></label>
-                    <select class="specific-select" id="wpai_content_style" name="wpai_content_style">
-                        <?php 
+                        <select class="specific-select" id="wpai_content_style" name="wpai_content_style" style="width: 162px;">
+                            <?php 
 foreach ( $writing_styles as $code => $displayName ) {
     ?>
-                            <option value="<?php 
+                                <option value="<?php 
     echo esc_attr( $code );
     ?>" <?php 
     echo ( esc_attr( $code ) === $currentStyle ? 'selected' : '' );
     ?>><?php 
     echo esc_html( $displayName );
     ?></option>
-                        <?php 
+                            <?php 
 }
 ?>
-                    </select>
-                    <a href="https://docs.aipower.org/docs/content-writer/express-mode/language-style-tone#writing-style" target="_blank">?</a>
+                        </select>
+                    </div>
                 </div>
-            </div>
-            <!-- TONE -->
-            <div class="unique-page-container">
-                <div class="nice-form-group">
-                    <label><?php 
+                <!-- TONE -->
+                <div class="unique-page-container">
+                    <div class="nice-form-group">
+                        <label><?php 
 echo esc_html__( 'Writing Tone', 'gpt3-ai-content-generator' );
 ?></label>
-                    <select class="specific-select" id="wpai_content_tone" name="wpai_content_tone">
-                        <?php 
+                        <select class="specific-select" id="wpai_content_tone" name="wpai_content_tone" style="width: 162px;">
+                            <?php 
 foreach ( $writing_tones as $code => $displayName ) {
     ?>
-                            <option value="<?php 
+                                <option value="<?php 
     echo esc_attr( $code );
     ?>" <?php 
     echo ( esc_attr( $code ) === $currentTone ? 'selected' : '' );
     ?>><?php 
     echo esc_html( $displayName );
     ?></option>
-                        <?php 
+                            <?php 
 }
 ?>
-                    </select>
-                    <a href="https://docs.aipower.org/docs/content-writer/express-mode/language-style-tone#writing-tone" target="_blank">?</a>
+                        </select>
+                    </div>
                 </div>
             </div>
             <p></p>
@@ -2983,6 +3103,9 @@ echo esc_html( $wpaicg_sd_api_version );
 ?>" type="text" name="wpaicg_sd_api_version" class="specific-textfield" placeholder="<?php 
 echo esc_html__( 'Leave blank for default', 'gpt3-ai-content-generator' );
 ?>">
+                        <a href="https://replicate.com/stability-ai/stable-diffusion/versions" target="_blank"><?php 
+echo esc_html__( 'Get Version', 'gpt3-ai-content-generator' );
+?></a>
                     </div>
                 </div>
             </div>
@@ -3064,7 +3187,7 @@ echo esc_html__( 'Menu Name', 'gpt3-ai-content-generator' );
                     <label for="assistant-menu-prompt"><?php 
 echo esc_html__( 'Menu Prompt', 'gpt3-ai-content-generator' );
 ?></label>
-                    <input type="text" id="assistant-menu-prompt" name="" value="">
+                    <textarea rows="10" id="assistant-menu-prompt" name="" value=""></textarea>
                     <small>Make sure to include <code>[text]</code> in your prompt.</small>
                 </div>
             </div>
@@ -3362,6 +3485,8 @@ echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
                 if (!isTargetVisible && targetElement) {
                     targetElement.style.display = 'block';
                 }
+                // hide google_safety_settings
+                document.getElementById('google_safety_settings').style.display = 'none';
             });
         });
 
@@ -3372,6 +3497,7 @@ echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
         var pexelsApiKeyInput = document.getElementById('wpaicg_pexels_api');
         var pixabayApiKeyInput = document.getElementById('wpaicg_pixabay_api');
         var sdApiKeyInput = document.getElementById('wpaicg_sd_api_key');
+        var openRouterApiKeyInput = document.getElementById('wpaicg_openrouter_api_key');
 
         if (openAIKeyInput.value) {
             maskValue(openAIKeyInput);
@@ -3397,6 +3523,10 @@ echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
             maskValue(sdApiKeyInput);
         }
 
+        if (openRouterApiKeyInput.value) {
+            maskValue(openRouterApiKeyInput);
+        }
+
         function maskValue(element) {
             if (element.value.length > 4) {
                 // Store the full API key in a data attribute if you need to use it later
@@ -3419,19 +3549,36 @@ echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
             var openaiFields = document.getElementById('openai_specific_fields');
             var googleFields = document.getElementById('google_specific_fields');
             var azureFields = document.getElementById('azure_specific_fields');
+            var googlesafetySettings = document.getElementById('toggleGoogleSafetySettings');
+            var googleSafetySettingsDetails = document.getElementById('google_safety_settings');
+            var singleSettingsContainer = document.querySelector('.single-settings-container');
+            var openRouterFields = document.getElementById('openrouter_specific_fields');
 
             // Hide all fields initially
             openaiFields.style.display = 'none';
             googleFields.style.display = 'none';
             azureFields.style.display = 'none';
+            googlesafetySettings.style.display = 'none';
+            googleSafetySettingsDetails.style.display = 'none';
+            singleSettingsContainer.style.display = 'none';
+            openRouterFields.style.display = 'none';
 
             // Show fields based on selected provider
             if(provider === 'OpenAI') {
                 openaiFields.style.display = 'block';
+                googlesafetySettings.style.display = 'none';
+                googleSafetySettingsDetails.style.display = 'none';
             } else if(provider === 'Google') {
                 googleFields.style.display = 'block';
+                googlesafetySettings.style.display = 'inline-block';
             } else if(provider === 'Azure') {
                 azureFields.style.display = 'block';
+                googlesafetySettings.style.display = 'none';
+                googleSafetySettingsDetails.style.display = 'none';
+            } else if(provider === 'OpenRouter') {
+                openRouterFields.style.display = 'block';
+                googlesafetySettings.style.display = 'none';
+                googleSafetySettingsDetails.style.display = 'none';
             }
         }
 
@@ -3440,6 +3587,20 @@ echo esc_html__( 'Save', 'gpt3-ai-content-generator' );
 
         // Call the function once to set the initial state
         updateFieldVisibility();
+
+        var toggleSafetyButton = document.getElementById('toggleGoogleSafetySettings');
+        if (toggleSafetyButton) {
+            toggleSafetyButton.addEventListener('click', function() {
+                var safetySettings = document.getElementById(toggleSafetyButton.getAttribute('data-target'));
+                var singleSettingsContainer = document.querySelector('.single-settings-container');
+                if (safetySettings.style.display === 'none' || safetySettings.style.display === '') {
+                    safetySettings.style.display = 'block';
+                    singleSettingsContainer.style.display = 'none';
+                } else {
+                    safetySettings.style.display = 'none';
+                }
+            });
+        }
 
         // 6. AZURE FORM SUBMISSION VALIDATION
         const form = document.querySelector('form');
@@ -3561,7 +3722,6 @@ echo esc_js( __( 'Please fill in all the mandatory fields for Azure.', 'gpt3-ai-
         if (rankMathDescription) {
             rankMathDescription.addEventListener('click', function () {
                 if (this.checked) {
-                    console.log('acccc');
                     if (aioseoDescription) aioseoDescription.checked = false;
                     if (yoastMetaDesc) yoastMetaDesc.checked = false;
                     if (wpaicgSeoMetaTag) wpaicgSeoMetaTag.checked = false;
@@ -3864,7 +4024,7 @@ echo esc_js( esc_html__( 'Generate focus keywords in English for the product: %s
                 html += '<input type="text" name="wpaicg_editor_button_menus[' + newMenuIndex + '][name]" value="">';
                 html += '</div><div class="nice-form-group">';
                 html += '<label>Menu Prompt:</label>';
-                html += '<input type="text" name="wpaicg_editor_button_menus[' + newMenuIndex + '][prompt]" value="">';
+                html += '<textarea rows="10" name="wpaicg_editor_button_menus[' + newMenuIndex + '][prompt]" value=""></textarea>';
                 html += '<small>Make sure to include <code>[text]</code> in your prompt.</small>';
                 html += '</div></div>';
 

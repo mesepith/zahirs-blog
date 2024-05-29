@@ -131,7 +131,7 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
                         document.querySelector('.wpaicg-embedding-success-message').style.display = 'block';
                         setTimeout(function() {
                             document.querySelector('.wpaicg-embedding-success-message').style.display = 'none';
-                        }, 2000);
+                        }, 10000);
 
                         // Clear the content textarea
                         document.getElementById('wpaicg-embeddings-content').value = '';
@@ -145,7 +145,7 @@ $nonce = wp_create_nonce('gpt4_ajax_pagination_nonce');
                         messageDiv.style.display = 'block'; // Make the div visible
                         setTimeout(function() {
                             messageDiv.style.display = 'none'; // Hide the div after 2 seconds
-                        }, 2000);
+                        }, 10000);
                     }
                 }
             };

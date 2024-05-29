@@ -10,6 +10,7 @@ $wpaicg_ai_name = get_option('_wpaicg_chatbox_ai_name','');
 $wpaicg_stream_nav_setting = get_option('wpaicg_widget_stream', '0'); // Default to '1' if not set
 $wpaicg_conversation_starters_widget_json = get_option('wpaicg_conversation_starters_widget', '');
 $wpaicg_conversation_starters_widget = !empty($wpaicg_conversation_starters_widget_json) ? json_decode($wpaicg_conversation_starters_widget_json, true) : [];
+$wpaicg_autoload_chat_conversations = get_option('wpaicg_autoload_chat_conversations', 0);
 /*Check Custom Widget For Page Post*/
 $current_context_ID = get_the_ID();
 $wpaicg_bot_id = 0;
@@ -127,30 +128,30 @@ $wpaicg_openai_voice_speed = isset($wpaicg_chat_widget['openai_voice_speed']) &&
 ?>
 <style>
 /* Styling the scrollbar track (part the thumb slides within) */
-::-webkit-scrollbar-track {
+.wpaicg-chatbox ::-webkit-scrollbar-track {
 background-color: <?php echo esc_html($wpaicg_chat_bgcolor)?>;
 border-radius: 10px;
 }
 
 /* Styling the scrollbar thumb (the part that you drag) */
-::-webkit-scrollbar-thumb {
+.wpaicg-chatbox ::-webkit-scrollbar-thumb {
     background-color: #888; /* Dark grey thumb */
     border-radius: 10px;
     border: 3px solid <?php echo esc_html($wpaicg_chat_bgcolor)?>;
 }
 
 /* Styling the scrollbar thumb on hover */
-::-webkit-scrollbar-thumb:hover {
+.wpaicg-chatbox ::-webkit-scrollbar-thumb:hover {
     background-color: #555; /* Black thumb on hover */
 }
 
 /* Setting the width of the scrollbar */
-::-webkit-scrollbar {
+.wpaicg-chatbox ::-webkit-scrollbar {
     width: 8px; /* Narrow width */
 }
 
 /* For vertical scroll */
-::-webkit-scrollbar {
+.wpaicg-chatbox ::-webkit-scrollbar {
     height: 8px; /* For horizontal scrolling */
 }
 .wpaicg-chatbox .wpaicg-conversation-starters {
@@ -604,6 +605,7 @@ border-radius: 10px;
      data-openai_output_format="<?php echo esc_html($wpaicg_openai_output_format)?>"
      data-openai_voice_speed="<?php echo esc_html($wpaicg_openai_voice_speed)?>"
      data-openai_stream_nav="<?php echo esc_html($wpaicg_stream_nav_setting) ?>"
+     data-autoload_chat_conversations="<?php echo esc_html($wpaicg_autoload_chat_conversations)?>"
      data-type="widget"
 >
     <?php
@@ -724,7 +726,7 @@ border-radius: 10px;
         ?>
         <div class="wpaicg-chatbox-footer" style="background-color: <?php echo esc_html($wpaicg_footer_color)?>; color: <?php echo esc_html($wpaicg_footer_font_color)?>">
             <?php
-            echo wp_kses_post(str_replace("\\",'',$wpaicg_chat_widget['footer_text']));
+            echo wp_kses_post(str_replace("\\", '', htmlspecialchars_decode($wpaicg_chat_widget['footer_text'])));
             ?>
         </div>
     <?php

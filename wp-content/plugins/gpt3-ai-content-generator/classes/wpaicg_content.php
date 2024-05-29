@@ -40,6 +40,136 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
             add_action('wp_ajax_fetch_batch_details', array($this, 'fetch_batch_details'));
             add_action('wp_ajax_trigger_wpaicg_cron', array($this, 'trigger_wpaicg_cron'));
             add_action('wp_ajax_restart_queue_process', array($this, 'restart_queue_process'));
+            add_action('wp_ajax_save_schedule', array($this, 'wpaicg_save_schedule'));
+            // Register cron hooks and schedule them
+            add_filter('cron_schedules', array($this, 'wpaicg_custom_cron_schedules'));
+            $this->wpaicg_register_cron_hooks();
+            $this->wpaicg_schedule_cron_jobs();
+        }
+
+        public function wpaicg_custom_cron_schedules($schedules) {
+            $schedules['every_5_minutes'] = array(
+                'interval' => 300, // 5 minutes in seconds
+                'display'  => __('Every 5 Minutes', 'wpaicg')
+            );
+            $schedules['every_15_minutes'] = array(
+                'interval' => 900, // 15 minutes in seconds
+                'display'  => __('Every 15 Minutes', 'wpaicg')
+            );
+            $schedules['every_30_minutes'] = array(
+                'interval' => 1800, // 30 minutes in seconds
+                'display'  => __('Every 30 Minutes', 'wpaicg')
+            );
+            $schedules['every_2_hours'] = array(
+                'interval' => 7200, // 2 hours in seconds
+                'display'  => __('Every 2 Hours', 'wpaicg')
+            );
+            $schedules['every_6_hours'] = array(
+                'interval' => 21600, // 6 hours in seconds
+                'display'  => __('Every 6 Hours', 'wpaicg')
+            );
+            $schedules['every_12_hours'] = array(
+                'interval' => 43200, // 12 hours in seconds
+                'display'  => __('Every 12 Hours', 'wpaicg')
+            );
+
+            return $schedules;
+        }
+
+        public function wpaicg_save_schedule() {
+            check_ajax_referer('save_schedule_nonce', 'nonce');
+        
+            $task = sanitize_text_field($_POST['task']);
+            $value = sanitize_text_field($_POST['value']);
+            $option_name = 'wpaicg_cron_' . $task . '_schedule';
+        
+            if (update_option($option_name, $value)) {
+                // Reschedule cron jobs when schedule is updated
+                $this->wpaicg_clear_scheduled_cron_jobs();
+                $this->wpaicg_schedule_cron_jobs();
+                wp_send_json_success();
+            } else {
+                wp_send_json_error();
+            }
+        }
+
+        public function wpaicg_trigger_cron_task($task) {
+            $cron_url = $this->wpaicg_get_cron_url($task);
+
+            wp_remote_get($cron_url, array(
+                'timeout' => 1, // Wait for 1 second before aborting the request
+                'blocking' => false, // Non-blocking mode
+            ));
+        }
+
+        private function wpaicg_get_cron_url($task) {
+            switch ($task) {
+                case 'queue':
+                    return home_url('/index.php?wpaicg_cron=yes');
+                case 'sheets':
+                    return home_url('/index.php?wpaicg_sheets=yes');
+                case 'rss':
+                    return home_url('/index.php?wpaicg_rss=yes');
+                case 'tweet':
+                    return home_url('/index.php?wpaicg_tweet=yes');
+                case 'builder':
+                    return home_url('/index.php?wpaicg_builder=yes');
+                default:
+                    return '';
+            }
+        }
+
+        public function wpaicg_schedule_cron_jobs() {
+            $tasks = ['queue', 'sheets', 'rss', 'tweet', 'builder'];
+            $schedules = [
+                'none' => null,
+                '5minutes' => 'every_5_minutes',
+                '15minutes' => 'every_15_minutes',
+                '30minutes' => 'every_30_minutes',
+                '2hours' => 'every_2_hours',
+                '6hours' => 'every_6_hours',
+                '12hours' => 'every_12_hours',
+                '1hour' => 'hourly',
+                '1day' => 'daily',
+                '1week' => 'weekly'
+            ];
+
+            foreach ($tasks as $task) {
+                $schedule = get_option('wpaicg_cron_' . $task . '_schedule', 'none');
+                $wp_schedule = isset($schedules[$schedule]) ? $schedules[$schedule] : null;
+
+                // Clear existing schedule first
+                $this->wpaicg_clear_scheduled_cron_job($task);
+
+                // Only schedule if a valid schedule is set and it's not 'none'
+                if ($wp_schedule) {
+                    wp_schedule_event(time(), $wp_schedule, 'wpaicg_cron_trigger_' . $task);
+                }
+            }
+        }
+
+        public function wpaicg_clear_scheduled_cron_jobs() {
+            $tasks = ['queue', 'sheets', 'rss', 'tweet', 'builder'];
+
+            foreach ($tasks as $task) {
+                $this->wpaicg_clear_scheduled_cron_job($task);
+            }
+        }
+
+        public function wpaicg_clear_scheduled_cron_job($task) {
+            while ($timestamp = wp_next_scheduled('wpaicg_cron_trigger_' . $task)) {
+                wp_unschedule_event($timestamp, 'wpaicg_cron_trigger_' . $task);
+            }
+        }
+
+        public function wpaicg_register_cron_hooks() {
+            $tasks = ['queue', 'sheets', 'rss', 'tweet', 'builder'];
+
+            foreach ($tasks as $task) {
+                add_action('wpaicg_cron_trigger_' . $task, function() use ($task) {
+                    $this->wpaicg_trigger_cron_task($task);
+                });
+            }
         }
 
         public function restart_queue_process() {
@@ -101,23 +231,8 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'post_parent' => $batch_id,
                 'posts_per_page' => -1
             ));
-
-            $pricing = array(
-                'gpt-4' => 0.06,
-                'gpt-4-32k' => 0.12,
-                'gpt-4-turbo-preview' => 0.01,
-                'gpt-4-turbo' => 0.01,
-                'gpt-4-1106-preview' => 0.01,
-                'gpt-4-vision-preview' => 0.01,
-                'gpt-3.5-turbo' => 0.002,
-                'gpt-3.5-turbo-instruct' => 0.002,
-                'gpt-3.5-turbo-16k' => 0.004,
-                'text-davinci-003' => 0.02,
-                'text-curie-001' => 0.002,
-                'text-babbage-001' => 0.0005,
-                'text-ada-001' => 0.0004,
-                'gemini-pro' => 0.000375
-            );
+            
+            $pricing = \WPAICG\WPAICG_Util::get_instance()->model_pricing;
         
             $html = '';
             if ($batch_items) {
@@ -415,7 +530,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
         {
             $mime_types = ['mp3' => 'audio/mpeg','mp4' => 'video/mp4','mpeg' => 'video/mpeg','m4a' => 'audio/m4a','wav' => 'audio/wav','webm' => 'video/webm'];
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong','gpt3-ai-content-generator'));
-            if(!current_user_can('manage_options')){
+            if(!current_user_can('wpaicg_single_content_speech')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -493,7 +608,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'status' => 'error',
                 'msg'    => esc_html__('Something went wrong','gpt3-ai-content-generator'),
             );
-            if(!current_user_can('manage_options')){
+            if(!current_user_can('wpaicg_bulk_content_csv')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -584,7 +699,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'status' => 'error',
                 'msg'    => esc_html__('Something went wrong','gpt3-ai-content-generator'),
             );
-            if(!current_user_can('manage_options')){
+            if(!current_user_can('wpaicg_bulk_content_editor')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -640,7 +755,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'status' => 'error',
                 'msg'    => esc_html__('Something went wrong','gpt3-ai-content-generator'),
             );
-            if(!current_user_can('manage_options')){
+            if(!current_user_can('wpaicg_bulk_content_editor')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -719,7 +834,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'status' => 'error',
                 'msg'    => esc_html__('Something went wrong','gpt3-ai-content-generator'),
             );
-            if(!current_user_can('manage_options')){
+            if(!current_user_can('wpaicg_bulk_content_editor')){
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -837,21 +952,8 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                         $wpaicg_cost = 0;
                         $wpaicg_ai_model = get_post_meta($wpaicg_bulk->ID,'wpaicg_ai_model',true);
                         // Define pricing per 1K tokens
-                        $pricing = array(
-                            'gpt-4' => 0.06,
-                            'gpt-4-32k' => 0.12,
-                            'gpt-4-1106-preview' => 0.01,
-                            'gpt-4-turbo' => 0.01,
-                            'gpt-4-vision-preview' => 0.01,
-                            'gpt-3.5-turbo' => 0.002,
-                            'gpt-3.5-turbo-instruct' => 0.002,
-                            'gpt-3.5-turbo-16k' => 0.004,
-                            'text-davinci-003' => 0.02,
-                            'text-curie-001' => 0.002,
-                            'text-babbage-001' => 0.0005,
-                            'text-ada-001' => 0.0004,
-                            'gemini-pro' => 0.000375
-                        );
+                        $pricing = \WPAICG\WPAICG_Util::get_instance()->model_pricing;
+
                         if (!empty($wpaicg_generator_token)) {
                             if (array_key_exists($wpaicg_ai_model, $pricing)) {
                                 $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * $pricing[$wpaicg_ai_model] / 1000, 5));
@@ -1193,15 +1295,9 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                                         'post_status' => 'trash',
                                     ) );
                                 } else {
-                                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-
-                                    if ($wpaicg_provider === 'OpenAI') {
-                                        $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-instruct');
-                                    } else if ($wpaicg_provider === 'Azure') {
-                                        $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                                    } else if ($wpaicg_provider === 'Google') {
-                                        $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
-                                    } 
+                                    $ai_provider_info = \WPAICG\WPAICG_Util::get_instance()->get_default_ai_provider();
+                                    $wpaicg_provider = $ai_provider_info['provider'];
+                                    $wpaicg_ai_model = $ai_provider_info['model'];
 
                                     add_post_meta($wpaicg_post_id,'wpaicg_ai_model',$wpaicg_ai_model);
                                     add_post_meta($wpaicg_single->ID,'wpaicg_ai_model',$wpaicg_ai_model);
@@ -1718,7 +1814,13 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                             } else {
                                 $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
                             }
-                        }
+                        } elseif ($wpaicg_provider === 'OpenRouter') {
+                            if (isset($_REQUEST['model']) && !empty($_REQUEST['model'])) {
+                                $wpaicg_ai_model = sanitize_text_field($_REQUEST['model']);
+                            } else {
+                                $wpaicg_ai_model = get_option('wpaicg_openrouter_default_model', 'openai/gpt-4o');
+                            }
+                        } 
                         
                         $source_log = 'writer';
                         if (isset($_REQUEST['source_log']) && !empty($_REQUEST['source_log'])) {

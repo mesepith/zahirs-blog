@@ -83,22 +83,14 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                 return 'Error: Google API key is not set';
             }
         
+            // Dynamically construct the URL using the model name
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+        
             $args = array(
                 'headers' => array('Content-Type' => 'application/json'),
-                'body' => '',
                 'method' => 'POST',
-                'timeout' => 300 // Set timeout to 300 seconds
-            );
-        
-            if ($model === 'text-bison-001') {
-                $url = "https://generativelanguage.googleapis.com/v1beta3/models/text-bison-001:generateText?key={$apiKey}";
-                $args['body'] = json_encode(array("prompt" => array("text" => $userPrompt)));
-            } elseif ($model === 'chat-bison-001') {
-                $url = "https://generativelanguage.googleapis.com/v1beta2/models/chat-bison-001:generateMessage?key={$apiKey}";
-                $args['body'] = json_encode(array("prompt" => array("messages" => array(array("content" => $userPrompt)))));
-            } elseif ($model === 'gemini-pro') {
-                $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$apiKey}";
-                $args['body'] = json_encode(array(
+                'timeout' => 300, // Set timeout to 300 seconds
+                'body' => json_encode([
                     "contents" => [
                         ["role" => "user", "parts" => [["text" => $userPrompt]]]
                     ],
@@ -108,10 +100,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                     "safetySettings" => [
                         ["category" => "HARM_CATEGORY_HARASSMENT", "threshold" => "BLOCK_MEDIUM_AND_ABOVE"],
                     ]
-                ));
-            } else {
-                return 'Error: Invalid model selected';
-            }
+                ])
+            );
         
             $response = wp_remote_post($url, $args);
         
@@ -127,21 +117,14 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                 return 'Error: ' . $errorMsg;
             }
         
-            if ($model === 'text-bison-001' && isset($decodedResponse['candidates'][0]['output'])) {
-                return $decodedResponse['candidates'][0]['output'];
-            } elseif ($model === 'chat-bison-001' && isset($decodedResponse['candidates'][0]['content'])) {
-                return $decodedResponse['candidates'][0]['content'];
-            } elseif ($model === 'gemini-pro') {
-                $decodedResponse = json_decode($body, true);
-                if (isset($decodedResponse['candidates'][0]['content']['parts'][0]['text'])) {
-                    return $decodedResponse['candidates'][0]['content']['parts'][0]['text'];
-                } else {
-                    return 'Error: Invalid response from Google API';
-                }
+            // Check the expected response structure based on the API documentation
+            if (isset($decodedResponse['candidates'][0]['content']['parts'][0]['text'])) {
+                return $decodedResponse['candidates'][0]['content']['parts'][0]['text'];
             } else {
                 return 'Error: Invalid response from Google API';
             }
         }
+        
 
         public function wpaicg_generate_content_togetherai() {
             check_ajax_referer('wpaicg_generate_content_togetherai', 'nonce');
@@ -276,6 +259,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                 if($model === 'gpt-4') {
                     $wpaicg_estimated = 0.06 * $wpaicg_result['tokens'] / 1000;
                 }
+                if($model === 'gpt-4o') {
+                    $wpaicg_estimated = 0.03 * $wpaicg_result['tokens'] / 1000;
+                }
                 if($model === 'gpt-4-32k') {
                     $wpaicg_estimated = 0.12 * $wpaicg_result['tokens'] / 1000;
                 }
@@ -314,7 +300,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                 $result['table'] = 'wpaicg_imagetokens';
             }
             $wpaicg_settings = get_option('wpaicg_limit_tokens_'.$result['source'],[]);
-            $result['message'] = isset($wpaicg_settings['limited_message']) && !empty($wpaicg_settings['limited_message']) ? $wpaicg_settings['limited_message'] : $result['message'];
+            $result['message'] = isset($wpaicg_settings['limited_message']) && !empty($wpaicg_settings['limited_message']) ? wp_unslash($wpaicg_settings['limited_message']) : $result['message'];
             if(is_user_logged_in() && isset($wpaicg_settings['user_limited']) && $wpaicg_settings['user_limited'] && $wpaicg_settings['user_tokens'] > 0){
                 $result['limit'] = true;
                 $result['tokens'] = $wpaicg_settings['user_tokens'];
@@ -426,12 +412,12 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                     
                             // Check which vector database is being used and retrieve context data
                             if ($embeddingsDetails['vectordb'] === 'qdrant') {
-                                $embedding_result = $this->wpaicg_embeddings_result_qdrant($embeddingsDetails['collections'], $wpaicg_prompt, $embeddingsDetails['embeddings_limit']);
+                                $embedding_result = $this->wpaicg_embeddings_result_qdrant($embeddingsDetails['collections'], $wpaicg_prompt, $embeddingsDetails['embeddings_limit'], $embeddingsDetails['use_default_embedding_model'], $embeddingsDetails['selected_embedding_model'], $embeddingsDetails['selected_embedding_provider']);
                                 if (!empty($embedding_result['data'])) {
                                     $contextData = $contextLabel . " " . $embedding_result['data'];
                                 }
                             } elseif ($embeddingsDetails['vectordb'] === 'pinecone') {
-                                $embedding_result = $this->wpaicg_embeddings_result_pinecone($embeddingsDetails['collections'], $wpaicg_prompt, $embeddingsDetails['embeddings_limit']);
+                                $embedding_result = $this->wpaicg_embeddings_result_pinecone($embeddingsDetails['collections'], $wpaicg_prompt, $embeddingsDetails['embeddings_limit'], $embeddingsDetails['use_default_embedding_model'], $embeddingsDetails['selected_embedding_model'], $embeddingsDetails['selected_embedding_provider']);
                                 if (!empty($embedding_result['data'])) {
                                     $contextData = $contextLabel . " " . $embedding_result['data'];
                                 }
@@ -486,6 +472,15 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                                 } else {
                                     // Default Google model if none is selected
                                     $wpaicg_args['model'] = get_option('wpaicg_google_default_model', 'gemini-pro');
+                                }
+                            }  elseif ($wpaicg_provider == 'OpenRouter') {
+                                // Handling for Google AI
+                                if (isset($_REQUEST['engine']) && !empty($_REQUEST['engine'])) {
+                                    // Use the selected Google model, sanitize the input to ensure it's safe
+                                    $wpaicg_args['model'] = sanitize_text_field($_REQUEST['engine']);
+                                } else {
+                                    // Default model if none is selected
+                                    $wpaicg_args['model'] = get_option('wpaicg_openrouter_default_model', 'openrouter/auto');
                                 }
                             } else {  // Assume the remaining provider is AzureAI
                                 $wpaicg_args['model'] = get_option('wpaicg_azure_deployment', '');
@@ -559,13 +554,17 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                                                 echo 'data: {"choices":[{"delta":{"content":" ' . $word . '"}}]}';
                                             }
                                             echo "\n\n";
-                                            ob_end_flush();
+                                            if (ob_get_level() > 0) {
+                                                ob_end_flush();
+                                            }
                                             flush();
                                         }
                                         echo 'data: [DONE]';
                                         echo "\n\n";
-                                        ob_flush();
-                                        flush();
+                                        if (ob_get_length()) {
+                                            ob_flush();
+                                            flush();
+                                        }
 
                                     } else {
                                         try {
@@ -661,6 +660,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
         }
 
         public function get_embeddings_details() {
+            // error log request data
+            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
             // Check for necessary conditions: ID exists, is not empty, and source is valid
             if (isset($_REQUEST['id'], $_REQUEST['source_stream']) && 
                 !empty($_REQUEST['id']) && 
@@ -670,6 +671,12 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                 $source = $_REQUEST['source_stream'];
                 if($source == 'form'){
                     $embeddingsEnabled = get_post_meta($wpaicg_post_id, 'wpaicg_form_embeddings', true) == 'yes';
+                    // get use_default_embedding_model value
+                    $use_default_embedding_model = get_post_meta($wpaicg_post_id, 'wpaicg_form_use_default_embedding_model', true);
+                    // get wpaicg_form_selected_embedding_model
+                    $selected_embedding_model = get_post_meta($wpaicg_post_id, 'wpaicg_form_selected_embedding_model', true);
+                    // get wpaicg_form_selected_embedding_provider
+                    $selected_embedding_provider = get_post_meta($wpaicg_post_id, 'wpaicg_form_selected_embedding_provider', true);
                     // get context suffix
                     $context_suffix = get_post_meta($wpaicg_post_id, 'wpaicg_form_suffix_text', true);
                     // get context suffix position
@@ -688,6 +695,12 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                     }
                 } else {
                     $embeddingsEnabled = get_post_meta($wpaicg_post_id, 'wpaicg_prompt_embeddings', true) == 'yes';
+                    // get wpaicg_form_selected_embedding_model value
+                    $use_default_embedding_model = get_post_meta($wpaicg_post_id, 'wpaicg_prompt_use_default_embedding_model', true);
+                    // get wpaicg_form_selected_embedding_model
+                    $selected_embedding_model = get_post_meta($wpaicg_post_id, 'wpaicg_prompt_selected_embedding_model', true);
+                    // get wpaicg_form_selected_embedding_provider
+                    $selected_embedding_provider = get_post_meta($wpaicg_post_id, 'wpaicg_prompt_selected_embedding_provider', true);
                     // get context suffix
                     $context_suffix = get_post_meta($wpaicg_post_id, 'wpaicg_prompt_suffix_text', true);
                     // get context suffix position
@@ -710,6 +723,11 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                     $embeddings_limit = 1;
                 }
         
+                // Disable embeddings if provider is OpenRouter
+                if ($wpaicg_provider === 'OpenRouter') {
+                    $embeddingsEnabled = false;
+                }
+
                 // If embeddings are enabled, return vectordb and collections or indexes meta values
                 if ($embeddingsEnabled) {
 
@@ -719,7 +737,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                         'collections' => $collectionsOrIndexes,
                         'context_suffix' => $context_suffix,
                         'context_suffix_position' => $context_suffix_position,
-                        'embeddings_limit' => intval($embeddings_limit)
+                        'embeddings_limit' => intval($embeddings_limit),
+                        'use_default_embedding_model' => $use_default_embedding_model,
+                        'selected_embedding_model' => $selected_embedding_model,
+                        'selected_embedding_provider' => $selected_embedding_provider
                     ];
                 }
             }
@@ -729,7 +750,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
         }
         
 
-        public function wpaicg_embeddings_result_pinecone($wpaicg_pinecone_environment, $wpaicg_message, $limit, $namespace = false) {
+        public function wpaicg_embeddings_result_pinecone($wpaicg_pinecone_environment, $wpaicg_message, $limit, $use_default_embedding_model, $selected_embedding_model, $selected_embedding_provider, $namespace = false) {
             $result = ['status' => 'error', 'data' => ''];
             $wpaicg_pinecone_api_key = get_option('wpaicg_pinecone_api', '');
         
@@ -737,10 +758,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                 return ['data' => esc_html__('Required Pinecone or API configuration missing.', 'gpt3-ai-content-generator')];
             }
         
-            $model = $this->get_embedding_model();
+            $model = $this->get_embedding_model($use_default_embedding_model, $selected_embedding_model);
             $apiParams = $this->prepare_api_params($wpaicg_message, $model);
         
-            $ai_instance = $this->initialize_ai_instance();
+            $ai_instance = $this->initialize_ai_instance($use_default_embedding_model, $selected_embedding_provider);
             if (!$ai_instance) {
                 return ['data' => esc_html__('Unable to initialize the AI instance.', 'gpt3-ai-content-generator')];
             }
@@ -810,7 +831,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
         }
                 
 
-        public function wpaicg_embeddings_result_qdrant($wpaicg_qdrant_collection, $wpaicg_message, $limit) {
+        public function wpaicg_embeddings_result_qdrant($wpaicg_qdrant_collection, $wpaicg_message, $limit,$use_default_embedding_model, $selected_embedding_model, $selected_embedding_provider) {
             $result = ['status' => 'error', 'data' => ''];
             $wpaicg_qdrant_api_key = get_option('wpaicg_qdrant_api_key', '');
             $wpaicg_qdrant_endpoint = get_option('wpaicg_qdrant_endpoint', '');
@@ -819,10 +840,10 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                 return ['data' => esc_html__('Required Qdrant or API configuration missing.', 'gpt3-ai-content-generator')];
             }
         
-            $model = $this->get_embedding_model();
+            $model = $this->get_embedding_model($use_default_embedding_model, $selected_embedding_model);
             $apiParams = $this->prepare_api_params($wpaicg_message, $model);
         
-            $ai_instance = $this->initialize_ai_instance();
+            $ai_instance = $this->initialize_ai_instance($use_default_embedding_model, $selected_embedding_provider);
             if (!$ai_instance) {
                 return ['data' => esc_html__('Unable to initialize the AI instance.', 'gpt3-ai-content-generator')];
             }
@@ -845,36 +866,61 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
             return $result;
         }
         
-        private function get_embedding_model() {
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-            // Retrieve the embedding model based on the provider
-            switch ($wpaicg_provider) {
-                case 'OpenAI':
-                    return get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
-                    break;
-                case 'Azure':
-                    return get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
-                    break;
-                case 'Google':
-                    return get_option('wpaicg_google_embeddings', 'embedding-001');
-                    break;
+        private function get_embedding_model($use_default_embedding_model, $selected_embedding_model) {
+            if ($use_default_embedding_model === 'no') {
+                return $selected_embedding_model;
             }
-
+        
+            $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+            if (!empty($main_embedding_model)) {
+                list($provider, $model) = explode(':', $main_embedding_model, 2);
+                return $model;
+            } else {
+                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+                // Retrieve the embedding model based on the provider
+                switch ($wpaicg_provider) {
+                    case 'OpenAI':
+                        return get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
+                    case 'Azure':
+                        return get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002');
+                    case 'Google':
+                        return get_option('wpaicg_google_embeddings', 'embedding-001');
+                    default:
+                        // It's a good practice to have a default return if no case matches
+                        return 'default-embedding-model';
+                }
+            }
         }
+        
         
         private function prepare_api_params($wpaicg_message, $model) {
             $apiParams = ['input' => $wpaicg_message, 'model' => $model];
             return $apiParams;
         }
         
-        private function initialize_ai_instance() {
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-            if ($wpaicg_provider == 'OpenAI') {
-                return WPAICG_OpenAI::get_instance()->openai();
-            } elseif ($wpaicg_provider == 'Azure') {
-                return WPAICG_AzureAI::get_instance()->azureai();
-            } elseif ($wpaicg_provider == 'Google') {
-                return WPAICG_Google::get_instance();
+        private function initialize_ai_instance($use_default_embedding_model, $selected_embedding_provider) {
+            $provider = 'OpenAI'; // Default provider
+
+            if ($use_default_embedding_model === 'no') {
+                $provider = $selected_embedding_provider;
+            } else {
+                $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+                if (!empty($main_embedding_model)) {
+                    list($provider, $model) = explode(':', $main_embedding_model, 2);
+                } else {
+                    $provider = get_option('wpaicg_provider', 'OpenAI');
+                }
+            }
+        
+            switch ($provider) {
+                case 'OpenAI':
+                    return WPAICG_OpenAI::get_instance()->openai();
+                case 'Azure':
+                    return WPAICG_AzureAI::get_instance()->azureai();
+                case 'Google':
+                    return WPAICG_Google::get_instance();
+                default:
+                    return null; // Return null or handle the default case as needed
             }
         }
         
@@ -929,7 +975,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Playground')) {
                     }
                 }
                 echo "\n\n";
-                ob_end_flush();
+                if (ob_get_level() > 0) {
+                    ob_end_flush();
+                }
                 flush();
             }
         }

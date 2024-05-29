@@ -426,13 +426,10 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Custom_Prompt' ) ) {
                                         'post_status' => 'trash',
                                     ) );
                                 } else {
-                                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 
-                                    if ($wpaicg_provider === 'OpenAI') {
-                                        $wpaicg_ai_model = get_option('wpaicg_ai_model', 'text-davinci-003');
-                                    } else if ($wpaicg_provider === 'Azure') {
-                                        $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                                    }
+                                    $ai_provider_info = \WPAICG\WPAICG_Util::get_instance()->get_default_ai_provider();
+                                    $wpaicg_provider = $ai_provider_info['provider'];
+                                    $wpaicg_ai_model = $ai_provider_info['model'];
                                     
                                     add_post_meta($wpaicg_post_id,'wpaicg_ai_model',$wpaicg_ai_model);
                                     add_post_meta($wpaicg_single->ID,'wpaicg_ai_model',$wpaicg_ai_model);

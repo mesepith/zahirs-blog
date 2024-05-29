@@ -4,7 +4,7 @@ Tags: chatgpt, gpt, ai, openai, chatbot
 Requires at least: 5.0.0
 Tested up to: 6.5
 Requires PHP: 7.4
-Stable tag: 1.8.59
+Stable tag: 1.8.64
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
  
@@ -12,14 +12,14 @@ ChatGPT, Content Writer, Auto Content Writer, ChatBot, Product Writer, Image Gen
  
 == Description ==
 
-AI Power is a complete AI package for WordPress powered by gpt-4, gpt-4 vision, gpt-3.5-turbo, gpt-3.5-turbo-16K, gpt-3.5-turbo-instruct, Gemini Pro, Azure, Mistral, LLaMA, Yi Chat, Alpaca.
+AI Power is a complete AI package for WordPress powered by gpt-4, gpt-4o, gpt-4 vision, gpt-3.5-turbo, gpt-3.5-turbo-16K, gpt-3.5-turbo-instruct, Gemini Pro, gemini-1.5-flash-latest, Azure, Mistral, LLaMA, Yi Chat, Alpaca.
 
-It utilizes GPT-3.5, GPT-4, GPT-4 Vision and more to generate content, images, and forms with customizable options. It includes AI training, Chat widget, WooCommerce integration, Embeddings and more.
+It uses GPT-3.5, GPT-4,  GPT-4o, GPT-4 Vision, Gemini 1.5 Flash, Anthropic (Claude 3 Sonnet, Opus etc.) and more to generate content, images, and forms with customizable options. It includes AI training, Chat widget, WooCommerce integration, Embeddings and more.
 
 Please read documentation here: [https://docs.aipower.org/](https://docs.aipower.org/)
 
 == Core Features ==
-* AI Engines (OpenAI, Microsoft Azure, Gemini Pro, Mistral, LLaMA, Yi Chat, Alpaca)
+* AI Engines (OpenAI, Microsoft Azure, Gemini Pro, Gemini 1.5 Flash, Anthropic, Mistral, LLaMA, Yi Chat, Alpaca)
 * Content Writer
 * Auto Content Writer (Bulk- Autoblogging)
 * Image Generator (DALL-E and Stable Diffusion 🚀🚀🚀)
@@ -58,8 +58,9 @@ Please read documentation here: [https://docs.aipower.org/](https://docs.aipower
 == Supported Integrations ==
 
 - OpenAI: Use GPT models, Whisper and text to speech for advanced AI capabilities.
+- OpenRouter: All models on OpenRouter are accesible via our plugin.
 - Azure OpenAI: If you dont have OpenAI API access, you can use Azure.
-- Google: Gemini Pro, text-bison-001 and chat-bison-001 langauge models.
+- Google: Gemini Pro, Gemini 1.0, Gemini 1.5 Flash and Gemini 1.5 Pro langauge models.
 - Open Source LLMs: Mistral, LLaMA, Yi Chat, Alpaca.
 - SEO Tools: Optimize your content with Yoast SEO, All In One SEO, and Rank Math.
 - Image Libraries: Enhance your visuals with Pexels and Pixabay integration.
@@ -72,7 +73,7 @@ Please read documentation here: [https://docs.aipower.org/](https://docs.aipower
 
 == Features ==
 
-* Generate high-quality, longer articles using OpenAI's GPT language models (text-davinci-003), GPT-3.5 Turbo and GPT-4.
+* Generate high-quality, longer articles using OpenAI's GPT language models (text-davinci-003), GPT-3.5 Turbo, GPT-4 and GPT-4o.
 * Support for 40 different languages, including English, Spanish, French, German, Italian, Portuguese, Russian, Japanese, Korean, Chinese, Dutch, Indonesian, Turkish, Polish, Ukrainian, Arabic, Romanian, Greek, Czech, Bulgarian, Swedish and Hungarian.
 * Customize the generated content with options for temperature, maximum tokens, top p, best of, frequency penalty, and presence penalty.
 * Customize the generated content with options for writing style, including informative, descriptive, creative, narrative, persuasive, expository, reflective, argumentative, analytical, critical, evaluative, journalistic, technical and simple.
@@ -150,6 +151,74 @@ Please read documentation here: [https://docs.aipower.org/](https://docs.aipower
 Note: You can view non-Minified JS files [here](https://github.com/aipowerorg/Non-Minified-JS-Files).
 
 == Changelog ==
+
+= 1.8.64 =
+
+- OpenRouter integration.
+
+You can now access all models (Anthropic Claude 3 Sonnet, Opus, OpenAI, Gemini, LLama, Mistral etc) via OpenRouter integration.
+
+= 1.8.63 =
+
+- Added support for GPT-4o for image uploads.
+- Added custom AI provider options for chat bots, allowing the creation of chat bots with different AI providers like GPT-4o or Gemini Pro. View multi modal chat bot demos [here](https://aipower.org/demo/). 
+- Enabled model synchronization directly from chat bots.
+- Updated Stable Diffusion to the latest version.
+- Fixed the AutoGPT queue table layout issue.
+- Fixed chat widget footer text escape problem.
+- Better API error handling for Google.
+- Fixed max token value for Google models.
+
+View our roadmap and submit your feature requests [here](https://ai-power.supahub.com/).
+
+= 1.8.62 =
+
+- Implemented scheduling for tasks in AutoGPT and Embeddings, removing the need for server-side cron jobs by using custom WP cron schedules.
+- Added Safety Settings for Google models.
+- Standardized model list and pricing across all modules.
+
+Please check out the details [here](https://docs.aipower.org/blog/safety-settings-scheduler).
+
+View our roadmap and submit your feature requests [here](https://ai-power.supahub.com/).
+
+= 1.8.61 =
+
+gpt-4o support added. OpenAI's most advanced, multimodal flagship model that’s cheaper and faster than GPT-4 Turbo. Give it a try!
+
+= 1.8.60 =
+
+[NEW]
+
+- Introduced the ability to specify different embedding models for different chatbots. This final step before implementing OpenRouter allows you to select different AI engines with different embedding models, thus combining two different providers in one go.
+- Added a new embedding model for Google: embedding-text-004.
+- Added new Google models to chatbots and AI forms, such as Gemini 1.5 Pro Latest. Make sure to hit the sync button when using Google as a provider.
+- Added dimension display in AI training. You can now specify dimensions when creating a Qdrant collection via the plugin interface. Make sure to sync your collections.
+- Added an option to enable or disable past conversations in the chatbox. You can disable it from ChatGPT - Settings tab. Dont forget to clear your cache.
+- Displayed vector and points count for Qdrant. Make sure to sync your collections.
+- Added delete button for AI forms and image generator logs.
+
+[IMPROVEMENT]
+
+- Larger text fields for AI Assistant prompts.
+- Proper handling for markdown format in chat response.
+- Improved semantic search functionality.
+- Removed deprecated syntax for embedding variables within strings in image generator logs.
+- Added numeric validation for logs in the content writer.
+- Removed console logs from the code.
+
+[FIX]
+
+- Restricted scrollbar styling to only affect the bot interface.
+- Fixed an issue with the widget where it stopped functioning after being cleared.
+- Fixed an issue in the AI Assistant where the loading spinner continued running after receiving responses in Gutenberg.
+- Fixed an issue where it was not possible to delete conversation starters in custom chatbots.
+- Fixed a permission issue in AutoGPT.
+- Fixed an issue in AI forms where a quota limit notification was not displaying.
+- Fixed an issue in AI forms where special characters in the notification message caused display problems.
+- Fixed an issue in embedding where accessing a non-existent post ID could produce error.
+- Fixed an issue in custom chatbots where tokens did not reset after a certain interval.
+
+View our roadmap and submit your feature requests [here](https://ai-power.supahub.com/).
 
 = 1.8.59 =
 

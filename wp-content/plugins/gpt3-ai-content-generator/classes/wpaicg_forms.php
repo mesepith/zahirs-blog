@@ -50,6 +50,32 @@ if(!class_exists('\\WPAICG\\WPAICG_Forms')) {
             add_action('wp_ajax_nopriv_wpaicg_save_feedback', array($this, 'wpaicg_save_feedback'));  
             add_action('wp_ajax_wpaicg_save_prompt_feedback', array($this, 'wpaicg_save_prompt_feedback'));
             add_action('wp_ajax_nopriv_wpaicg_save_prompt_feedback', array($this, 'wpaicg_save_prompt_feedback'));
+            // wpaicg_delete_all_logs
+            add_action('wp_ajax_wpaicg_delete_all_logs', [$this,'wpaicg_delete_all_logs']);
+        }
+
+        public function wpaicg_delete_all_logs() {
+            check_ajax_referer('wpaicg_delete_all_logs_nonce', 'nonce');
+            
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(['message' => 'You do not have sufficient permissions']);
+                return;
+            }
+        
+            global $wpdb;
+            $wpaicgFormLogTable = $wpdb->prefix . 'wpaicg_form_logs';
+            $wpaicgFeedbackTable = $wpdb->prefix . 'wpaicg_form_feedback';
+        
+            // Truncate the form logs table
+            $resultLogs = $wpdb->query("TRUNCATE TABLE `$wpaicgFormLogTable`");
+            // Truncate the feedback table
+            $resultFeedback = $wpdb->query("TRUNCATE TABLE `$wpaicgFeedbackTable`");
+        
+            if ($resultLogs === false || $resultFeedback === false) {
+                wp_send_json_error(['message' => 'Failed to delete logs and feedback']);
+            } else {
+                wp_send_json_success(['message' => 'All logs and feedback have been deleted successfully']);
+            }
         }
 
         function wpaicg_export_ai_forms() {
@@ -470,7 +496,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Forms')) {
                         'post_status' => 'publish'
                     ));
                 }
-                $template_fields = array('prompt','fields','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','editor','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
+                $template_fields = array('prompt','fields','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','editor','bgcolor','header','embeddings','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
                 
                 foreach($template_fields as $template_field){
                     if(isset($_POST[$template_field]) && !empty($_POST[$template_field])){

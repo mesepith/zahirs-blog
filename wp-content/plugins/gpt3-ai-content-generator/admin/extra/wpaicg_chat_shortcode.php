@@ -1,5 +1,21 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
+?>
+<style>
+@keyframes rotation {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.rotating {
+    animation: rotation 2s infinite linear;
+}
+</style>
+<?php
 global  $wpdb ;
 $table = $wpdb->prefix . 'wpaicg';
 $wpaicg_save_setting_success = false;
@@ -28,6 +44,40 @@ if(isset($_POST['wpaicg_chat_shortcode_options']) && is_array($_POST['wpaicg_cha
     $posted_options['send_button_enabled'] = isset($_POST['wpaicg_chat_shortcode_options']['send_button_enabled']) ? 1 : 0; // 1 if checked, 0 if not
     // Explicitly check for 'chat_addition' and set it based on whether the checkbox was checked
     $posted_options['chat_addition'] = isset($_POST['wpaicg_chat_shortcode_options']['chat_addition']) ? 1 : 0;
+
+    // Handle the checkbox for 'Use Default Embedding Model'
+    $posted_options['use_default_embedding'] = isset($_POST['wpaicg_chat_shortcode_options']['use_default_embedding']) && $_POST['wpaicg_chat_shortcode_options']['use_default_embedding'] === 'true';
+    // Check if 'Use Default Embedding Model' is set to true
+    if ($posted_options['use_default_embedding']) {
+        // If true, remove embedding model and provider from the options and the database
+        unset($posted_options['embedding_model']);
+        unset($posted_options['embedding_provider']);
+    } else {
+        // Otherwise, sanitize and save the embedding model and provider
+        if (isset($posted_options['embedding_model'])) {
+            $posted_options['embedding_model'] = sanitize_text_field($posted_options['embedding_model']);
+        }
+        if (isset($posted_options['embedding_provider'])) {
+            $posted_options['embedding_provider'] = sanitize_text_field($posted_options['embedding_provider']);
+        }
+    }
+
+    // Determine the AI provider and set the model accordingly
+    $provider = isset($posted_options['provider']) ? $posted_options['provider'] : get_option('wpaicg_provider', 'OpenAI');
+    if ($provider === 'Google') {
+        $posted_options['model'] = get_option('wpaicg_shortcode_google_model', 'gemini-pro');
+    } elseif ($provider === 'Azure') {
+        $posted_options['model'] = get_option('wpaicg_azure_deployment', '');
+    } else {
+        // Keep the model as is for OpenAI
+        if (isset($posted_options['model'])) {
+            $posted_options['model'] = sanitize_text_field($posted_options['model']);
+        }
+    }
+
+    // Save and sanitize options as necessary
+    $wpaicg_chat_shortcode_options = \WPAICG\WPAICG_Util::get_instance()->sanitize_text_or_array_field($posted_options);
+    update_option('wpaicg_chat_shortcode_options', $wpaicg_chat_shortcode_options);
 
     // Extract and sanitize the 'limited_message' field separately
     $limited_message = isset($posted_options['limited_message']) ? wp_kses_post($posted_options['limited_message']) : '';
@@ -71,8 +121,12 @@ if(isset($_POST['wpaicg_shortcode_google_model'])){
 
 $existingValue = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE name = %s", 'wpaicg_settings' ), ARRAY_A );
 $wpaicg_chat_shortcode_options = get_option('wpaicg_chat_shortcode_options',[]);
+$wpaicg_provider = isset($wpaicg_chat_shortcode_options['provider']) && !empty($wpaicg_chat_shortcode_options['provider'])
+    ? $wpaicg_chat_shortcode_options['provider']
+    : get_option('wpaicg_provider', 'OpenAI');
 
 $wpaicg_stream_nav_setting = get_option('wpaicg_shortcode_stream', '0'); // Default to '1' if not set
+$use_default_embedding = isset($wpaicg_chat_shortcode_options['use_default_embedding']) ? $wpaicg_chat_shortcode_options['use_default_embedding'] : 'yes';
 
 $default_setting = array(
     'language' => 'en',
@@ -99,6 +153,8 @@ $default_setting = array(
     'embedding_pdf' => false,
     'embedding_pdf_message' => "Congrats! Your PDF is uploaded now! You can ask questions about your document.\nExample Questions:[questions]",
     'embedding_top' =>  false,
+    'use_default_embedding' => $use_default_embedding,
+    'embedding_model' =>  '',
     'no_answer' => '',
     'fontsize' => 14,
     'fontcolor' => '#495057',
@@ -188,8 +244,8 @@ $wpaicg_limited_message = isset($wpaicg_settings['limited_message']) && !empty($
 $wpaicg_chat_fullscreen = isset($wpaicg_settings['fullscreen']) && !empty($wpaicg_settings['fullscreen']) ? $wpaicg_settings['fullscreen'] : false;
 $wpaicg_chat_download_btn = isset($wpaicg_settings['download_btn']) && !empty($wpaicg_settings['download_btn']) ? $wpaicg_settings['download_btn'] : false;
 $wpaicg_chat_clear_btn = isset($wpaicg_settings['clear_btn']) && !empty($wpaicg_settings['clear_btn']) ? $wpaicg_settings['clear_btn'] : false;
-$wpaicg_bar_color = isset($wpaicg_settings['bar_color']) && !empty($wpaicg_settings['bar_color']) ? $wpaicg_settings['bar_color'] : '#ffffff';
-$wpaicg_thinking_color = isset($wpaicg_settings['thinking_color']) && !empty($wpaicg_settings['thinking_color']) ? $wpaicg_settings['thinking_color'] : '#ffffff';
+$wpaicg_bar_color = isset($wpaicg_settings['bar_color']) && !empty($wpaicg_settings['bar_color']) ? $wpaicg_settings['bar_color'] : '#495057';
+$wpaicg_thinking_color = isset($wpaicg_settings['thinking_color']) && !empty($wpaicg_settings['thinking_color']) ? $wpaicg_settings['thinking_color'] : '#495057';
 $wpaicg_footer_color = isset($wpaicg_settings['footer_color']) && !empty($wpaicg_settings['footer_color']) ? $wpaicg_settings['footer_color'] : '#ffffff';
 $wpaicg_chat_to_speech = isset($wpaicg_settings['chat_to_speech']) ? $wpaicg_settings['chat_to_speech'] : false;
 $wpaicg_elevenlabs_voice = isset($wpaicg_settings['elevenlabs_voice']) ? $wpaicg_settings['elevenlabs_voice'] : '';
@@ -227,7 +283,6 @@ $selected_profession = isset($wpaicg_settings['profession']) ? $wpaicg_settings[
 $language_options = \WPAICG\WPAICG_Util::get_instance()->chat_language_options;
 
 $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['language'] : 'en';
-
 ?>
 <div class="demo-page">
   <div class="demo-page-navigation">
@@ -308,78 +363,153 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
             <?php wp_nonce_field('wpaicg_chat_shortcode_save'); ?>
             <!-- AI SETTINGS -->
             <section id="aisettings" class="tab-content">
-                <h3 style="margin-top: -1em;"><?php echo esc_html__('AI Settings','gpt3-ai-content-generator')?></h3>
+                <h3 style="margin-top: -1em;"><?php echo esc_html__('General Settings','gpt3-ai-content-generator')?></h3>
                 <p><div class="toggle-shortcode">[wpaicg_chatgpt]</div></p>
-                <!-- Model -->
-                <?php $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI'); ?>
+                <!-- AI Provider -->
                 <div class="nice-form-group">
-                    <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
+                    <label><?php echo esc_html__('AI Provider', 'gpt3-ai-content-generator'); ?></label>
+                    <select id="wpaicg_provider" name="wpaicg_chat_shortcode_options[provider]">
+                        <option value="OpenAI" <?php selected($wpaicg_provider, 'OpenAI'); ?>><?php echo esc_html__('OpenAI', 'gpt3-ai-content-generator'); ?></option>
+                        <option value="Google" <?php selected($wpaicg_provider, 'Google'); ?>><?php echo esc_html__('Google', 'gpt3-ai-content-generator'); ?></option>
+                        <option value="OpenRouter" <?php selected($wpaicg_provider, 'OpenRouter'); ?>><?php echo esc_html__('OpenRouter', 'gpt3-ai-content-generator'); ?></option>
+                        <option value="Azure" <?php selected($wpaicg_provider, 'Azure'); ?>><?php echo esc_html__('Microsoft', 'gpt3-ai-content-generator'); ?></option>
+                    </select>
+                </div>
+                <!-- Model -->
+                <div class="openai-models">
                     <?php
-                        if ($wpaicg_provider === 'OpenAI') {
+                    $util_instance = \WPAICG\WPAICG_Util::get_instance();
+                    $gpt4_models = $util_instance->openai_gpt4_models;
+                    $gpt35_models = $util_instance->openai_gpt35_models;
+                    $custom_models = get_option('wpaicg_custom_models', []);
 
-                            $gpt4_models = [
-                                'gpt-4' => 'GPT-4',
-                                'gpt-4-turbo' => 'GPT-4 Turbo',
-                                'gpt-4-vision-preview' => 'GPT-4 Vision'
-                            ];
-                            $gpt35_models = [
-                                'gpt-3.5-turbo' => 'GPT-3.5 Turbo',
-                                'gpt-3.5-turbo-16k' => 'GPT-3.5 Turbo 16K',
-                                'gpt-3.5-turbo-instruct' => 'GPT-3.5 Turbo Instruct'
-                            ];
+                    function display_options($models, $selected_model) {
+                        foreach ($models as $model_key => $model_name) {
+                            echo '<option value="' . esc_attr($model_key) . '"' . selected($model_key, $selected_model, false) . '>' . esc_html($model_name) . '</option>';
+                        }
+                    }
 
-                            $custom_models = get_option('wpaicg_custom_models', []);
-                            ?>
-                            <select id="wpaicg_chat_model" name="wpaicg_chat_shortcode_options[model]">
-                                <?php
-                                // Function to display options
-                                function display_options($models, $wpaicg_settings){
-                                    foreach ($models as $model_key => $model_name): ?>
-                                        <option value="<?php echo esc_attr($model_key); ?>"<?php selected($model_key, $wpaicg_settings['model']); ?>><?php echo esc_html($model_name); ?></option>
-                                    <?php endforeach;
-                                }
-                                function display_custom_model_options($custom_models, $wpaicg_settings){
-                                    foreach ($custom_models as $model_identifier) {
-                                        ?>
-                                        <option value="<?php echo esc_attr($model_identifier); ?>"<?php selected($model_identifier, $wpaicg_settings['model']); ?>><?php echo esc_html($model_identifier); ?></option>
-                                        <?php
-                                    }
-                                }
-                                ?>
+                    function display_custom_model_options($custom_models, $selected_model) {
+                        foreach ($custom_models as $model_identifier) {
+                            echo '<option value="' . esc_attr($model_identifier) . '"' . selected($model_identifier, $selected_model, false) . '>' . esc_html($model_identifier) . '</option>';
+                        }
+                    }
+                    ?>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
+                        <div class="nice-form-group" style="display: flex; align-items: center;">
+                            <select id="wpaicg_chat_model" name="wpaicg_chat_shortcode_options[model]" style="width: 211.75px;margin-right: 5px;">
                                 <optgroup label="GPT-4">
-                                    <?php display_options($gpt4_models, $wpaicg_settings); ?>
+                                    <?php display_options($gpt4_models, $wpaicg_settings['model']); ?>
                                 </optgroup>
                                 <optgroup label="GPT-3.5">
-                                    <?php display_options($gpt35_models, $wpaicg_settings); ?>
+                                    <?php display_options($gpt35_models, $wpaicg_settings['model']); ?>
                                 </optgroup>
                                 <optgroup label="Custom Models">
-                                    <?php display_custom_model_options($custom_models, $wpaicg_settings); ?>
+                                    <?php display_custom_model_options($custom_models, $wpaicg_settings['model']); ?>
                                 </optgroup>
                             </select>
-                            
-                            <?php
-                            } elseif ($wpaicg_provider === 'Google') {
-                                $google_models = [
-                                    'gemini-pro' => 'Gemini Pro'
-                                ];
-                                ?>
-                                <select id="wpaicg_shortcode_google_model" name="wpaicg_shortcode_google_model">
-                                    <?php
-                                    $wpaicg_shortcode_google_model = get_option('wpaicg_shortcode_google_model', 'gemini-pro');
-                                    ?>
-                                    <?php
-                                    foreach ($google_models as $model_key => $model_name): ?>
-                                        <option value="<?php echo esc_attr($model_key); ?>"<?php selected($model_key, $wpaicg_shortcode_google_model); ?>><?php echo esc_html($model_name); ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                        <?php
-                        } else {
-                            // If not OpenAI, display the text field
-                            $deployment_name = get_option('wpaicg_azure_deployment', '');
-                            ?>
-                            <input type="text" name="wpaicg_azure_deployment_input" placeholder="<?php echo esc_html__('Enter Azure Deployment', 'gpt3-ai-content-generator'); ?>" value="<?php echo esc_attr($deployment_name); ?>">
-                    <?php } ?>
+                            <button id="syncButton" class="button button-primary wpaicg_sync_finetune" type="button" style="line-height: 3.5;height: 40px">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
+
+                <div class="google-models" style="display: none;">
+                    <?php
+                    $serialized_google_models = get_option('wpaicg_google_model_list', '');
+                    $google_models = maybe_unserialize($serialized_google_models);
+                    if (empty($google_models)) {
+                        $google_models = ['gemini-pro' => 'Gemini Pro'];
+                    } else {
+                        $google_models = array_combine($google_models, array_map(function($model) {
+                            return ucwords(str_replace('-', ' ', $model));
+                        }, $google_models));
+                    }
+                    ?>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
+                        <div class="nice-form-group" style="display: flex; align-items: center;">
+                            <select id="wpaicg_shortcode_google_model" name="wpaicg_shortcode_google_model" style="width: 211.75px;margin-right: 5px;">
+                                <?php $wpaicg_shortcode_google_model = get_option('wpaicg_shortcode_google_model', 'gemini-pro'); ?>
+                                <?php foreach ($google_models as $model_key => $model_name): 
+                                    $is_vision_model = strpos(strtolower($model_name), 'vision') !== false;
+                                    ?>
+                                    <option value="<?php echo esc_attr($model_key); ?>"<?php if ($is_vision_model) echo ' disabled'; ?><?php selected($model_key, $wpaicg_shortcode_google_model); ?>><?php echo esc_html($model_name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                            <button id="syncGoogleButton" class="button button-primary wpaicg_sync_google_models" type="button" style="line-height: 3.5;height: 40px">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="azure-models" style="display: none;">
+                    <?php $deployment_name = get_option('wpaicg_azure_deployment', ''); ?>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Deployment', 'gpt3-ai-content-generator'); ?></label>
+                        <input type="text" name="wpaicg_azure_deployment_input" placeholder="<?php echo esc_html__('Enter Azure Deployment', 'gpt3-ai-content-generator'); ?>" value="<?php echo esc_attr($deployment_name); ?>">
+                    </div>
+                </div>
+                <div class="openrouter-models" style="display: none;">
+                    <?php
+                    $openrouter_models = get_option('wpaicg_openrouter_model_list', []);
+                    // Group the models by provider
+                    $openrouter_grouped_models = [];
+                    foreach ($openrouter_models as $openrouter_model) {
+                        $openrouter_provider = explode('/', $openrouter_model['id'])[0]; // Extract the provider name
+                        if (!isset($openrouter_grouped_models[$openrouter_provider])) {
+                            $openrouter_grouped_models[$openrouter_provider] = [];
+                        }
+                        $openrouter_grouped_models[$openrouter_provider][] = $openrouter_model;
+                    }
+
+                    // Sort the providers alphabetically
+                    ksort($openrouter_grouped_models);
+
+                    // Get the selected model and provider from the options
+                    $openrouter_chat_options = get_option('wpaicg_chat_shortcode_options', []);
+                    $openrouter_selected_provider = isset($openrouter_chat_options['provider']) && $openrouter_chat_options['provider'] === 'OpenRouter' ? $openrouter_chat_options['provider'] : '';
+                    $openrouter_selected_model = $openrouter_selected_provider === 'OpenRouter' && isset($openrouter_chat_options['model']) ? $openrouter_chat_options['model'] : '';
+
+                    // Default model to 'openrouter/auto' if no model is selected
+                    if (empty($openrouter_selected_model)) {
+                        $openrouter_selected_model = 'openrouter/auto';
+                    }
+                    ?>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
+                        <div class="nice-form-group" style="display: flex; align-items: center;">
+                            <select id="wpaicg_openrouter_model" name="wpaicg_chat_shortcode_options[model]" style="width: 211.75px;margin-right: 5px;">
+                                <?php
+                                // Display models grouped by provider
+                                foreach ($openrouter_grouped_models as $openrouter_provider => $openrouter_models) {
+                                    echo '<optgroup label="' . esc_attr($openrouter_provider) . '">';
+                                    // Sort the models alphabetically by name within each provider
+                                    usort($openrouter_models, function($a, $b) {
+                                        return strcmp($a["name"], $b["name"]);
+                                    });
+                                    foreach ($openrouter_models as $openrouter_model) {
+                                        $openrouter_is_selected = ($openrouter_selected_model === $openrouter_model['id']) ? ' selected' : '';
+                                        echo '<option value="' . esc_attr($openrouter_model['id']) . '"' . $openrouter_is_selected . '>' . esc_html($openrouter_model['name']) . '</option>';
+                                    }
+                                    echo '</optgroup>';
+                                }
+                                ?>
+                            </select>
+                            <button id="syncButton" class="button button-primary wpaicg_sync_openrouter_models" type="button" style="line-height: 3.5;height: 40px">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-refresh-cw">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <polyline points="1 20 1 14 7 14"></polyline>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Streaming and Image Upload Options -->
                 <fieldset class="nice-form-group">
                 <legend><?php echo esc_html__('Options', 'gpt3-ai-content-generator'); ?></legend>
@@ -389,7 +519,7 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                     </div>
                     <div class="nice-form-group">
                         <input <?php echo isset($wpaicg_settings['image_enable']) && $wpaicg_settings['image_enable'] ? ' checked': ''?> value="1" type="checkbox" class="wpaicg_image_enable" name="wpaicg_chat_shortcode_options[image_enable]" id="wpaicg_image_enable">
-                        <label for="wpaicg_image_enable"><?php echo esc_html__('Image Upload (GPT-4 Vision only)','gpt3-ai-content-generator')?></label>
+                        <label for="wpaicg_image_enable"><?php echo esc_html__('Image Upload','gpt3-ai-content-generator')?></label>
                     </div>
                     <?php 
                     $wpaicg_chat_addition =  array_key_exists('chat_addition', $wpaicg_chat_shortcode_options) ? $wpaicg_chat_shortcode_options['chat_addition'] : true;
@@ -417,7 +547,7 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                     </select>
                 </div>
                 <div class="nice-form-group">
-                    <textarea <?php echo !$wpaicg_chat_addition ? ' disabled':''?> name="wpaicg_chat_shortcode_options[chat_addition_text]" id="wpaicg_chat_addition_text" class="regular-text wpaicg_chat_addition_text" rows="8"><?php echo !empty($wpaicg_settings['chat_addition_text']) ? esc_html($wpaicg_settings['chat_addition_text']) : esc_html__('You are a helpful AI Assistant. Please be friendly.','gpt3-ai-content-generator')?></textarea>
+                    <textarea <?php echo !$wpaicg_chat_addition ? ' disabled':''?> name="wpaicg_chat_shortcode_options[chat_addition_text]" id="wpaicg_chat_addition_text" class="regular-text wpaicg_chat_addition_text" rows="8"><?php echo !empty($wpaicg_settings['chat_addition_text']) ? esc_html($wpaicg_settings['chat_addition_text']) : esc_html__('You are a helpful AI Assistant. Please be friendly. Today\'s date is [date].','gpt3-ai-content-generator')?></textarea>
                 </div>
                 <p></p>
                 <!-- Advanced Parameters -->   
@@ -448,10 +578,6 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                     <div class="nice-form-group">
                         <label><?php echo esc_html__('Presence Penalty','gpt3-ai-content-generator')?></label>
                         <input type="text" id="label_presence_penalty" name="wpaicg_chat_shortcode_options[presence_penalty]" value="<?php echo esc_html( $wpaicg_settings['presence_penalty'] ) ;?>" >
-                    </div>
-
-                    <div class="nice-form-group">
-                        <a class="wpaicg_sync_finetune" href="javascript:void(0)"><?php echo esc_html__('Sync Models', 'gpt3-ai-content-generator'); ?></a>
                     </div>
                 </div>
                 <details>
@@ -515,22 +641,48 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
             <!-- Knowledge -->
             <section id="knowledge" class="tab-content" style="display: none;">
                 <h3 style="margin-top: -1em;"><?php echo esc_html__('Knowledge','gpt3-ai-content-generator')?></h3>
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Conversational Memory','gpt3-ai-content-generator')?></label>
-                    <select name="wpaicg_chat_shortcode_options[remember_conversation]">
-                        <option <?php echo $wpaicg_settings['remember_conversation'] == 'yes' ? ' selected': ''?> value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
-                        <option <?php echo $wpaicg_settings['remember_conversation'] == 'no' ? ' selected': ''?> value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
-                    </select>
+                <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: -1em;">
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Content Aware','gpt3-ai-content-generator')?></label>
+                        <!-- Hidden input to ensure 'no' is submitted if checkbox is unchecked -->
+                        <input type="hidden" value="no" name="wpaicg_chat_shortcode_options[content_aware]">
+                        <!-- Checkbox input, only submits 'yes' when checked -->
+                        <input 
+                            <?php echo $wpaicg_settings['content_aware'] == 'yes' ? 'checked' : '' ?> 
+                            value="yes" 
+                            type="checkbox" 
+                            style="border-color: #10b981; margin-top: 4px;" 
+                            class="switch" 
+                            id="wpaicg_chat_content_aware" 
+                            name="wpaicg_chat_shortcode_options[content_aware]">
+                    </div>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('User Aware','gpt3-ai-content-generator')?></label>
+                        <!-- Hidden input to ensure 'no' is submitted if checkbox is unchecked -->
+                        <input type="hidden" value="no" name="wpaicg_chat_shortcode_options[user_aware]">
+                        <input 
+                            <?php echo $wpaicg_settings['user_aware'] == 'yes' ? 'checked' : '' ?> 
+                            value="yes" 
+                            type="checkbox" 
+                            style="border-color: #10b981; margin-top: 4px;" 
+                            class="switch" 
+                            name="wpaicg_chat_shortcode_options[user_aware]">
+                    </div>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Memory','gpt3-ai-content-generator')?></label>
+                        <!-- Hidden input to ensure 'no' is submitted if checkbox is unchecked -->
+                        <input type="hidden" value="no" name="wpaicg_chat_shortcode_options[remember_conversation]">
+                        <!-- Checkbox input, only submits 'yes' when checked -->
+                        <input 
+                            <?php echo $wpaicg_settings['remember_conversation'] == 'yes' ? 'checked' : '' ?> 
+                            value="yes" 
+                            type="checkbox" 
+                            style="border-color: #10b981; margin-top: 4px;" 
+                            class="switch" 
+                            id="wpaicgchat_remember_conversation" 
+                            name="wpaicg_chat_shortcode_options[remember_conversation]">
+                    </div>
                 </div>
-
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Content Aware','gpt3-ai-content-generator')?></label>
-                    <select name="wpaicg_chat_shortcode_options[content_aware]" id="wpaicg_chat_content_aware">
-                        <option <?php echo $wpaicg_settings['content_aware'] == 'yes' ? ' selected': ''?> value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
-                        <option <?php echo $wpaicg_settings['content_aware'] == 'no' ? ' selected': ''?> value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
-                    </select>
-                </div>
-
                 <fieldset class="nice-form-group">
                 <legend><?php echo esc_html__('Data Source', 'gpt3-ai-content-generator'); ?></legend>
                     <div class="nice-form-group">
@@ -543,48 +695,89 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                     </div>
                 </fieldset>
 
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Vector DB', 'gpt3-ai-content-generator'); ?></label>
-                    <select name="wpaicg_chat_shortcode_options[vectordb]" id="wpaicg_db_provider" class="wpaicg-form-select-vectordb" <?php echo !$wpaicg_settings['embedding'] && $wpaicg_settings['content_aware'] == 'yes' ? ' disabled' : '';?>>
-                        <option value="pinecone" <?php echo ($wpaicg_settings['vectordb'] === 'pinecone' || empty($wpaicg_settings['vectordb'])) ? 'selected' : ''; ?>><?php echo esc_html__('Pinecone', 'gpt3-ai-content-generator'); ?></option>
-                        <option value="qdrant" <?php echo $wpaicg_settings['vectordb'] === 'qdrant' ? 'selected' : ''; ?>><?php echo esc_html__('Qdrant', 'gpt3-ai-content-generator'); ?></option>
-                    </select>
-                </div>
-
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Pinecone Index','gpt3-ai-content-generator')?></label>
-                    <select <?php echo empty($wpaicg_settings['embedding']) || $wpaicg_settings['content_aware'] == 'no' ? ' disabled':''?> name="wpaicg_chat_shortcode_options[embedding_index]" id="wpaicg_chat_embedding_index" class="<?php echo !$wpaicg_settings['embedding'] && $wpaicg_settings['content_aware'] == 'yes' ? 'asdisabled' : ''?>">
-                        <option value=""><?php echo esc_html__('Default','gpt3-ai-content-generator')?></option>
+                <div class="nice-form-group" style="display: flex;justify-content: space-between;">
+                    <div class="nice-form-group" style="margin-right: 5px;">
+                        <label><?php echo esc_html__('Vector DB', 'gpt3-ai-content-generator'); ?></label>
+                        <select style="width: 100px;" name="wpaicg_chat_shortcode_options[vectordb]" id="wpaicg_db_provider" class="wpaicg-form-select-vectordb" <?php echo !$wpaicg_settings['embedding'] && $wpaicg_settings['content_aware'] == 'yes' ? ' disabled' : '';?>>
+                            <option value="pinecone" <?php echo ($wpaicg_settings['vectordb'] === 'pinecone' || empty($wpaicg_settings['vectordb'])) ? 'selected' : ''; ?>><?php echo esc_html__('Pinecone', 'gpt3-ai-content-generator'); ?></option>
+                            <option value="qdrant" <?php echo $wpaicg_settings['vectordb'] === 'qdrant' ? 'selected' : ''; ?>><?php echo esc_html__('Qdrant', 'gpt3-ai-content-generator'); ?></option>
+                        </select>
+                    </div>
+                    <div class="nice-form-group" style="margin-right: 5px;">
+                        <label><?php echo esc_html__('Index','gpt3-ai-content-generator')?></label>
+                        <select <?php echo empty($wpaicg_settings['embedding']) || $wpaicg_settings['content_aware'] == 'no' ? ' disabled':''?> name="wpaicg_chat_shortcode_options[embedding_index]" id="wpaicg_chat_embedding_index" class="<?php echo !$wpaicg_settings['embedding'] && $wpaicg_settings['content_aware'] == 'yes' ? 'asdisabled' : ''?>">
+                            <option value=""><?php echo esc_html__('Default','gpt3-ai-content-generator')?></option>
+                            <?php
+                            foreach($wpaicg_pinecone_indexes as $wpaicg_pinecone_index){
+                                echo '<option'.(isset($wpaicg_settings['embedding_index']) && $wpaicg_settings['embedding_index'] == $wpaicg_pinecone_index['url'] ? ' selected':'').' value="'.esc_html($wpaicg_pinecone_index['url']).'">'.esc_html($wpaicg_pinecone_index['name']).'</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="nice-form-group" style="margin-right: 5px;">
+                        <label><?php echo esc_html__('Collection', 'gpt3-ai-content-generator'); ?></label>
+                        <select <?php echo empty($wpaicg_settings['embedding']) || $wpaicg_settings['content_aware'] == 'no' ? ' disabled' : '' ?> name="wpaicg_chat_shortcode_options[qdrant_collection]" id="wpaicg_chat_qdrant_collection" class="<?php echo !$wpaicg_settings['embedding'] && $wpaicg_settings['content_aware'] == 'yes' ? 'asdisabled' : '' ?>">
                         <?php
-                        foreach($wpaicg_pinecone_indexes as $wpaicg_pinecone_index){
-                            echo '<option'.(isset($wpaicg_settings['embedding_index']) && $wpaicg_settings['embedding_index'] == $wpaicg_pinecone_index['url'] ? ' selected':'').' value="'.esc_html($wpaicg_pinecone_index['url']).'">'.esc_html($wpaicg_pinecone_index['name']).'</option>';
+                            foreach ($wpaicg_qdrant_collections as $collection) {
+                                if (is_array($collection) && isset($collection['name'])) {
+                                    // New structure: collection is an array with 'name' and possibly 'dimension'
+                                    $name = $collection['name'];
+                                    $dimension = isset($collection['dimension']) ? ' (' . $collection['dimension'] . ')' : '';
+                                    $display_name = $name . $dimension;
+                                } else {
+                                    // Old structure: collection is a string
+                                    $name = $collection;
+                                    $display_name = $collection;
+                                }
+                                $selected = (isset($wpaicg_settings['qdrant_collection']) && $wpaicg_settings['qdrant_collection'] == $name) ? ' selected' : '';
+                                echo '<option value="' . esc_attr($name) . '"' . $selected . '>' . esc_html($display_name) . '</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="nice-form-group">
+                        <label><?php echo esc_html__('Limit','gpt3-ai-content-generator')?></label>
+                        <select style="width: 50px;" <?php echo empty($wpaicg_settings['embedding']) || $wpaicg_settings['content_aware'] == 'no' ? ' disabled':''?> name="wpaicg_chat_shortcode_options[embedding_top]" id="wpaicg_chat_embedding_top" class="<?php echo !$wpaicg_settings['embedding'] && $wpaicg_settings['content_aware'] == 'yes' ? 'asdisabled' : ''?>">
+                            <?php
+                            for($i = 1; $i <=5;$i++){
+                                echo '<option'.($wpaicg_settings['embedding_top'] == $i ? ' selected':'').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="nice-form-group" style="display: flex; justify-content: space-between; margin-top: 1em;">
+                    <!-- Toggle for using the default embedding model -->
+                    <div class="nice-form-group" style="display: flex;align-items: center;">
+                        <input type="hidden" name="wpaicg_chat_shortcode_options[use_default_embedding]" value="false">
+                        <input type="checkbox" class="switch wpaicg_use_default_embedding"
+                            id="wpaicg_use_default_embedding"
+                            name="wpaicg_chat_shortcode_options[use_default_embedding]"
+                            value="true"
+                            <?php echo $use_default_embedding ? 'checked' : ''; ?>
+                            style="border-color: #10b981; margin-top: 4px;">
+                        <label><?php echo esc_html__('Use Default Embedding', 'gpt3-ai-content-generator'); ?></label>
+                    </div>
+                </div>
+                <div class="nice-form-group" id="wpaicg_embedding_model_div" style="display: none;">
+                    <label><?php echo esc_html__('Embedding models', 'gpt3-ai-content-generator'); ?></label>
+                    <select name="wpaicg_chat_shortcode_options[embedding_model]" id="wpaicg_embedding_model" onchange="updateProvider()">
+                        <?php
+                        $embedding_model = isset($wpaicg_chat_shortcode_options['embedding_model']) ? $wpaicg_chat_shortcode_options['embedding_model'] : '';
+                        $embedding_models = \WPAICG\WPAICG_Util::get_instance()->get_embedding_models();
+                        foreach ($embedding_models as $provider => $models) {
+                            echo '<optgroup label="' . esc_attr($provider) . '">';
+                            foreach ($models as $model => $dimension) {
+                                $selected = ($model === $embedding_model) ? 'selected' : '';
+                                echo '<option value="' . esc_attr($model) . '" data-provider="' . esc_attr($provider) . '" ' . $selected . '>' . esc_html($model) . ' (' . esc_html($dimension) . ')</option>';
+                            }
+                            echo '</optgroup>';
                         }
                         ?>
                     </select>
+                    <input type="hidden" name="wpaicg_chat_shortcode_options[embedding_provider]" id="wpaicg_embedding_provider">
                 </div>
 
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Qdrant Collection', 'gpt3-ai-content-generator'); ?></label>
-                    <select <?php echo empty($wpaicg_settings['embedding']) || $wpaicg_settings['content_aware'] == 'no' ? ' disabled' : '' ?> name="wpaicg_chat_shortcode_options[qdrant_collection]" id="wpaicg_chat_qdrant_collection" class="<?php echo !$wpaicg_settings['embedding'] && $wpaicg_settings['content_aware'] == 'yes' ? 'asdisabled' : '' ?>">
-                        <?php
-                        foreach ($wpaicg_qdrant_collections as $collection) {
-                            $selected = (isset($wpaicg_settings['qdrant_collection']) && $wpaicg_settings['qdrant_collection'] == $collection) ? ' selected' : '';
-                            echo '<option value="' . esc_attr($collection) . '"' . $selected . '>' . esc_html($collection) . '</option>';
-                        }
-                        ?>
-                    </select>
-                </div>
-
-                <div class="nice-form-group">
-                    <label><?php echo esc_html__('Limit','gpt3-ai-content-generator')?></label>
-                    <select <?php echo empty($wpaicg_settings['embedding']) || $wpaicg_settings['content_aware'] == 'no' ? ' disabled':''?> name="wpaicg_chat_shortcode_options[embedding_top]" id="wpaicg_chat_embedding_top" class="<?php echo !$wpaicg_settings['embedding'] && $wpaicg_settings['content_aware'] == 'yes' ? 'asdisabled' : ''?>">
-                        <?php
-                        for($i = 1; $i <=5;$i++){
-                            echo '<option'.($wpaicg_settings['embedding_top'] == $i ? ' selected':'').' value="'.esc_html($i).'">'.esc_html($i).'</option>';
-                        }
-                        ?>
-                    </select>
-                </div>
                 <!-- Conversation Starters Section -->
                 <div class="nice-form-group" id="wpaicg_conversation_starters_wrapper">
                     <label><?php echo esc_html__('Conversation Starters', 'gpt3-ai-content-generator'); ?></label>
@@ -630,35 +823,19 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                     </div>
                 <?php else: ?>
                     <fieldset class="nice-form-group">
-                    <legend><?php echo esc_html__('Enable PDF Upload', 'gpt3-ai-content-generator'); ?></legend>
+                    <legend><?php echo esc_html__('PDF Upload', 'gpt3-ai-content-generator'); ?></legend>
                         <div class="nice-form-group">
                             <input type="checkbox" disabled id="embedding_pdf_disabled">
-                            <label for="embedding_pdf_disabled"><?php echo esc_html__('Available in Pro','gpt3-ai-content-generator')?></label>
+                            <label><?php echo esc_html__('Enable','gpt3-ai-content-generator')?></label>
+                            <a href="<?php echo esc_url(admin_url('admin.php?page=wpaicg-pricing')); ?>" class="pro-feature-label"><?php echo esc_html__('Pro','gpt3-ai-content-generator')?></a>
                         </div>
                     </fieldset>
-                    <div class="nice-form-group">
-                        <label><?php echo esc_html__('PDF Page Limit','gpt3-ai-content-generator')?></label>
-                        <select disabled>
-                            <option><?php echo esc_html__('Available in Pro','gpt3-ai-content-generator')?></option>
-                        </select>
-                    </div>
-                    <div class="nice-form-group">
-                        <label><?php echo esc_html__('PDF Upload Confirmation Message','gpt3-ai-content-generator')?></label>
-                        <textarea disabled rows="8" placeholder="<?php echo esc_html__('Available in Pro','gpt3-ai-content-generator')?>"></textarea>
-                    </div>
                 <?php endif; ?>
 
                 <!-- Advanced Parameters --> 
                 <p></p>
                 <a href="#" id="wpaicg-advanced-content-settings-link"><?php echo esc_html__('Show Additional Options','gpt3-ai-content-generator'); ?></a>
                 <div id="wpaicg-advanced-content-settings" style="display: none;">
-                    <div class="nice-form-group">
-                        <label><?php echo esc_html__('User Aware','gpt3-ai-content-generator')?></label>
-                        <select name="wpaicg_chat_shortcode_options[user_aware]">
-                            <option <?php echo $wpaicg_settings['user_aware'] == 'no' ? ' selected': ''?> value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
-                            <option <?php echo $wpaicg_settings['user_aware'] == 'yes' ? ' selected': ''?> value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
-                        </select>
-                    </div>
                     <div class="nice-form-group">
                         <label><?php echo esc_html__('Embedding Type','gpt3-ai-content-generator')?></label>
                         <select <?php echo empty($wpaicg_settings['embedding']) || $wpaicg_settings['content_aware'] == 'no' ? ' disabled':''?> name="wpaicg_chat_shortcode_options[embedding_type]" id="wpaicg_chat_embedding_type" class="<?php echo !$wpaicg_settings['embedding'] && $wpaicg_settings['content_aware'] == 'yes' ? 'asdisabled' : ''?>">
@@ -728,9 +905,8 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
             <section id="speech" class="tab-content" style="display: none;">
                 <h3 style="margin-top: -1em;"><?php echo esc_html__('Speech','gpt3-ai-content-generator')?></h3>
                 <?php
-                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');  // Fetching the provider
-                    // If the provider isn't Azure or Google, display the fields
-                    if ($wpaicg_provider !== 'Azure' && $wpaicg_provider !== 'Google') {
+                    // If the provider isn't Azure or Google or OpenRouter, display the fields
+                    if ($wpaicg_provider !== 'Azure' && $wpaicg_provider !== 'Google' && $wpaicg_provider !== 'OpenRouter') {
                     ?>
                 <div class="nice-form-group">
                     <input <?php echo isset($wpaicg_settings['audio_enable']) && $wpaicg_settings['audio_enable'] ? ' checked': ''?> value="1" type="checkbox" class="wpaicg_audio_enable" name="wpaicg_chat_shortcode_options[audio_enable]" id="wpaicg_audio_enable">
@@ -755,12 +931,11 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                     <label for="wpaicg_chat_to_speech"><?php echo esc_html__('Text to Speech','gpt3-ai-content-generator')?></label>
                 </div>
                 <?php
-                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI'); // Fetching the provider
                     $disabled_voice_fields = !$wpaicg_chat_to_speech;
                     $google_disabled = !isset($wpaicg_google_api_key) || empty($wpaicg_google_api_key) ? 'disabled' : '';
                     $elevenlabs_disabled = !isset($wpaicg_elevenlabs_api) || empty($wpaicg_elevenlabs_api) ? 'disabled' : '';
-                    //azure or google
-                    $openai_disabled = $wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google' ? 'disabled' : '';
+                    //azure or google or OpenRouter 
+                    $openai_disabled = $wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google' || $wpaicg_provider === 'OpenRouter' ? 'disabled' : '';
                     ?>
                 <div class="nice-form-group">
                     <label for="wpaicg_voice_service"><?php echo esc_html__('Provider','gpt3-ai-content-generator')?></label>
@@ -975,29 +1150,28 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                     <input <?php echo $wpaicg_save_logs ? '': ' disabled'?> value="<?php echo esc_html($wpaicg_log_notice_message)?>" class="wpaicg_chatbot_log_notice_message" id="wpaicg_chatbot_log_notice_message" type="text" name="wpaicg_chat_shortcode_options[log_notice_message]">
                 </div>
                 <?php 
-                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                 $is_pro = \WPAICG\wpaicg_util_core()->wpaicg_is_pro();
                 ?>
                 <div class="nice-form-group">
-                    <input <?php echo isset($wpaicg_settings['moderation']) && $wpaicg_settings['moderation'] ? ' checked': ''?>  id="openai_moderation_tool" name="wpaicg_chat_shortcode_options[moderation]" value="1" type="checkbox" <?php if(!\WPAICG\wpaicg_util_core()->wpaicg_is_pro() || $wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google') echo 'disabled'; ?>>
+                    <input <?php echo isset($wpaicg_settings['moderation']) && $wpaicg_settings['moderation'] ? ' checked': ''?>  id="openai_moderation_tool" name="wpaicg_chat_shortcode_options[moderation]" value="1" type="checkbox" <?php if(!\WPAICG\wpaicg_util_core()->wpaicg_is_pro() || $wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google' || $wpaicg_provider === 'OpenRouter') echo 'disabled'; ?>>
                     <label for="openai_moderation_tool"><?php echo !$is_pro ? esc_html__('Moderation (Available in Pro)','gpt3-ai-content-generator') : esc_html__('Moderation','gpt3-ai-content-generator'); ?></label>
                 </div>
                 <?php 
-                // Disable if it is Azure or Google.
-                if($wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google'):
-                    echo '<small>'. esc_html__('Moderation is not available in Azure or Google. If you want to use the moderation tool, please change your provider to OpenAI under Settings - AI Engine tab.', 'gpt3-ai-content-generator') .'</small>';
+                // Disable if it is Azure or Google or OpenRouter
+                if($wpaicg_provider != 'OpenAI'):
+                    echo '<small>'. esc_html__('Moderation is available for OpenAI only. If you want to use the moderation tool, please change your provider to OpenAI under Settings - AI Engine tab.', 'gpt3-ai-content-generator') .'</small>';
                 endif;
                 ?>
                 <div class="nice-form-group">
                     <label for="openai_moderation_model"><?php echo esc_html__('Model','gpt3-ai-content-generator')?></label>
-                    <select id="openai_moderation_model"  name="wpaicg_chat_shortcode_options[moderation_model]" <?php if(!\WPAICG\wpaicg_util_core()->wpaicg_is_pro() || $wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google') echo 'disabled'; ?>>
+                    <select id="openai_moderation_model"  name="wpaicg_chat_shortcode_options[moderation_model]" <?php if(!\WPAICG\wpaicg_util_core()->wpaicg_is_pro() || $wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google' || $wpaicg_provider === 'OpenRouter') echo 'disabled'; ?>>
                         <option <?php echo isset($wpaicg_settings['moderation_model']) && $wpaicg_settings['moderation_model'] == 'text-moderation-latest' ? ' selected':'';?> value="text-moderation-latest">text-moderation-latest</option>
                         <option <?php echo isset($wpaicg_settings['moderation_model']) && $wpaicg_settings['moderation_model'] == 'text-moderation-stable' ? ' selected':'';?> value="text-moderation-stable">text-moderation-stable</option>
                     </select>
                 </div>
                 <div class="nice-form-group">
                     <label for="openai_moderation_notice"><?php echo esc_html__('Notice','gpt3-ai-content-generator')?></label>
-                    <textarea rows="8" id="openai_moderation_notice" name="wpaicg_chat_shortcode_options[moderation_notice]" <?php if(!\WPAICG\wpaicg_util_core()->wpaicg_is_pro() || $wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google') echo 'disabled'; ?>><?php echo isset($wpaicg_settings['moderation_notice']) ? esc_html($wpaicg_settings['moderation_notice']) : ''?></textarea>
+                    <textarea rows="8" id="openai_moderation_notice" name="wpaicg_chat_shortcode_options[moderation_notice]" <?php if(!\WPAICG\wpaicg_util_core()->wpaicg_is_pro() || $wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google' || $wpaicg_provider === 'OpenRouter') echo 'disabled'; ?>><?php echo isset($wpaicg_settings['moderation_notice']) ? esc_html($wpaicg_settings['moderation_notice']) : ''?></textarea>
                 </div>
                 <details>
                     <summary>
@@ -1533,59 +1707,87 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
             exportSettings();
         });
 
+
         function updateImageUploadOption() {
-            var model = $('#wpaicg_chat_model').val();
+            var provider = $('#wpaicg_provider').val();
+            var model = '';
+
+            if (provider === 'OpenAI') {
+                model = $('#wpaicg_chat_model').val();
+            } else if (provider === 'Google') {
+                model = $('#wpaicg_shortcode_google_model').val();
+            } else if (provider === 'Azure') {
+                model = $('input[name="wpaicg_azure_deployment_input"]').val(); // Assuming deployment name is used as the model identifier
+            } else if (provider === 'OpenRouter') {
+                model = $('#wpaicg_openrouter_model').val();
+            }
+
+            console.log('Selected Provider:', provider); // Debugging line
+            console.log('Selected Model:', model); // Debugging line
 
             var $imageUploadCheckbox = $('.wpaicg_image_enable'); // Update this selector as needed
             var $streamingCheckbox = $('input[name="wpaicg_stream_nav_option"]');
 
-            if (model === 'gpt-4-vision-preview') {
-                $imageUploadCheckbox.prop('disabled', false); // Enable the checkbox
+            if (provider === 'OpenAI') {
+                if (model === 'gpt-4-vision-preview' || model === 'gpt-4o') {
+                    $imageUploadCheckbox.prop('disabled', false); // Enable the image upload checkbox
+                } else {
+                    $imageUploadCheckbox.prop('disabled', true).prop('checked', false); // Disable and uncheck the image upload checkbox
+                }
+                $streamingCheckbox.prop('disabled', false); // Enable the streaming checkbox 
+            } else if (provider === 'OpenRouter') {
+                if (model === 'openai/gpt-4-vision-preview' || model === 'openai/gpt-4o' || model === 'openai/gpt-4o-2024-05-13') {
+                    $imageUploadCheckbox.prop('disabled', false); // Enable the image upload checkbox
+                } else {
+                    $imageUploadCheckbox.prop('disabled', true).prop('checked', false); // Disable and uncheck the image upload checkbox
+                }
+                $streamingCheckbox.prop('disabled', false); // Enable the streaming checkbox
             } else {
-                $imageUploadCheckbox.prop('disabled', true); // Disable the checkbox
-                $imageUploadCheckbox.prop('checked', false); // Uncheck the checkbox
-                // enable the "Streaming" checkbox
-                $streamingCheckbox.prop('disabled', false);
+                $imageUploadCheckbox.prop('disabled', true).prop('checked', false); // Disable and uncheck the image upload checkbox
+                $streamingCheckbox.prop('disabled', true).prop('checked', false); // Disable and uncheck the streaming checkbox
             }
         }
 
         // Check and update the option on page load
         updateImageUploadOption();
 
-        // Re-check and update whenever the model selection changes
-        $('#wpaicg_chat_model').change(function () {
+        // Re-check and update whenever the model or provider selection changes
+        $('#wpaicg_provider, #wpaicg_chat_model, #wpaicg_shortcode_google_model, #wpaicg_openrouter_model').change(function () {
             updateImageUploadOption();
         });
 
         // Listen for changes on the "Enable Image Upload" checkbox
         $('.wpaicg_image_enable').on('change', function() {
             var isImageUploadEnabled = $(this).is(':checked');
-            // Find the "Streaming" checkbox by its name attribute
             var $streamingCheckbox = $('input[name="wpaicg_stream_nav_option"]');
 
             if (isImageUploadEnabled) {
-                // If "Enable Image Upload" is checked, disable the "Streaming" checkbox and uncheck it
                 $streamingCheckbox.prop('disabled', true).prop('checked', false);
             } else {
                 $streamingCheckbox.prop('disabled', false);
             }
         });
 
-        // Optionally, trigger the change event on page load in case the "Enable Image Upload" checkbox is already checked
+        // Trigger the change event on page load in case the "Enable Image Upload" checkbox is already checked
         $('.wpaicg_image_enable').trigger('change');
 
-        let wpaicg_provider = '<?php echo $wpaicg_provider?>';
-
-        // Function to disable the streaming option if the provider is Google..
+        // Function to disable the streaming option if the provider is Google
         function disableStreamingForGoogle() {
-            if(wpaicg_provider === 'Google') {
+            if ($('#wpaicg_provider').val() === 'Google') {
                 var $streamingCheckbox = $('input[name="wpaicg_stream_nav_option"]');
                 $streamingCheckbox.prop('disabled', true).prop('checked', false);
             }
         }
 
-        // Call the function to apply the logic on page load
+        // Call the function on page load
         disableStreamingForGoogle();
+
+        // Re-check and update whenever the provider selection changes
+        $('#wpaicg_provider').change(function () {
+            disableStreamingForGoogle();
+        });
+
+
 
         $('#form-chatbox-setting').on('submit', function (e){
             if($('.wpaicg_voice_speed').length) {
@@ -1610,6 +1812,17 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                     alert(has_error);
                     return false;
                 }
+            }
+            var provider = $('#wpaicg_provider').val();
+            if (provider === 'OpenAI') {
+                $('#wpaicg_chat_model').prop('disabled', false);
+                $('#wpaicg_openrouter_model').prop('disabled', true);
+            } else if (provider === 'OpenRouter') {
+                $('#wpaicg_chat_model').prop('disabled', true);
+                $('#wpaicg_openrouter_model').prop('disabled', false);
+            } else {
+                $('#wpaicg_chat_model').prop('disabled', true);
+                $('#wpaicg_openrouter_model').prop('disabled', true);
             }
         })
         let wpaicg_roles = <?php echo wp_kses_post(json_encode($wpaicg_roles))?>;
@@ -1817,7 +2030,12 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
         });
 
         $('#wpaicg_chat_content_aware').on('change', function (){
-            if($(this).val() === 'yes'){
+                // Determine if the checkbox is checked
+                var isContentAwareYes = $(this).prop('checked');
+                // Set value manually for simulation of select behavior
+                $(this).val(isContentAwareYes ? 'yes' : 'no');
+
+            if (isContentAwareYes) {
                 $('#wpaicg_chat_excerpt').removeAttr('disabled');
                 $('#wpaicg_chat_excerpt').prop('checked',true);
                 $('#wpaicg_chat_embedding').removeAttr('disabled');
@@ -1837,6 +2055,7 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                 $('#wpaicg_chat_embedding_top').addClass('asdisabled');
                 // Add call to update the DB Provider field
                 updateDbProviderState();
+
             }
             else{
                 $('#wpaicg_chat_embedding_type').removeClass('asdisabled');
@@ -1861,8 +2080,8 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
                 // qdtant collection
                 $('#wpaicg_chat_qdrant_collection').attr('disabled','disabled');
                 $('#wpaicg_chat_qdrant_collection').addClass('asdisabled');
-
             }
+            updateDbProviderState();
         })
         
         $('#wpaicg_chat_addition').on('click', function (){
@@ -2542,43 +2761,43 @@ $selected_language = isset($wpaicg_settings['language']) ? $wpaicg_settings['lan
     });
 </script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const tabs = document.querySelectorAll('.demo-page-navigation a[data-tab]');
-  tabs.forEach(tab => {
-    tab.addEventListener('click', function(e) {
-      const targetId = this.getAttribute('data-tab');
-      const sections = document.querySelectorAll('.tab-content');
-      sections.forEach(section => {
-        if (section.id === targetId) {
-          section.style.display = '';
-        } else {
-          section.style.display = 'none';
-        }
-      });
-      tabs.forEach(t => t.classList.remove('active'));
-      this.classList.add('active');
+    document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.demo-page-navigation a[data-tab]');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function(e) {
+        const targetId = this.getAttribute('data-tab');
+        const sections = document.querySelectorAll('.tab-content');
+        sections.forEach(section => {
+            if (section.id === targetId) {
+            section.style.display = '';
+            } else {
+            section.style.display = 'none';
+            }
+        });
+        tabs.forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        });
     });
-  });
-});
+    });
 </script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  var copyCode = document.querySelector('.toggle-shortcode');
+    document.addEventListener('DOMContentLoaded', function() {
+    var copyCode = document.querySelector('.toggle-shortcode');
 
-  copyCode.addEventListener('click', function() {
-    // Copy text
-    navigator.clipboard.writeText(this.textContent).then(() => {
-      // Temporarily change the text to indicate copy
-      const originalText = this.textContent;
-      this.textContent = 'Shortcode copied!';
-      setTimeout(() => {
-        this.textContent = originalText;
-      }, 2000); // Reset text after 2 seconds
-    }).catch(err => {
-      console.error('Failed to copy: ', err);
+    copyCode.addEventListener('click', function() {
+        // Copy text
+        navigator.clipboard.writeText(this.textContent).then(() => {
+        // Temporarily change the text to indicate copy
+        const originalText = this.textContent;
+        this.textContent = 'Shortcode copied!';
+        setTimeout(() => {
+            this.textContent = originalText;
+        }, 2000); // Reset text after 2 seconds
+        }).catch(err => {
+        console.error('Failed to copy: ', err);
+        });
     });
-  });
-});
+    });
 </script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -2617,5 +2836,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 addNewStarterInput();
             }
         };
+    });
+</script>
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function () {
+        var checkbox = document.getElementById('wpaicg_use_default_embedding');
+        var selectDiv = document.getElementById('wpaicg_embedding_model_div');
+
+        // Function to toggle the display of the select div
+        function toggleEmbeddingDropdown() {
+            selectDiv.style.display = checkbox.checked ? 'none' : 'block';
+        }
+
+        // Event listener for checkbox changes
+        checkbox.addEventListener('change', toggleEmbeddingDropdown);
+
+        // Initial check to set the correct display state
+        toggleEmbeddingDropdown();
+    });
+</script>
+<script>
+    function updateProvider() {
+        var select = document.getElementById('wpaicg_embedding_model');
+        var providerInput = document.getElementById('wpaicg_embedding_provider');
+        var selectedOption = select.options[select.selectedIndex];
+        providerInput.value = selectedOption.getAttribute('data-provider'); // Set the provider to the hidden input
+    }
+    window.onload = updateProvider; // Update on load to set initial provider
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const providerSelect = document.getElementById('wpaicg_provider');
+        const openaiModels = document.querySelector('.openai-models');
+        const googleModels = document.querySelector('.google-models');
+        const azureModels = document.querySelector('.azure-models');
+        const openrouterModels = document.querySelector('.openrouter-models');
+
+        function toggleModelVisibility() {
+            const selectedProvider = providerSelect.value;
+
+            openaiModels.style.display = (selectedProvider === 'OpenAI') ? 'flex' : 'none';
+            googleModels.style.display = (selectedProvider === 'Google') ? 'block' : 'none';
+            azureModels.style.display = (selectedProvider === 'Azure') ? 'block' : 'none';
+            openrouterModels.style.display = (selectedProvider === 'OpenRouter') ? 'block' : 'none';
+        }
+
+        providerSelect.addEventListener('change', toggleModelVisibility);
+
+        // Initial toggle based on the preselected provider
+        toggleModelVisibility();
     });
 </script>

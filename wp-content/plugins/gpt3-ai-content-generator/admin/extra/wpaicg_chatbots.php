@@ -9,9 +9,7 @@ if(isset($_GET['wpaicg_bot_delete']) && !empty($_GET['wpaicg_bot_delete'])){
     echo '<script>window.location.href = "'.admin_url('admin.php?page=wpaicg_chatgpt&action=bots').'"</script>';
     exit;
 }
-$wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-wp_enqueue_script('wp-color-picker');
-wp_enqueue_style('wp-color-picker');
+$wpaicg_provider = '';
 $wpaicg_custom_models = get_option('wpaicg_custom_models',array());
 $table = $wpdb->prefix . 'wpaicg';
 $existingValue = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE name = %s", 'wpaicg_settings' ), ARRAY_A );
@@ -79,6 +77,7 @@ $wpaicg_chat_fullscreen = false;
 $wpaicg_elevenlabs_api = get_option('wpaicg_elevenlabs_api', '');
 $wpaicg_google_api_key = get_option('wpaicg_google_api_key', '');
 $wpaicg_google_voices = get_option('wpaicg_google_voices',[]);
+$wpaicg_all_google_models = get_option('wpaicg_google_model_list',[]);
 $wpaicg_pinecone_indexes = get_option('wpaicg_pinecone_indexes','');
 $wpaicg_pinecone_indexes = empty($wpaicg_pinecone_indexes) ? array() : json_decode($wpaicg_pinecone_indexes,true);
 $wpaicg_qdrant_collections = get_option('wpaicg_qdrant_collections',[]);
@@ -329,7 +328,7 @@ $conversation_starters = [];
         justify-content: center;
         align-items: center;
         background: <?php echo esc_html($wpaicg_footer_color)?>;
-        color: #fff;
+        color: #ffffff;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         transition: background-color 0.3s ease;
     }
@@ -871,39 +870,23 @@ $conversation_starters = [];
                 <div class="wpaicg-bot-parameters wpaicg-bot-wizard" style="display: none">
                     <h3 style="margin-top: -0.2em;"><?php echo esc_html__('AI Settings','gpt3-ai-content-generator');?></h3>
                     <div class="nice-form-group" style="margin-top: -0.3em;">
-                        <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
-                        <?php if ($wpaicg_provider === 'Azure'): ?>
-                            <?php $azure_model = get_option('wpaicg_azure_deployment', ''); ?>
-                            <input type="text" class="wpaicg_chatbot_model" id="wpaicg_chat_model" name="bot[model]" value="<?php echo esc_attr($azure_model); ?>" readonly>
-                            <!-- else if google -->
-                        <?php elseif ($wpaicg_provider === 'Google'): ?>
-                            <?php 
-                            $google_models = ['gemini-pro' => 'Gemini Pro']; 
-                            $google_model = get_option('wpaicg_google_default_model', 'gemini-pro');
-                            ?>
-                            <select class="wpaicg_chatbot_model" id="wpaicg_chat_model" name="bot[model]" value="<?php echo esc_attr($google_model); ?>">
-                                <?php foreach ($google_models as $model_key => $model_name): ?>
-                                    <option value="<?php echo esc_attr($model_key); ?>"<?php selected($model_key, $google_model); ?>><?php echo esc_html($model_name); ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <!-- else if openai -->
-                        <?php else: ?>
-                            <?php
-                            $gpt4_models = [
-                                'gpt-4' => 'GPT-4',
-                                'gpt-4-turbo' => 'GPT-4 Turbo',
-                                'gpt-4-vision-preview' => 'GPT-4 Vision'
-                            ];
-                            $gpt35_models = [
-                                'gpt-3.5-turbo' => 'GPT-3.5 Turbo',
-                                'gpt-3.5-turbo-16k' => 'GPT-3.5 Turbo 16K',
-                                'gpt-3.5-turbo-instruct' => 'GPT-3.5 Turbo Instruct'
-                            ];
+                        <!-- AI Provider -->
+                        <label><?php echo esc_html__('AI Provider', 'gpt3-ai-content-generator'); ?></label>
+                        <select id="wpaicg_provider" class="wpaicg_provider" name="bot[provider]">
+                            <option value="OpenAI" <?php selected($wpaicg_provider, 'OpenAI'); ?>><?php echo esc_html__('OpenAI', 'gpt3-ai-content-generator'); ?></option>
+                            <option value="Google" <?php selected($wpaicg_provider, 'Google'); ?>><?php echo esc_html__('Google', 'gpt3-ai-content-generator'); ?></option>
+                            <option value="OpenRouter" <?php selected($wpaicg_provider, 'OpenRouter'); ?>><?php echo esc_html__('OpenRouter', 'gpt3-ai-content-generator'); ?></option>
+                            <option value="Azure" <?php selected($wpaicg_provider, 'Azure'); ?>><?php echo esc_html__('Microsoft', 'gpt3-ai-content-generator'); ?></option>
+                        </select>
+                    </div>
+
+                    <div class="openai-models">
+                        <?php
+                            $gpt4_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt4_models;
+                            $gpt35_models = \WPAICG\WPAICG_Util::get_instance()->openai_gpt35_models;
                             $custom_models = get_option('wpaicg_custom_models', []);
                             $current_model = 'gpt-3.5-turbo';
-                            ?>
-                        <select class="wpaicg_chatbot_model" id="wpaicg_chat_model" name="bot[model]" value="<?php echo esc_attr($current_model); ?>">
-                            <?php // Function to display options
+                            
                             function display_options($models, $selected_model){
                                 foreach ($models as $model_key => $model_name): ?>
                                     <option value="<?php echo esc_attr($model_key); ?>"<?php selected($model_key, $selected_model); ?>><?php echo esc_html($model_name); ?></option>
@@ -916,20 +899,96 @@ $conversation_starters = [];
                                     <?php
                                 }
                             }
-                            
                             ?>
-                            <optgroup label="GPT-4">
-                                <?php display_options($gpt4_models, $current_model); ?>
-                            </optgroup>
-                            <optgroup label="GPT-3.5">
-                                <?php display_options($gpt35_models, $current_model); ?>
-                            </optgroup>
-                            <optgroup label="Custom Models">
-                                <?php display_custom_model_options($custom_models, $current_model); ?>
-                            </optgroup>
-                        </select>
-                        <?php endif; ?>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
+                            <select class="wpaicg_chatbot_model" id="wpaicg_chat_model_openai" name="bot[model]" value="<?php echo esc_attr($current_model); ?>">
+                                <optgroup label="GPT-4">
+                                    <?php display_options($gpt4_models, $current_model); ?>
+                                </optgroup>
+                                <optgroup label="GPT-3.5">
+                                    <?php display_options($gpt35_models, $current_model); ?>
+                                </optgroup>
+                                <optgroup label="Custom Models">
+                                    <?php display_custom_model_options($custom_models, $current_model); ?>
+                                </optgroup>
+                            </select>
+                        </div>
                     </div>
+
+                    <div class="google-models" style="display: none;">
+                        <?php
+                        // Retrieve the serialized model list from the database
+                        $serialized_google_models = get_option('wpaicg_google_model_list', '');
+                        // Unserialize the model list; ensure it is an array
+                        $google_models = maybe_unserialize($serialized_google_models);
+                        if (empty($google_models)) {
+                            // Fallback to default model if the list is empty or not set
+                            $google_models = ['gemini-pro' => 'Gemini Pro'];
+                        } else {
+                            // Transform the array to use the same model string as both key and value for compatibility
+                            $google_models = array_combine($google_models, array_map(function($model) {
+                                return ucwords(str_replace('-', ' ', $model));  // Capitalize and replace hyphens with spaces
+                            }, $google_models));
+                        }
+
+                        $google_model = get_option('wpaicg_google_default_model', 'gemini-pro');
+                        ?>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
+                            <select class="wpaicg_chatbot_model" id="wpaicg_chat_model_google" name="bot[model]">
+                                <?php foreach ($google_models as $model_key => $model_name): 
+                                    $is_vision_model = strpos(strtolower($model_name), 'vision') !== false;  // Check if the model name contains 'vision'
+                                ?>
+                                    <option value="<?php echo esc_attr($model_key); ?>" <?php if ($is_vision_model) echo 'disabled'; ?><?php selected($model_key, $google_model); ?>><?php echo esc_html($model_name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="azure-models" style="display: none;">
+                        <div class="nice-form-group">
+                            <?php $azure_model = get_option('wpaicg_azure_deployment', ''); ?>
+                            <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
+                            <input type="text" class="wpaicg_chatbot_model" id="wpaicg_chat_model_azure" name="bot[model]" value="<?php echo esc_attr($azure_model); ?>" readonly>
+                        </div>
+                    </div>
+
+                    <div class="openrouter-models" style="display: none;">
+                        <?php
+                        $openrouter_models = get_option('wpaicg_openrouter_model_list', []);
+                        $openrouter_grouped_models = [];
+                        foreach ($openrouter_models as $openrouter_model) {
+                            $openrouter_provider = explode('/', $openrouter_model['id'])[0];
+                            if (!isset($openrouter_grouped_models[$openrouter_provider])) {
+                                $openrouter_grouped_models[$openrouter_provider] = [];
+                            }
+                            $openrouter_grouped_models[$openrouter_provider][] = $openrouter_model;
+                        }
+                        ksort($openrouter_grouped_models);
+
+                        $openrouter_selected_model = get_option('wpaicg_openrouter_default_model', 'openrouter/auto');
+                        ?>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Model', 'gpt3-ai-content-generator'); ?></label>
+                            <select class="wpaicg_chatbot_model" id="wpaicg_chat_model_openrouter" name="bot[model]" style="width: 211.75px;margin-right: 5px;">
+                                <?php
+                                foreach ($openrouter_grouped_models as $openrouter_provider => $openrouter_models) {
+                                    echo '<optgroup label="' . esc_attr($openrouter_provider) . '">';
+                                    usort($openrouter_models, function($a, $b) {
+                                        return strcmp($a["name"], $b["name"]);
+                                    });
+                                    foreach ($openrouter_models as $openrouter_model) {
+                                        $openrouter_is_selected = ($openrouter_selected_model === $openrouter_model['id']) ? ' selected' : '';
+                                        echo '<option value="' . esc_attr($openrouter_model['id']) . '"' . $openrouter_is_selected . '>' . esc_html($openrouter_model['name']) . '</option>';
+                                    }
+                                    echo '</optgroup>';
+                                }
+                                ?>
+                            </select>
+                        </div>
+                    </div>
+
                     <fieldset class="nice-form-group" style="margin-top: 1em;">
                     <legend><?php echo esc_html__('Options', 'gpt3-ai-content-generator'); ?></legend>
                         <div class="nice-form-group">
@@ -938,7 +997,7 @@ $conversation_starters = [];
                         </div>
                         <div class="nice-form-group">
                             <input <?php echo $wpaicg_image_enable ? ' checked':''?> value="1" type="checkbox" class="wpaicg_chatbot_image_enable" name="bot[image_enable]">
-                            <label><?php echo esc_html__('Image Upload (GPT-Vision Only)','gpt3-ai-content-generator')?></label>
+                            <label><?php echo esc_html__('Image Upload (GPT-4 Vision and GPT-4o Only)','gpt3-ai-content-generator')?></label>
                         </div>
                         <div class="nice-form-group">
                             <input name="bot[chat_addition]" class="wpaicg_chatbot_chat_addition" value="1" type="checkbox" id="wpaicg_chat_addition">
@@ -1032,25 +1091,10 @@ $conversation_starters = [];
                 ?>
                 <div class="wpaicg-bot-audio wpaicg-bot-wizard" style="display: none">
                     <h3 style="margin-top: -0.2em;"><?php echo esc_html__('Speech','gpt3-ai-content-generator')?></h3>
-                    <?php
-                        $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');  // Fetching the provider
-                        // If the provider isn't Azure or Google, display the fields
-                        if ($wpaicg_provider !== 'Azure' && $wpaicg_provider !== 'Google') {
-                        ?>
-                            <div class="nice-form-group">
-                                <input value="1" type="checkbox" class="wpaicg_chatbot_audio_enable" name="bot[audio_enable]">
-                                <label><?php echo esc_html__('Enable Speech to Text','gpt3-ai-content-generator')?></label>
-                            </div>
-                        <?php 
-                        } else {  // If the provider is Azure, display the notice
-                        ?>
-                            <div class="wpaicg-notice-info">
-                                <?php echo esc_html__('Speech to Text and related settings are not available for Azure or Google. If you want to use these features, change your provider to OpenAI under Settings - AI Engine.', 'gpt3-ai-content-generator'); ?>
-                            </div>
-                        <?php 
-                        }
-                        ?>
-
+                        <div class="nice-form-group">
+                            <input value="1" type="checkbox" class="wpaicg_chatbot_audio_enable" name="bot[audio_enable]">
+                            <label><?php echo esc_html__('Enable Speech to Text','gpt3-ai-content-generator')?></label>
+                        </div>
                         <div class="nice-form-group">
                             <input class="wpaicg_chatbot_chat_to_speech" value="1" type="checkbox" name="bot[chat_to_speech]">
                             <label><?php echo esc_html__('Enable Text to Speech','gpt3-ai-content-generator')?></label>
@@ -1225,8 +1269,8 @@ $conversation_starters = [];
                 <!--Context-->
                 <div class="wpaicg-bot-context wpaicg-bot-wizard" style="display: none">
                     <h3 style="margin-top: -0.2em;"><?php echo esc_html__('Knowledge','gpt3-ai-content-generator')?></h3>
-                    <div class="nice-form-group" style="display: flex;margin-top: -1em;">
-                        <div class="nice-form-group" style="padding-right: 30px;">
+                    <div class="nice-form-group" style="display: flex;justify-content: space-between;margin-top: 1em;">
+                        <div class="nice-form-group">
                             <label><?php echo esc_html__('Content Aware','gpt3-ai-content-generator')?></label>
                             <select style="width: 100px;" name="bot[content_aware]" class="wpaicg_chatbot_content_aware">
                                 <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
@@ -1234,7 +1278,14 @@ $conversation_starters = [];
                             </select>
                         </div>
                         <div class="nice-form-group">
-                            <label><?php echo esc_html__('Conversational Memory','gpt3-ai-content-generator')?></label>
+                                <label><?php echo esc_html__('User Aware','gpt3-ai-content-generator')?></label>
+                                <select style="width: 100px;" name="bot[user_aware]" class="wpaicg_chatbot_user_aware">
+                                    <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
+                                    <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
+                                </select>
+                            </div>
+                        <div class="nice-form-group">
+                            <label><?php echo esc_html__('Memory','gpt3-ai-content-generator')?></label>
                             <select style="width: 100px;" name="bot[remember_conversation]" class="wpaicg_chatbot_remember_conversation">
                                 <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
                                 <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
@@ -1277,10 +1328,20 @@ $conversation_starters = [];
                         <div class="nice-form-group">
                             <label><?php echo esc_html__('Collection','gpt3-ai-content-generator')?></label>
                             <select style="width: 100px;" disabled name="bot[qdrant_collection]" id="wpaicg_chat_qdrant_collection" class="asdisabled wpaicg_chatbot_qdrant_collection">
-                                <?php foreach ($wpaicg_qdrant_collections as $wpaicg_qdrant_collection) {
-                                    $selected = $wpaicg_qdrant_collection === '' ? ' selected' : '';
-                                    echo '<option value="' . esc_attr($wpaicg_qdrant_collection) . '"' . $selected . '>' . esc_html($wpaicg_qdrant_collection) . '</option>';
-                                } ?>
+                            <?php foreach ($wpaicg_qdrant_collections as $collection) {
+                                if (is_array($collection) && isset($collection['name'])) {
+                                    // New structure: collection is an array with 'name' and possibly 'dimension'
+                                    $name = $collection['name'];
+                                    $dimension = isset($collection['dimension']) ? ' (' . $collection['dimension'] . ')' : '';
+                                    $display_name = $name . $dimension;
+                                } else {
+                                    // Old structure: collection is a string
+                                    $name = $collection;
+                                    $display_name = $collection;
+                                }
+                                $selected = ($name === '') ? ' selected' : '';
+                                echo '<option value="' . esc_attr($name) . '"' . $selected . '>' . esc_html($display_name) . '</option>';
+                            } ?>
                             </select>
                         </div>
                         <div class="nice-form-group">
@@ -1293,6 +1354,28 @@ $conversation_starters = [];
                                 ?>
                             </select>
                         </div>
+                    </div>
+                    <div class="nice-form-group">
+                        <input type="checkbox" name="bot[use_default_embedding]" value="1" checked="checked" class="wpaicg_chatbot_use_default_embedding">
+                        <label><?php echo esc_html__('Use Default Embedding','gpt3-ai-content-generator')?></label>
+                    </div>
+                    <div class="nice-form-group" style="display: none;" id="embeddingModelDropdown">
+                        <label><?php echo esc_html__('Embedding model','gpt3-ai-content-generator')?></label>
+                        <select style="width: 75%;" name="bot[embedding_model]" id="wpaicg_chatbot_embedding_model" class="wpaicg_chatbot_embedding_model">
+                            <?php
+                            $embedding_models = \WPAICG\WPAICG_Util::get_instance()->get_embedding_models();
+                            $embedding_model = '';
+                            foreach ($embedding_models as $provider => $models) {
+                                echo '<optgroup label="' . esc_attr($provider) . '">';
+                                foreach ($models as $model => $dimension) {
+                                    $selected = ($model === $embedding_model) ? 'selected' : '';
+                                    echo '<option value="' . esc_attr($model) . '" data-provider="' . esc_attr($provider) . '" ' . $selected . '>' . esc_html($model) . ' (' . esc_html($dimension) . ')</option>';
+                                }
+                                echo '</optgroup>';
+                            }
+                            ?>
+                        </select>
+                        <input type="hidden" name="bot[embedding_provider]" id="wpaicg_chatbot_embedding_provider">
                     </div>
                     <!-- Conversation Starters -->
                     <div class="nice-form-group">
@@ -1334,13 +1417,6 @@ $conversation_starters = [];
                                     ?>
                                 </select>
                             </div>
-                            <div class="nice-form-group" style="padding-right: 5px;">
-                                <label style="font-size: 10px;"><?php echo esc_html__('User Aware','gpt3-ai-content-generator')?></label>
-                                <select style="width: 80px;font-size: 10px;" name="bot[user_aware]" class="wpaicg_chatbot_user_aware">
-                                    <option value="no"><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
-                                    <option value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
-                                </select>
-                            </div>
                             <?php if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()): ?>
                             <div class="nice-form-group" style="padding-right: 5px;">
                                 <label style="font-size: 10px;"><?php echo esc_html__('PDF Page Limit','gpt3-ai-content-generator')?></label>
@@ -1355,7 +1431,7 @@ $conversation_starters = [];
                             </div>
                             <div class="nice-form-group" style="padding-right: 5px;">
                                 <label style="font-size: 10px;"><?php echo esc_html__('PDF Icon','gpt3-ai-content-generator')?></label>
-                                    <input style="height: 44px;" value="#222" type="color" class="wpaicg_chatbot_pdf_color" name="bot[pdf_color]">
+                                    <input style="height: 44px;" value="#222222" type="color" class="wpaicg_chatbot_pdf_color" name="bot[pdf_color]">
                                 </div>
                             <?php else: ?>
                                 <div class="nice-form-group" style="padding-right: 5px;">
@@ -1366,7 +1442,7 @@ $conversation_starters = [];
                             </div>
                             <div class="nice-form-group" style="padding-right: 5px;">
                                 <label style="font-size: 10px;"><?php echo esc_html__('PDF Icon','gpt3-ai-content-generator')?></label>
-                                <input style="height: 44px;" disabled value="#222" type="color" class="wpaicg_chatbot_pdf_color" name="bot[pdf_color]">
+                                <input style="height: 44px;" disabled value="#222222" type="color" class="wpaicg_chatbot_pdf_color" name="bot[pdf_color]">
                             </div>
                             <?php endif; ?>
                         </div>
@@ -1556,7 +1632,7 @@ $conversation_starters = [];
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M176 0C123 0 80 43 80 96V256c0 53 43 96 96 96s96-43 96-96V96c0-53-43-96-96-96zM48 216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 89.1 66.2 162.7 152 174.4V464H104c-13.3 0-24 10.7-24 24s10.7 24 24 24h72 72c13.3 0 24-10.7 24-24s-10.7-24-24-24H200V430.4c85.8-11.7 152-85.3 152-174.4V216c0-13.3-10.7-24-24-24s-24 10.7-24 24v40c0 70.7-57.3 128-128 128s-128-57.3-128-128V216z"/></svg>
                             </span>
                             <span class="wpaicg-img-icon" data-type="shortcode" style="<?php echo $wpaicg_image_enable ? '' : 'display:none'?>">
-                                <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512"><path d="M0 96C0 60.7 28.7 32 64 32H448c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM323.8 202.5c-4.5-6.6-11.9-10.5-19.8-10.5s-15.4 3.9-19.8 10.5l-87 127.6L170.7 297c-4.6-5.7-11.5-9-18.7-9s-14.2 3.3-18.7 9l-64 80c-5.8 7.2-6.9 17.1-2.9 25.4s12.4 13.6 21.6 13.6h96 32H424c8.9 0 17.1-4.9 21.2-12.8s3.6-17.4-1.4-24.7l-120-176zM112 192a48 48 0 1 0 0-96 48 48 0 1 0 0 96z"/></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-image"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                                 <input type="file" id="imageUpload" class="wpaicg-img-file" accept="image/png, image/jpeg, image/webp, image/gif" style="display: none;" />
                                 <!-- add nonce -->
                                 <input type="hidden" id="wpaicg-img-nonce" value="<?php echo esc_html(wp_create_nonce( 'wpaicg-img-nonce' ))?>" />
@@ -1739,6 +1815,7 @@ $wpaicg_bots = new WP_Query($args);
         let wpaicg_google_voices = <?php echo json_encode($wpaicg_google_voices)?>;
         let wpaicg_elevenlab_api = '<?php echo esc_html($wpaicg_elevenlabs_api)?>';
         let wpaicg_google_api_key = '<?php echo esc_html($wpaicg_google_api_key)?>';
+        let wpaicg_all_google_models = <?php echo json_encode($wpaicg_all_google_models)?>;
         // Function to disable text to speech and speech to text when streaming is enabled
         function checkAndHandleStreaming() {
             let isStreamingEnabled = $('.wpaicg_chatbot_openai_stream_nav').is(':checked');
@@ -1772,12 +1849,61 @@ $wpaicg_bots = new WP_Query($args);
                 $('.wpaicg_chatbot_image_enable').attr('disabled', 'disabled');
             } else {
                 let selectedModel = $(this).val();
-                if (selectedModel !== 'gpt-4-vision-preview') {
+                 // gpt-4-vision-preview or gpt-4o
+                if (selectedModel !== 'gpt-4-vision-preview' && selectedModel !== 'gpt-4o') {
                     $('.wpaicg_chatbot_image_enable').prop('checked', false);
                     $('.wpaicg_chatbot_image_enable').attr('disabled', 'disabled');
                 } else {
                     $('.wpaicg_chatbot_image_enable').removeAttr('disabled');
                 }
+                let selectprovider = $('.wpaicg_provider').val();
+                if (selectprovider === 'Google') {
+                    //disable audio and image enable checkbox regardless of the model selected
+                    $('.wpaicg_chatbot_audio_enable').prop('checked', false);
+                    $('.wpaicg_chatbot_audio_enable').attr('disabled', 'disabled');
+                    $('.wpaicg_chatbot_image_enable').prop('checked', false);
+                    $('.wpaicg_chatbot_image_enable').attr('disabled', 'disabled');
+                }
+            }
+        });
+
+        // listen changes on provider select: wpaicg_provider...
+        $(document).on('change', '.wpaicg_provider', function() {
+            let selectedProvider = $(this).val();
+            if (selectedProvider === 'OpenAI') {
+                $('.openai-models').show();
+                $('.google-models').hide();
+                $('.azure-models').hide();
+                $('.openrouter-models').hide();
+                // enable streaming checkbox
+                $('.wpaicg_chatbot_openai_stream_nav').removeAttr('disabled');
+                // enable audio and image enable checkbox
+                $('.wpaicg_chatbot_audio_enable').removeAttr('disabled');
+                $('.wpaicg_chatbot_image_enable').removeAttr('disabled');
+            } else if (selectedProvider === 'Google') {
+                $('.openai-models').hide();
+                $('.google-models').show();
+                $('.azure-models').hide();
+                $('.openrouter-models').hide();
+                $('.wpaicg_chatbot_audio_enable').prop('checked', false);
+                $('.wpaicg_chatbot_audio_enable').attr('disabled', 'disabled');
+                $('.wpaicg_chatbot_image_enable').prop('checked', false);
+                $('.wpaicg_chatbot_image_enable').attr('disabled', 'disabled');
+                // disable streaming checkbox
+                $('.wpaicg_chatbot_openai_stream_nav').prop('checked', false);
+                $('.wpaicg_chatbot_openai_stream_nav').attr('disabled', 'disabled');
+            } else if (selectedProvider === 'Azure') {
+                $('.openai-models').hide();
+                $('.google-models').hide();
+                $('.openrouter-models').hide();
+                $('.azure-models').show();
+            }  else if (selectedProvider === 'OpenRouter') {
+                $('.openai-models').hide();
+                $('.google-models').hide();
+                $('.azure-models').hide();
+                $('.openrouter-models').show();
+                // enable streaming checkbox
+                $('.wpaicg_chatbot_openai_stream_nav').removeAttr('disabled');
             }
         });
 
@@ -2507,7 +2633,7 @@ $wpaicg_bots = new WP_Query($args);
                 'color': miccolor
             });
             modalContent.find('.wpaicg-img-icon').css({
-                'color': miccolor
+                'color': sendcolor
             });
             modalContent.find('.wpaicg-pdf-icon').css({
                 'color': pdf_color
@@ -2535,13 +2661,14 @@ $wpaicg_bots = new WP_Query($args);
                 $('.wpaicg_chatbot_embedding_top').attr('disabled','disabled');
             }
             let selectedModel = modalContent.find('.wpaicg_chatbot_model').val();
-            // if it is gemini-pro then disable streaming and image upload
-            if (selectedModel === 'gemini-pro') {
+
+            // Check if the selected model is in the list of all Google models to disable streaming and image upload
+            if (wpaicg_all_google_models.includes(selectedModel)) {
                 $('.wpaicg_chatbot_openai_stream_nav').prop('checked', false);
                 $('.wpaicg_chatbot_openai_stream_nav').attr('disabled', 'disabled');
                 $('.wpaicg_chatbot_image_enable').prop('checked', false);
                 $('.wpaicg_chatbot_image_enable').attr('disabled', 'disabled');
-            } 
+            }
 
             wpaicgChatShortcodeSize();
 
@@ -2585,14 +2712,6 @@ $wpaicg_bots = new WP_Query($args);
         $('.wpaicg-create-bot').click(function (){
             $('.wpaicg_modal_title').html('<?php echo esc_html__('Create New Bot','gpt3-ai-content-generator')?>');
             $('.wpaicg_modal_content').html($('.wpaicg-create-bot-default').html());
-            $('.wpaicg_modal_content .wpaicgchat_color').wpColorPicker({
-                change: function (event, ui){
-                    wpaicgUpdateRealtime();
-                },
-                clear: function(event){
-                    wpaicgUpdateRealtime();
-                }
-            });
             $('.wpaicg_modal_content .wpaicg_chatbot_type_shortcode').prop('checked',true);
             $('.wpaicg_modal_content .wpaicg_chatbot_position').hide();
             $('.wpaicg-overlay').show();
@@ -2606,8 +2725,41 @@ $wpaicg_bots = new WP_Query($args);
                 $('.wpaicg_modal_content .wpaicg_chatbot_embedding_index').closest('.nice-form-group').hide();
                 $('.wpaicg_modal_content .wpaicg_chatbot_qdrant_collection').closest('.nice-form-group').show();
             }
-           
-         
+            let modalContent = $('.wpaicg_modal_content');
+            let embeddingCheckbox = modalContent.find('.wpaicg_chatbot_use_default_embedding');
+            let embeddingModelDropdown = modalContent.find('#embeddingModelDropdown');
+            let embeddingProviderField = modalContent.find('#wpaicg_chatbot_embedding_provider');
+            // Set initial visibility of the dropdown based on the checkbox
+            if (!embeddingCheckbox.is(':checked')) {
+                embeddingModelDropdown.show();
+                updateEmbeddingProvider();
+            } else {
+                embeddingModelDropdown.hide();
+                embeddingProviderField.val('');
+            }
+
+            // Event handler for changes in the embedding model checkbox
+            embeddingCheckbox.change(function() {
+                if (!$(this).is(':checked')) {
+                    embeddingModelDropdown.show();
+                    updateEmbeddingProvider();
+                } else {
+                    embeddingModelDropdown.hide();
+                    embeddingProviderField.val('');
+                }
+            });
+
+            // Update embedding provider based on the selected model
+            function updateEmbeddingProvider() {
+                modalContent.find('#wpaicg_chatbot_embedding_model').change(function () {
+                    var selectedProvider = $(this).find('option:selected').data('provider');
+                    embeddingProviderField.val(selectedProvider);
+                });
+
+                // Initialize the provider field when creating a new bot or when model is changed
+                var initialProvider = modalContent.find('#wpaicg_chatbot_embedding_model option:selected').data('provider');
+                embeddingProviderField.val(initialProvider);
+            }
             wpaicgChatInit();
         });
         
@@ -2666,6 +2818,19 @@ $wpaicg_bots = new WP_Query($args);
                     data += `&${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
                 }
             });
+            // Set the correct model value based on the selected provider
+            let selectedProvider = form.find('.wpaicg_provider').val();
+            let model = '';
+            if (selectedProvider === 'OpenAI') {
+                model = form.find('#wpaicg_chat_model_openai').val();
+            } else if (selectedProvider === 'Google') {
+                model = form.find('#wpaicg_chat_model_google').val();
+            } else if (selectedProvider === 'Azure') {
+                model = form.find('#wpaicg_chat_model_azure').val();
+            } else if (selectedProvider === 'OpenRouter') {
+                model = form.find('#wpaicg_chat_model_openrouter').val();
+            }
+            data += `&bot[model]=${encodeURIComponent(model)}`;
             let name = form.find('.wpaicg_chatbot_name').val();
             let has_error = false;
             if(name === ''){
@@ -2716,7 +2881,6 @@ $wpaicg_bots = new WP_Query($args);
         })
         $('.wpaicg-bot-edit').click(function (){
             let fields = $(this).attr('data-content');
-            console.log(fields);
             // fields = fields.replace(/\\/g,'');
             fields = JSON.parse(fields);
             $('.wpaicg_modal_title').html('<?php echo esc_html__('Edit Bot','gpt3-ai-content-generator')?>');
@@ -2727,6 +2891,109 @@ $wpaicg_bots = new WP_Query($args);
             modalContent.find('.wpaicg_chatbot_log_notice').removeAttr('disabled');
             modalContent.find('.wpaicg_chatbot_log_notice_message').removeAttr('disabled');
             modalContent.find('.wpaicg-chat-shortcode').attr('data-bot-id',fields.id);
+
+            let embeddingCheckbox = modalContent.find('.wpaicg_chatbot_use_default_embedding');
+            let embeddingModelDropdown = modalContent.find('#embeddingModelDropdown');
+            let embeddingProviderField = modalContent.find('#wpaicg_chatbot_embedding_provider');
+
+            // Set initial visibility of the dropdown based on the checkbox
+            if(fields.use_default_embedding === '0'){
+                embeddingModelDropdown.show();
+                updateEmbeddingProvider();
+            } else {
+                embeddingModelDropdown.hide();
+                embeddingProviderField.val('');
+            }
+
+            // Event handler for changes in the embedding model checkbox
+            embeddingCheckbox.change(function() {
+                if (!$(this).is(':checked')) {
+                    embeddingModelDropdown.show();
+                    updateEmbeddingProvider();
+                } else {
+                    embeddingModelDropdown.hide();
+                    embeddingProviderField.val('');
+                }
+            });
+
+            // Update embedding provider based on the selected model
+            function updateEmbeddingProvider() {
+                modalContent.find('#wpaicg_chatbot_embedding_model').change(function () {
+                    var selectedProvider = $(this).find('option:selected').data('provider');
+                    embeddingProviderField.val(selectedProvider);
+                });
+
+                // Initialize the provider field based on existing selection
+                var initialProvider = modalContent.find('#wpaicg_chatbot_embedding_model option:selected').data('provider');
+                embeddingProviderField.val(initialProvider);
+            }
+
+            // Set the AI provider and model based on the fields data
+            modalContent.find('#wpaicg_provider').val(fields.provider).trigger('change');
+
+            // Function to display the correct model dropdown based on the selected provider
+            function displayModelDropdown(provider) {
+                switch (provider) {
+                    case 'OpenAI':
+                        modalContent.find('.openai-models').show();
+                        modalContent.find('.google-models').hide();
+                        modalContent.find('.azure-models').hide();
+                        modalContent.find('.openrouter-models').hide();
+                        // display the correct model dropdown based on the selected provider
+                        modalContent.find('.wpaicg_chatbot_model').val('gpt-3.5-turbo');
+                        break;
+                    case 'Google':
+                        modalContent.find('.openai-models').hide();
+                        modalContent.find('.google-models').show();
+                        modalContent.find('.azure-models').hide();
+                        modalContent.find('.openrouter-models').hide();
+                        modalContent.find('.wpaicg_chatbot_model').val('gemini-pro');
+                        // Disable speech-to-text, streaming, and image upload checkboxes
+                        modalContent.find('.wpaicg_chatbot_audio_enable').prop('checked', false);
+                        modalContent.find('.wpaicg_chatbot_audio_enable').attr('disabled', 'disabled');
+                        modalContent.find('.wpaicg_chatbot_image_enable').prop('checked', false);
+                        modalContent.find('.wpaicg_chatbot_image_enable').attr('disabled', 'disabled');
+                        // disable streaming
+                        modalContent.find('.wpaicg_chatbot_openai_stream_nav').prop('checked', false);
+                        modalContent.find('.wpaicg_chatbot_openai_stream_nav').attr('disabled', 'disabled');
+                        break;
+                    case 'Azure':
+                        modalContent.find('.openai-models').hide();
+                        modalContent.find('.google-models').hide();
+                        modalContent.find('.azure-models').show();
+                        modalContent.find('.openrouter-models').hide();
+                        modalContent.find('.wpaicg_chatbot_model').val('');
+                        // Disable speech-to-text, streaming, and image upload checkboxes
+                        modalContent.find('.wpaicg_chatbot_audio_enable').prop('checked', false);
+                        modalContent.find('.wpaicg_chatbot_audio_enable').attr('disabled', 'disabled');
+                        modalContent.find('.wpaicg_chatbot_image_enable').prop('checked', false);
+                        modalContent.find('.wpaicg_chatbot_image_enable').attr('disabled', 'disabled');
+                        // disable streaming
+                        modalContent.find('.wpaicg_chatbot_openai_stream_nav').prop('checked', false);
+                        modalContent.find('.wpaicg_chatbot_openai_stream_nav').attr('disabled', 'disabled');
+                        break;
+                    case 'OpenRouter':
+                        modalContent.find('.openai-models').hide();
+                        modalContent.find('.google-models').hide();
+                        modalContent.find('.azure-models').hide();
+                        modalContent.find('.openrouter-models').show();
+                        modalContent.find('.wpaicg_chatbot_model').val('');
+                        // Disable speech-to-text, streaming, and image upload checkboxes
+                        modalContent.find('.wpaicg_chatbot_audio_enable').prop('checked', false);
+                        modalContent.find('.wpaicg_chatbot_audio_enable').attr('disabled', 'disabled');
+                        break;
+                }
+            }
+
+            // Initially display the correct model dropdown
+            displayModelDropdown(fields.provider);
+
+            // Event handler for changes in the AI provider dropdown
+            modalContent.find('#wpaicg_provider').change(function () {
+                let selectedProvider = $(this).val();
+                displayModelDropdown(selectedProvider);
+            });
+
             // if vector db is pinecone then show pinecone index and hide qdrant collection and vice versa
             if (fields.vectordb === 'pinecone') {
                 modalContent.find('.wpaicg_chatbot_embedding_index').closest('.nice-form-group').show();
@@ -2751,6 +3018,9 @@ $wpaicg_bots = new WP_Query($args);
                     else{
                         modalContent.find('.wpaicg-chat-shortcode').attr('data-voice','');
                     }
+                }
+                if(key === 'use_default_embedding' && field === '0'){
+                    modalContent.find('.wpaicg_chatbot_use_default_embedding').prop('checked', false);
                 }
                 if(key === 'voice_service' || key === 'openai_model' || key === 'elevenlabs_model' || key === 'openai_voice' || key === 'openai_output_format' || key === 'openai_voice_speed' || key === 'openai_stream_nav' || key === 'voice_language' || key === 'voice_name' || key === 'voice_device' || key === 'voice_speed' || key === 'voice_pitch'){
                     modalContent.find('.wpaicg-chat-shortcode').attr('data-'+key,field);
@@ -2781,6 +3051,7 @@ $wpaicg_bots = new WP_Query($args);
                         modalContent.find('.wpaicg_voice_service_openai').show();
                     }
                 }
+
                 // if key openai_stream_nav is enabled then disable wpaicg_chatbot_image_enable and set it to false
                 if(key === 'openai_stream_nav' && field === '1'){
                     modalContent.find('.wpaicg_chatbot_image_enable').prop('checked', false);
@@ -2940,14 +3211,6 @@ $wpaicg_bots = new WP_Query($args);
                 modalContent.find('.wpaicg_chatbot_log_notice').attr('disabled','disabled');
                 modalContent.find('.wpaicg_chatbot_log_notice_message').attr('disabled','disabled');
             }
-            $('.wpaicg_modal_content .wpaicgchat_color').wpColorPicker({
-                change: function (event, ui){
-                    wpaicgUpdateRealtime();
-                },
-                clear: function(event){
-                    wpaicgUpdateRealtime();
-                }
-            });
             // disable voice services if streaming is enabled wpaicg_chatbot_openai_stream_nav. wpaicg_chatbot_chat_to_speech and wpaicg_chatbot_audio_enable need to be disabled and set to false.
             if (modalContent.find('.wpaicg_chatbot_openai_stream_nav').prop('checked')) {
                 modalContent.find('.wpaicg_chatbot_chat_to_speech').prop('checked', false);

@@ -60,7 +60,9 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                 case 'embedding-001':
                     $costPerToken = 0.0002 / 1000;
                     break;
-                // Add more cases as needed
+                case 'text-embedding-004':
+                    $costPerToken = 0.0002 / 1000;
+                    break;
             }
         
             // Calculate estimated cost
@@ -110,7 +112,26 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                 $details .= "<strong>DB:</strong> " . esc_html($dbProvider) . "<br>";
                 if ($dbProvider == 'Pinecone') {
                     $parts = explode('-', $wpaicg_index);
-                    $indexName = $parts[0];
+                    $indexName = '';
+                    $svc_pos = strpos($wpaicg_index, '.svc'); // Assuming '.svc' is a relevant marker in this context too.
+                
+                    if ($svc_pos !== false) {
+                        // Find the last "-" before ".svc" by looking backwards from the position of ".svc"
+                        $sub_string_up_to_svc = substr($wpaicg_index, 0, $svc_pos);
+                        $last_dash_before_svc = strrpos($sub_string_up_to_svc, '-');
+                
+                        // Ensure there's a "-" before ".svc"
+                        if ($last_dash_before_svc !== false) {
+                            // Extract everything before the last "-" before ".svc"
+                            $indexName = substr($wpaicg_index, 0, $last_dash_before_svc);
+                        } else {
+                            // No "-" found before ".svc", assume the whole part before ".svc" is the index name
+                            $indexName = $sub_string_up_to_svc;
+                        }
+                    } else {
+                        // ".svc" not found, handle the error or use a default
+                        $indexName = null;  // Or handle this case as needed
+                    }
                     $projectName = substr($parts[1], 0, strpos($parts[1], '.svc'));
                     $details .= "<strong>Project:</strong> " . esc_html($projectName) . "<br>" . "<strong>Index:</strong> " . esc_html($indexName) . "<br>";
                 } else {
@@ -910,11 +931,12 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                 $wpaicg_old_builder = false;
                 if ($check) {
                     $wpaicg_old_builder = $check->post_id;
-                }
-                /*Check if old index exist*/
-                $wpaicg_old_index_builder = get_post($check->post_id);
-                if(!$wpaicg_old_index_builder){
-                    $wpaicg_old_builder = false;
+
+                    /*Check if old index exist*/
+                    $wpaicg_old_index_builder = get_post($check->post_id);
+                    if(!$wpaicg_old_index_builder){
+                        $wpaicg_old_builder = false;
+                    }
                 }
                 /*For Post*/
                 if($wpaicg_data->post_type == 'post'){
@@ -1046,10 +1068,18 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                         }
                         $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : ($wpaicg_provider === 'Google' ? get_option('wpaicg_google_embeddings', 'embedding-001') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002'));
 
+                        $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+                        if (!empty($main_embedding_model)) {
+                            $model_parts = explode(':', $main_embedding_model);
+                            if (count($model_parts) === 2) {
+                                $wpaicg_emb_model = $model_parts[1];
+                                $wpaicg_provider = $model_parts[0];
+                            }
+                        }
                         
-                        update_post_meta($embeddings_id, 'wpaicg_provider', $wpaicg_provider);
-                        update_post_meta($embeddings_id, 'wpaicg_index', $wpaicg_emb_index);
-                        update_post_meta($embeddings_id, 'wpaicg_model', $wpaicg_emb_model);
+                        update_post_meta($embedding_id, 'wpaicg_provider', $wpaicg_provider);
+                        update_post_meta($embedding_id, 'wpaicg_index', $wpaicg_emb_index);
+                        update_post_meta($embedding_id, 'wpaicg_model', $wpaicg_emb_model);
                         return $wpaicg_result['msg'];
                     } else {
                         update_option('wpaicg_crojob_builder_content',time());
@@ -1070,6 +1100,15 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                         }
 
                         $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : ($wpaicg_provider === 'Google' ? get_option('wpaicg_google_embeddings', 'embedding-001') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002'));
+
+                        $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+                        if (!empty($main_embedding_model)) {
+                            $model_parts = explode(':', $main_embedding_model);
+                            if (count($model_parts) === 2) {
+                                $wpaicg_emb_model = $model_parts[1];
+                                $wpaicg_provider = $model_parts[0];
+                            }
+                        }
 
                         update_post_meta($wpaicg_result['id'], 'wpaicg_provider', $wpaicg_provider);
                         update_post_meta($wpaicg_result['id'], 'wpaicg_index', $wpaicg_emb_index);
@@ -1100,9 +1139,19 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                         $wpaicg_emb_index = get_option('wpaicg_qdrant_default_collection', '');
                     }
                     $wpaicg_emb_model = $wpaicg_provider === 'OpenAI' ? get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002') : ($wpaicg_provider === 'Google' ? get_option('wpaicg_google_embeddings', 'embedding-001') : get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002'));                    
-                    update_post_meta($embeddings_id, 'wpaicg_provider', $wpaicg_provider);
-                    update_post_meta($embeddings_id, 'wpaicg_index', $wpaicg_emb_index);
-                    update_post_meta($embeddings_id, 'wpaicg_model', $wpaicg_emb_model);
+                    
+                    $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+                    if (!empty($main_embedding_model)) {
+                        $model_parts = explode(':', $main_embedding_model);
+                        if (count($model_parts) === 2) {
+                            $wpaicg_emb_model = $model_parts[1];
+                            $wpaicg_provider = $model_parts[0];
+                        }
+                    }
+                    
+                    update_post_meta($embedding_id, 'wpaicg_provider', $wpaicg_provider);
+                    update_post_meta($embedding_id, 'wpaicg_index', $wpaicg_emb_index);
+                    update_post_meta($embedding_id, 'wpaicg_model', $wpaicg_emb_model);
                     return esc_html__('Something went wrong','gpt3-ai-content-generator');
                 }
             }
@@ -1174,11 +1223,21 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                 wp_send_json($wpaicg_result);
             }
 
+            $wpaicg_main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+            if (!empty($wpaicg_main_embedding_model)) {
+                $wpaicg_main_embedding_model = explode(':', $wpaicg_main_embedding_model);
+                $wpaicg_embedding_provider = $wpaicg_main_embedding_model[0];
+                try {
+                    $openai = WPAICG_Util::get_instance()->initialize_embedding_engine($wpaicg_embedding_provider, $wpaicg_provider);
+                } catch (\Exception $e) {
+                    $wpaicg_result['msg'] = $e->getMessage();
+                    wp_send_json($wpaicg_result);
+                }
+            } 
+
             $content = preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $content);
             
             if($openai){
-
-
                 // Determine the model based on the provider
                 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                 // Retrieve the embedding model based on the provider
@@ -1192,6 +1251,13 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                     case 'Google':
                         $wpaicg_model = get_option('wpaicg_google_embeddings', 'embedding-001');
                         break;
+                }
+
+                // check to see if wpaicg_main_embedding_model exists and not empty if yes then get the provider amd model from there: OpenAI:text-embedding-3-large
+                $wpaicg_main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+                if (!empty($wpaicg_main_embedding_model)) {
+                    $wpaicg_main_embedding_model = explode(':', $wpaicg_main_embedding_model);
+                    $wpaicg_model = $wpaicg_main_embedding_model[1];
                 }
 
                 // Prepare the API call parameters
@@ -1238,6 +1304,13 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                             ($wpaicg_provider === 'Google' ? 
                             get_option('wpaicg_google_embeddings', 'embedding-001') : 
                             get_option('wpaicg_azure_embeddings', 'text-embedding-ada-002'));
+
+                            $wpaicg_main_embedding_model = get_option('wpaicg_main_embedding_model', '');
+                            if (!empty($wpaicg_main_embedding_model)) {
+                                $wpaicg_main_embedding_model = explode(':', $wpaicg_main_embedding_model);
+                                $wpaicg_emb_model = $wpaicg_main_embedding_model[1];
+                                $wpaicg_provider = $wpaicg_main_embedding_model[0];
+                            }
                             
                             $embeddings_id = wp_insert_post($embedding_data,true);
                             if(is_wp_error($embeddings_id)) {
@@ -1367,7 +1440,18 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                                             update_post_meta($embeddings_id,'wpaicg_completed',time());
                                         }
                                         else{
-                                            $wpaicg_result['msg'] = "Response from API: " . $body['error'];
+                                            // Initialize an empty error message
+                                            $error_message = 'Unknown error occurred';
+
+                                            // Check if error is directly available or nested inside 'status'
+                                            if (isset($body['error'])) {
+                                                $error_message = $body['error'];
+                                            } elseif (isset($body['status']['error'])) {
+                                                $error_message = $body['status']['error'];
+                                            }
+
+                                            // Set the error message in the result array
+                                            $wpaicg_result['msg'] = "Response from API: " . $error_message;
                                             wp_delete_post($embeddings_id);
                                             $wpdb->delete($wpdb->postmeta, array(
                                                 'meta_value' => $embeddings_id,
@@ -1391,7 +1475,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Embeddings')) {
                 }
             }
             else{
-                $wpaicg_result['msg'] = esc_html__('Missing OpenAI API Settings','gpt3-ai-content-generator');
+                $wpaicg_result['msg'] = esc_html__('Missing API details.','gpt3-ai-content-generator');
             }
             return $wpaicg_result;
         }

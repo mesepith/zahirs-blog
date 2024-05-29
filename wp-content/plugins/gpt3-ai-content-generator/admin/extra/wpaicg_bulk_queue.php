@@ -41,20 +41,40 @@ $humanReadableRss = (!empty($wpaicg_cronjob_last_run_rss)) ? date('y-m-d H:i', $
 $wpaicg_cronjob_last_run_tweet = get_option('wpaicg_cron_tweet_last_time','');
 $humanReadableTweet = (!empty($wpaicg_cronjob_last_run_tweet)) ? date('y-m-d H:i', $wpaicg_cronjob_last_run_tweet) : 'NA';
 
+// Schedule options
+$schedule_options = [
+    'none' => 'None',
+    '5minutes' => 'Every 5 Minutes',
+    '15minutes' => 'Every 15 Minutes',
+    '30minutes' => 'Every 30 Minutes',
+    '1hour' => 'Every 1 Hour',
+    '2hours' => 'Every 2 Hours',
+    '6hours' => 'Every 6 Hours',
+    '12hours' => 'Every 12 Hours',
+    '1day' => 'Every Day',
+    '1week' => 'Every Week'
+];
+
+$schedule_queue = get_option('wpaicg_cron_queue_schedule', 'none');
+$schedule_sheets = get_option('wpaicg_cron_sheets_schedule', 'none');
+$schedule_rss = get_option('wpaicg_cron_rss_schedule', 'none');
+$schedule_tweet = get_option('wpaicg_cron_tweet_schedule', 'none');
+
 ?>
 <table class="wp-list-table widefat fixed striped table-view-list comments">
 <thead>
         <tr>
-            <th><?php echo esc_html__('#', 'gpt3-ai-content-generator'); ?></th>
-            <th><?php echo esc_html__('Status', 'gpt3-ai-content-generator'); ?></th>
-            <th><?php echo esc_html__('Last Run', 'gpt3-ai-content-generator'); ?></th>
-            <th><?php echo esc_html__('Manual Trigger', 'gpt3-ai-content-generator'); ?></th>
-            <th><?php echo esc_html__('Cron Job', 'gpt3-ai-content-generator'); ?></th>
+            <th style="width: 60px;"><?php echo esc_html__('#', 'gpt3-ai-content-generator'); ?></th>
+            <th style="width: 60px;"><?php echo esc_html__('Status', 'gpt3-ai-content-generator'); ?></th>
+            <th style="width: 120px;"><?php echo esc_html__('Last Run', 'gpt3-ai-content-generator'); ?></th>
+            <th style="width: 60px;"><?php echo esc_html__('Manual', 'gpt3-ai-content-generator'); ?></th>
+            <th><?php echo esc_html__('Schedule', 'gpt3-ai-content-generator'); ?></th>
+            <th><?php echo esc_html__('Cron', 'gpt3-ai-content-generator'); ?></th>
         </tr>
         </thead>
     <tbody>
         <tr>
-            <td>Queue Processor</td>
+            <td>Queue</td>
             <td style="color: <?php echo empty($wpaicg_cron_added) ? '#ff0000' : '#008000'; ?>;"><?php echo empty($wpaicg_cron_added) ? 'OFF' : 'ON'; ?></td>
             <td><?php echo esc_html($humanReadableQueue); ?></td>
             <td>
@@ -62,17 +82,31 @@ $humanReadableTweet = (!empty($wpaicg_cronjob_last_run_tweet)) ? date('y-m-d H:i
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
             </td>
+            <td>
+                <select id="scheduleQueue" class="schedule-dropdown" data-task="queue" style="width: 120px;">
+                    <?php foreach ($schedule_options as $value => $label) : ?>
+                        <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $schedule_queue); ?>><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </td>
             <td><a href="#" class="view-instructions" data-instruction="queue">Instructions</a></td>
         </tr>
         <?php if ($is_pro_plan): ?>
         <tr>
-            <td>Google Sheets</td>
+            <td>Sheets</td>
             <td style="color: <?php echo empty($wpaicg_cron_sheets_added) ? '#ff0000' : '#008000'; ?>;"><?php echo empty($wpaicg_cron_sheets_added) ? 'OFF' : 'ON'; ?></td>
             <td><?php echo esc_html($humanReadableSheets); ?></td>
             <td>
                 <button id="triggerGoogle" class="button button-primary" title="Trigger Google">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
+            </td>
+            <td>
+                <select id="scheduleSheets" class="schedule-dropdown" data-task="sheets" style="width: 120px;">
+                    <?php foreach ($schedule_options as $value => $label) : ?>
+                        <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $schedule_sheets); ?>><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
             </td>
             <td><a href="#" class="view-instructions" data-instruction="google">Instructions</a></td>
         </tr>
@@ -85,6 +119,13 @@ $humanReadableTweet = (!empty($wpaicg_cronjob_last_run_tweet)) ? date('y-m-d H:i
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
             </td>
+            <td>
+                <select id="scheduleRss" class="schedule-dropdown" data-task="rss" style="width: 120px;">
+                    <?php foreach ($schedule_options as $value => $label) : ?>
+                        <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $schedule_rss); ?>><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </td>
             <td><a href="#" class="view-instructions" data-instruction="rss">Instructions</a></td>
         </tr>
         <tr>
@@ -95,6 +136,13 @@ $humanReadableTweet = (!empty($wpaicg_cronjob_last_run_tweet)) ? date('y-m-d H:i
                 <button id="triggerTwitter" class="button button-primary" title="Trigger Twitter">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                 </button>
+            </td>
+            <td>
+                <select id="scheduleTwitter" class="schedule-dropdown" data-task="tweet" style="width: 120px;">
+                    <?php foreach ($schedule_options as $value => $label) : ?>
+                        <option value="<?php echo esc_attr($value); ?>" <?php selected($value, $schedule_tweet); ?>><?php echo esc_html($label); ?></option>
+                    <?php endforeach; ?>
+                </select>
             </td>
             <td><a href="#" class="view-instructions" data-instruction="twitter">Instructions</a></td>
         </tr>
@@ -186,6 +234,32 @@ $humanReadableTweet = (!empty($wpaicg_cronjob_last_run_tweet)) ? date('y-m-d H:i
 
 <script>
     jQuery(document).ready(function($) {
+
+        // Function to save schedule
+        function saveSchedule(task, value) {
+            $.ajax({
+                url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                type: 'post',
+                data: {
+                    action: 'save_schedule',
+                    task: task,
+                    value: value,
+                    nonce: '<?php echo wp_create_nonce('save_schedule_nonce'); ?>'
+                },
+                success: function(response) {
+                    if (!response.success) {
+                        alert('Failed to save schedule.');
+                    }
+                }
+            });
+        }
+
+        // Handle schedule change
+        $('.schedule-dropdown').on('change', function() {
+            var task = $(this).data('task');
+            var value = $(this).val();
+            saveSchedule(task, value);
+        });
         
         // Consolidate bindShowDetailsEvent function
         function bindShowDetailsEvent() {
@@ -206,11 +280,11 @@ $humanReadableTweet = (!empty($wpaicg_cronjob_last_run_tweet)) ? date('y-m-d H:i
                     },
                     beforeSend: function() {
                         $('.details-row').remove();
-                        $clickedRow.after('<tr class="details-row"><td colspan="4">Loading...</td></tr>');
+                        $clickedRow.after('<tr class="details-row"><td colspan="5">Loading...</td></tr>');
                     },
                     success: function(response) {
                         if (response.success) {
-                            $('.details-row').replaceWith('<tr class="details-row"><td colspan="4">' + response.data + '</td></tr>');
+                            $('.details-row').replaceWith('<tr class="details-row"><td colspan="5">' + response.data + '</td></tr>');
                         } else {
                             $('.details-row').remove();
                             alert('Failed to load details.');
@@ -424,7 +498,7 @@ $humanReadableTweet = (!empty($wpaicg_cronjob_last_run_tweet)) ? date('y-m-d H:i
                 // Create and insert the instruction row below the current row
                 const instructionRow = document.createElement('tr');
                 instructionRow.className = 'instruction-row';
-                instructionRow.innerHTML = `<td colspan="5"><div class="wpaicg-code-container">${instructionText}<br><code>${cronCommand}</code></div></td>`;
+                instructionRow.innerHTML = `<td colspan="6"><div class="wpaicg-code-container">${instructionText}<br><code>${cronCommand}</code></div></td>`;
                 this.closest('tr').after(instructionRow);
             });
         });

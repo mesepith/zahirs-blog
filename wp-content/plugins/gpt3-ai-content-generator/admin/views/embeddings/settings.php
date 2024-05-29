@@ -2,9 +2,6 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 global $wpdb;
 
-// Retrieving the saved Embeddings Model option
-$wpaicg_openai_embeddings = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
-$wpaicg_google_embeddings = get_option('wpaicg_google_embeddings', 'embedding-001');
 // Retrieving the provider option
 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 
@@ -19,56 +16,7 @@ $wpaicg_builder_enable = get_option('wpaicg_builder_enable','');
 $wpaicg_instant_embedding = get_option('wpaicg_instant_embedding','yes');
 $wpaicg_pinecone_indexes = get_option('wpaicg_pinecone_indexes','');
 $wpaicg_pinecone_indexes = empty($wpaicg_pinecone_indexes) ? array() : json_decode($wpaicg_pinecone_indexes,true);
-$wpaicg_pinecone_environments = array(
-    'asia-northeast1-gcp' => 'GCP Asia-Northeast-1 (Tokyo)',
-    'asia-northeast1-gcp-free' => 'GCP Asia-Northeast-1 Free (Tokyo)',
-    'asia-northeast2-gcp' => 'GCP Asia-Northeast-2 (Osaka)',
-    'asia-northeast2-gcp-free' => 'GCP Asia-Northeast-2 Free (Osaka)',
-    'asia-northeast3-gcp' => 'GCP Asia-Northeast-3 (Seoul)',
-    'asia-northeast3-gcp-free' => 'GCP Asia-Northeast-3 Free (Seoul)',
-    'asia-southeast1-gcp' => 'GCP Asia-Southeast-1 (Singapore)',
-    'asia-southeast1-gcp-free' => 'GCP Asia-Southeast-1 Free',
-    'eu-west1-gcp' => 'GCP EU-West-1 (Ireland)',
-    'eu-west1-gcp-free' => 'GCP EU-West-1 Free (Ireland)',
-    'eu-west2-gcp' => 'GCP EU-West-2 (London)',
-    'eu-west2-gcp-free' => 'GCP EU-West-2 Free (London)',
-    'eu-west3-gcp' => 'GCP EU-West-3 (Frankfurt)',
-    'eu-west3-gcp-free' => 'GCP EU-West-3 Free (Frankfurt)',
-    'eu-west4-gcp' => 'GCP EU-West-4 (Netherlands)',
-    'eu-west4-gcp-free' => 'GCP EU-West-4 Free (Netherlands)',
-    'eu-west6-gcp' => 'GCP EU-West-6 (Zurich)',
-    'eu-west6-gcp-free' => 'GCP EU-West-6 Free (Zurich)',
-    'eu-west8-gcp' => 'GCP EU-West-8 (Italy)',
-    'eu-west8-gcp-free' => 'GCP EU-West-8 Free (Italy)',
-    'eu-west9-gcp' => 'GCP EU-West-9 (France)',
-    'eu-west9-gcp-free' => 'GCP EU-West-9 Free (France)',
-    'gcp-starter' => 'GCP Starter',
-    'northamerica-northeast1-gcp' => 'GCP Northamerica-Northeast1',
-    'northamerica-northeast1-gcp-free' => 'GCP Northamerica-Northeast1 Free',
-    'southamerica-northeast2-gcp' => 'GCP Southamerica-Northeast2 (Toronto)',
-    'southamerica-northeast2-gcp-free' => 'GCP Southamerica-Northeast2 Free (Toronto)',
-    'southamerica-east1-gcp' => 'GCP Southamerica-East1 (Sao Paulo)',
-    'southamerica-east1-gcp-free' => 'GCP Southamerica-East1 Free (Sao Paulo)',
-    'us-central1-gcp' => 'GCP US-Central-1 (Iowa)',
-    'us-central1-gcp-free' => 'GCP US-Central-1 Free (Iowa)',
-    'us-east1-aws' => 'AWS US-East-1 (Virginia)',
-    'us-east1-aws-free' => 'AWS US-East-1 Free (Virginia)',
-    'us-east-1-aws' => 'AWS US-East-1 (Virginia)',
-    'us-east-1-aws-free' => 'AWS US-East-1 Free (Virginia)',
-    'us-east1-gcp' => 'GCP US-East-1 (South Carolina)',
-    'us-east1-gcp-free' => 'GCP US-East-1 Free (South Carolina)',
-    'us-east4-gcp' =>  'GCP US-East-4 (Virginia)',
-    'us-east4-gcp-free' =>  'GCP US-East-4 Free (Virginia)',
-    'us-west1-gcp' => 'GCP US-West-1 (N. California)',
-    'us-west1-gcp-free' => 'GCP US-West-1 Free (N. California)',
-    'us-west-2' => 'US-West-2',
-    'us-west2-gcp' => 'GCP US-West-2 (Oregon)',
-    'us-west2-gcp-free' => 'GCP US-West-2 Free (Oregon)',
-    'us-west3-gcp' => 'GCP US-West-3 (Salt Lake City)',
-    'us-west3-gcp-free' => 'GCP US-West-3 Free (Salt Lake City)',
-    'us-west4-gcp' => 'GCP US-West-4 (Las Vegas)',
-    'us-west4-gcp-free' => 'GCP US-West-4 Free (Las Vegas)'
-);
+
 if($wpaicg_embeddings_settings_updated){
     ?>
     <div class="wpaicg-embedding-save-message">
@@ -181,15 +129,23 @@ if($wpaicg_embeddings_settings_updated){
         </div>
         <div class="nice-form-group">
             <label><?php echo esc_html__('Pinecone Index','gpt3-ai-content-generator')?></label>
-            <select style="width: 50%;" class="wpaicg_pinecone_environment" name="wpaicg_pinecone_environment" old-value="<?php echo esc_attr($wpaicg_pinecone_environment)?>">
-                <option value=""><?php echo esc_html__('Select Index','gpt3-ai-content-generator')?></option>
+            <select style="width: 50%;" class="wpaicg_pinecone_environment" name="wpaicg_pinecone_environment" old-value="<?php echo esc_attr($wpaicg_pinecone_environment); ?>">
+                <option value=""><?php echo esc_html__('Select Index', 'gpt3-ai-content-generator'); ?></option>
                 <?php
-                foreach($wpaicg_pinecone_indexes as $wpaicg_pinecone_index){
-                    echo '<option'.($wpaicg_pinecone_environment == $wpaicg_pinecone_index['url'] ? ' selected':'').' value="'.esc_html($wpaicg_pinecone_index['url']).'">'.esc_html($wpaicg_pinecone_index['name']).'</option>';
+                $wpaicg_pinecone_indexes = get_option('wpaicg_pinecone_indexes', '[]');
+                $wpaicg_pinecone_indexes = json_decode($wpaicg_pinecone_indexes, true);
+                foreach ($wpaicg_pinecone_indexes as $wpaicg_pinecone_index) {
+                    if (isset($wpaicg_pinecone_index['dimension'])) {
+                        $dimensionText = ' (' . esc_html($wpaicg_pinecone_index['dimension']) . ')';
+                    } else {
+                        $dimensionText = ''; // or perhaps default to '(Unknown Dimension)' if preferred
+                    }
+                    $displayText = esc_html($wpaicg_pinecone_index['name']) . $dimensionText;
+                    echo '<option' . ($wpaicg_pinecone_environment == $wpaicg_pinecone_index['url'] ? ' selected' : '') . ' value="' . esc_html($wpaicg_pinecone_index['url']) . '">' . $displayText . '</option>';
                 }
                 ?>
             </select>
-            <button type="button" style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button button-primary wpaicg_pinecone_indexes"><?php echo esc_html__('Sync Indexes','gpt3-ai-content-generator')?></button>
+            <button type="button" style="padding-top: 0.5em; padding-bottom: 0.5em;" class="button button-primary wpaicg_pinecone_indexes"><?php echo esc_html__('Sync Indexes','gpt3-ai-content-generator')?></button>
         </div>
     </div>
     <!-- Qdrant Settings -->
@@ -207,12 +163,23 @@ if($wpaicg_embeddings_settings_updated){
         </div>
         <div class="nice-form-group">
             <label><?php echo esc_html__('Qdrant Collections','gpt3-ai-content-generator')?></label>
-            <select style="width: 50%;" class="wpaicg_qdrant_collections_dropdown" name="wpaicg_qdrant_collections" style="<?php echo empty($wpaicg_qdrant_collections) ? 'display: none;' : '' ?>">
+            <select style="width: 50%;" class="wpaicg_qdrant_collections_dropdown" name="wpaicg_qdrant_collections">
+                <!-- PHP will dynamically fill this select based on the options retrieved -->
                 <?php
                 $default_qdrant_collection = get_option('wpaicg_qdrant_default_collection', '');
+                $wpaicg_qdrant_collections = get_option('wpaicg_qdrant_collections', []);  // Make sure this is decoded correctly if stored as JSON
                 foreach ($wpaicg_qdrant_collections as $collection):
-                    $selected = ($collection === $default_qdrant_collection) ? ' selected' : '';
-                    echo '<option value="'.esc_attr($collection).'"'.$selected.'>'.esc_html($collection).'</option>';
+                    if (is_array($collection) && isset($collection['name'])) {
+                        // New structure with name and dimension
+                        $name = $collection['name'];
+                        $dimension = isset($collection['dimension']) ? ' (' . esc_html($collection['dimension']) . ')' : ' (Dimension missing)';
+                        $selected = ($name === $default_qdrant_collection) ? ' selected' : '';
+                        echo '<option value="'.esc_attr($name).'"'.$selected.'>'.esc_html($name) . $dimension .'</option>';
+                    } else {
+                        // Old structure where the collection itself is a string
+                        $selected = ($collection === $default_qdrant_collection) ? ' selected' : '';
+                        echo '<option value="'.esc_attr($collection).'"'.$selected.'>'.esc_html($collection).'</option>';
+                    }
                 endforeach;
                 ?>
             </select>
@@ -222,46 +189,38 @@ if($wpaicg_embeddings_settings_updated){
         <div class="wpaicg_new_collection_input" style="display:none; margin-top: 20px;">
             <div class="nice-form-group">
                 <input type="text" style="width: 50%;" class="wpaicg_new_collection_name" placeholder="<?php echo esc_html__('Enter collection name','gpt3-ai-content-generator')?>">
+                <input type="number" style="width: 20%;" class="wpaicg_new_collection_dimension" value="1536" placeholder="Dimension (e.g., 1536)">
                 <button type="button" style="padding-top: 0.5em;padding-bottom: 0.5em;width: 12%;" class="button button-primary wpaicg_submit_new_collection"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
             </div>
         </div>
     </div>
     <p></p>
-    <h1><?php echo esc_html__('Embedding Model','gpt3-ai-content-generator')?></h1>
-    <?php
-    // Retrieve current embeddings settings
-    $wpaicg_openai_embeddings = get_option('wpaicg_openai_embeddings', '');
-    $wpaicg_google_embeddings = get_option('wpaicg_google_embeddings', '');
-    $wpaicg_azure_embeddings = get_option('wpaicg_azure_embeddings', '');
+    <h1><?php echo esc_html__('Embedding Model', 'gpt3-ai-content-generator'); ?></h1>
+    <div class="nice-form-group">
+        <label><?php echo esc_html__('Embedding Model', 'gpt3-ai-content-generator'); ?></label>
+        <select name="wpaicg_embedding_model" style="width: 50%;">
+            <?php
+            // Try to get the main embedding model option
+            $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
 
-    // Check the provider and display the corresponding embeddings model selection
-    if ($wpaicg_provider == 'OpenAI'):
-    ?>
-    <div class="nice-form-group">
-        <label><?php echo esc_html__('Embedding Model','gpt3-ai-content-generator')?></label>
-        <select name="wpaicg_openai_embeddings" style="width: 50%;">
-            <option value="text-embedding-3-small" <?php selected($wpaicg_openai_embeddings, 'text-embedding-3-small'); ?>><?php echo esc_html__('text-embedding-3-small (1536)','gpt3-ai-content-generator')?></option>
-            <option value="text-embedding-3-large" <?php selected($wpaicg_openai_embeddings, 'text-embedding-3-large'); ?>><?php echo esc_html__('text-embedding-3-large (3072)','gpt3-ai-content-generator')?></option>
-            <option value="text-embedding-ada-002" <?php selected($wpaicg_openai_embeddings, 'text-embedding-ada-002'); ?>><?php echo esc_html__('text-embedding-ada-002 (1536)','gpt3-ai-content-generator')?></option>
+            // Retrieve the full list of models from the utility class for all providers
+            $embedding_models = \WPAICG\WPAICG_Util::get_instance()->get_embedding_models();
+
+            // Loop through all models grouped by providers
+            foreach ($embedding_models as $provider => $models) {
+                echo "<optgroup label='" . esc_attr($provider) . "'>"; // Group by provider
+                foreach ($models as $model_key => $model_desc) {
+                    $value = esc_attr($provider . ':' . $model_key);
+                    $selected = ($value === $main_embedding_model) ? ' selected' : '';
+                    echo "<option value='{$value}'{$selected}>"
+                        . esc_html("{$model_key} ({$model_desc})", 'gpt3-ai-content-generator')
+                        . "</option>";
+                }
+                echo "</optgroup>";
+            }
+            ?>
         </select>
     </div>
-    <?php elseif ($wpaicg_provider == 'Google'): ?>
-    <div class="nice-form-group">
-        <label><?php echo esc_html__('Embedding Model','gpt3-ai-content-generator')?></label>
-        <select name="wpaicg_google_embeddings" style="width: 50%;">
-            <option value="embedding-001" <?php selected($wpaicg_google_embeddings, 'embedding-001'); ?>><?php echo esc_html__('embedding-001','gpt3-ai-content-generator')?></option>                
-        </select>
-    </div>
-    <?php elseif ($wpaicg_provider == 'Azure'): ?>
-    <div class="nice-form-group">
-        <label><?php echo esc_html__('Embedding Model','gpt3-ai-content-generator')?></label>
-        <select name="wpaicg_azure_embeddings" style="width: 50%;">
-            <option value="<?php echo esc_attr($wpaicg_azure_embeddings); ?>" selected>
-                <?php echo esc_html($wpaicg_azure_embeddings ? $wpaicg_azure_embeddings : 'No model selected'); ?>
-            </option>
-        </select>
-    </div>
-    <?php endif; ?>
     <p></p>
     <h1><?php echo esc_html__('Instant Embedding','gpt3-ai-content-generator')?></h1>
     <p><?php echo esc_html__('Use this feature to feed your WordPress content to the vector database with one click. Go to Posts -> All Posts , select your content, and click Instant Embedding button to save your content in the vector database.','gpt3-ai-content-generator')?></p>
@@ -430,7 +389,7 @@ if($wpaicg_embeddings_settings_updated){
                         break;
                 }
             } else if (selectedProvider === 'Google') {
-                dimensionInfo = 'Make sure your dimension is <strong>768/strong>.';
+                dimensionInfo = 'Make sure your dimension is <strong>768</strong>.';
             }
 
             if (dimensionInfo !== '') {
@@ -446,7 +405,8 @@ if($wpaicg_embeddings_settings_updated){
             if (collections.length > 0) {
                 dropdown.empty().show();
                 $.each(collections, function(index, collection) {
-                    dropdown.append($('<option></option>').attr('value', collection).text(collection));
+                    var displayText = collection.name + ' (' + collection.dimension + ')';
+                    dropdown.append($('<option></option>').attr('value', collection.name).text(displayText));
                 });
             } else {
                 dropdown.hide();
@@ -461,10 +421,19 @@ if($wpaicg_embeddings_settings_updated){
         // Handle the creation of new collection
         $('.wpaicg_submit_new_collection').click(function() {
             var collectionName = $('.wpaicg_new_collection_name').val().trim();
+            var dimension = parseInt($('.wpaicg_new_collection_dimension').val().trim(), 10); // Parse as integer
             var apiKey = $('input[name="wpaicg_qdrant_api_key"]').val().trim();
             var endpoint = $('input[name="wpaicg_qdrant_endpoint"]').val().trim();
             if (!collectionName) {
                 alert('Please enter a collection name.');
+                return;
+            }
+            if (!dimension || isNaN(dimension)) {
+                alert('Please enter a valid dimension as a number.');
+                return;
+            }
+            if (dimension < 128 || dimension > 65536) {
+                alert('Please enter a dimension between 128 and 65536.');
                 return;
             }
 
@@ -477,6 +446,7 @@ if($wpaicg_embeddings_settings_updated){
                     action: 'wpaicg_create_collection',
                     nonce: '<?php echo wp_create_nonce('wpaicg-ajax-nonce') ?>',
                     collection_name: collectionName,
+                    dimension: dimension,
                     api_key: apiKey,
                     endpoint: endpoint
                 },
@@ -488,7 +458,7 @@ if($wpaicg_embeddings_settings_updated){
                         // Add the new collection to the dropdown
                         $('.wpaicg_qdrant_collections_dropdown').append($('<option>', {
                             value: collectionName,
-                            text: collectionName
+                            text: collectionName + ' (' + dimension + ')'
                         })).val(collectionName);
 
                         // Update collections in the options table
@@ -591,8 +561,9 @@ if($wpaicg_embeddings_settings_updated){
                             var formattedIndexes = [];
 
                             res.indexes.forEach(function(index){
-                                selectList += '<option value="'+index.host+'"'+(old_value === index.host ? ' selected':'')+'>'+index.name+'</option>';
-                                formattedIndexes.push({name: index.name, url: index.host});
+                                var displayText = index.name + ' (' + index.dimension + ')';
+                                selectList += '<option value="' + index.host + '"' + (old_value === index.host ? ' selected' : '') + '>' + displayText + '</option>';
+                                formattedIndexes.push({ name: index.name, url: index.host, dimension: index.dimension });
                             });
 
                             $('.wpaicg_pinecone_environment').html(selectList);
