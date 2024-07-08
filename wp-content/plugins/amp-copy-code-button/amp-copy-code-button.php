@@ -22,7 +22,7 @@ function add_copy_button_to_code_blocks( $content ) {
         $pattern = '/<pre class="wp-block-code"><code>(.*?)<\/code><\/pre>/is';
         $replacement = '<div class="code-block-container">
                             <pre class="wp-block-code"><code>$1</code></pre>
-                            <amp-iframe sandbox="allow-scripts" width="64" height="42" frameborder="0" src="' . $plugin_url . 'amp-copy-code.html#$1">
+                            <amp-iframe sandbox="allow-scripts allow-same-origin" width="64" height="42" frameborder="0" src="' . $plugin_url . 'amp-copy-code.html#$1">
                                 <button class="copy-button" placeholder>Copy</button>
                             </amp-iframe>
                         </div>';
@@ -31,6 +31,7 @@ function add_copy_button_to_code_blocks( $content ) {
     return $content;
 }
 add_filter( 'the_content', 'add_copy_button_to_code_blocks' );
+
 
 // Enqueue the stylesheet
 function enqueue_amp_copy_code_stylesheet() {

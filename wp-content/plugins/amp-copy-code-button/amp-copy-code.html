@@ -8,15 +8,22 @@
 <body>
     <script>
         window.onload = function() {
-            const hash = decodeURIComponent(window.location.hash.substr(1));
-            const textarea = document.createElement('textarea');
-            textarea.value = hash;
-            document.body.appendChild(textarea);
-            textarea.select();
-            const successful = document.execCommand('copy');
-            document.body.removeChild(textarea);
-            console.log('Code copied:', textarea.value); // Debugging line
-            document.body.innerHTML = successful ? '<p>Code copied to clipboard.</p>' : '<p>Failed to copy code.</p>';
+            setTimeout(function() {
+                const hash = decodeURIComponent(window.location.hash.substr(1));
+                const textarea = document.createElement('textarea');
+                textarea.value = hash;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    const successful = document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                    console.log('Code copied:', textarea.value); // Debugging line
+                    document.body.innerHTML = successful ? '<p>Code copied to clipboard.</p>' : '<p>Failed to copy code.</p>';
+                } catch (err) {
+                    console.error('Unable to copy:', err);
+                    document.body.innerHTML = '<p>Failed to copy code due to an error.</p>';
+                }
+            }, 100); // Add a slight delay to ensure everything is loaded properly
         }
     </script>
 </body>
