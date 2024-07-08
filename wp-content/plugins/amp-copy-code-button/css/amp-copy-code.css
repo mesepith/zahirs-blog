@@ -1,20 +1,8 @@
 .code-block-container {
     position: relative;
 }
-
-.copy-button {
+amp-iframe {
     position: absolute;
-    top: 0;
-    right: 0;
-    background-color: #0073aa;
-    color: #fff;
-    border: none;
-    padding: 5px 10px;
-    cursor: pointer;
-    display: block;
-}
-
-.copy-button[disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
+    top: 5px;
+    right: 5px;
 }
