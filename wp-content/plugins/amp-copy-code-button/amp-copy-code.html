@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html amp>
+<head>
+    <meta charset="utf-8">
+    <title>Copy Code</title>
+    <script async custom-element="amp-bind" src="https://cdn.ampproject.org/v0/amp-bind-0.1.js"></script>
+</head>
+<body>
+    <script>
+        window.onload = function() {
+            const hash = decodeURIComponent(window.location.hash.substr(1));
+            const textarea = document.createElement('textarea');
+            textarea.value = hash;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+        }
+    </script>
+    <p>Code copied to clipboard.</p>
+</body>
+</html>
