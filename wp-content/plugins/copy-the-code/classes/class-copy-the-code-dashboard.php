@@ -341,9 +341,9 @@ if ( ! class_exists( 'Copy_The_Code_Dashboard' ) ) :
 						'style'            => get_post_meta( $id, 'style', true ),
 						'conditions'       => $conditions,
 					] : [
-						'button-text'      => 'Copy',
+						'button-text'      => 'Copy to Clipboard',
 						'button-copy-text' => 'Copied',
-						'button-title'     => 'Copy',
+						'button-title'     => 'Copy to Clipboard',
 						'copy-format'      => '',
 						'button-position'  => 'outside',
 						'selector'         => 'pre',

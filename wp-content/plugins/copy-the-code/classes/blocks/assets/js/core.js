@@ -38,7 +38,7 @@
 					return
 				}
 
-				CTC.copySelection( source )
+				CTCWP.copySelection( source )
 			} else {
 				if ( ! copyAsRaw ) {
 					// Convert the <br/> tags into new line.
@@ -64,7 +64,7 @@
 				content = $.trim( content );
 
 				// Support for IOS devices too.
-				CTC.copy( content );
+				CTCWP.copy( content );
 			}
 
 			if ( btn.hasClass( 'ctc-block-copy-icon' ) ) {

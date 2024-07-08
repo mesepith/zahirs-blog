@@ -74,7 +74,7 @@ if ( ! class_exists( 'Copy_The_Code_Page' ) ) :
 		public function add_meta_box() {
 			add_meta_box(
 				'copy-the-code-meta-box',
-				__( 'Copy to Clipboard Settings', 'copy-the-code' ),
+				esc_html__( 'Settings', 'copy-the-code' ),
 				[ $this, 'meta_box_markup' ],
 				'copy-to-clipboard',
 				'normal',
@@ -514,7 +514,7 @@ if ( ! class_exists( 'Copy_The_Code_Page' ) ) :
 					'settings'        => $this->get_page_settings(),
 					'string'          => [
 						'title'  => $this->get_page_setting( 'button-title', __( 'Copy to Clipboard', 'copy-the-code' ) ),
-						'copy'   => $this->get_page_setting( 'button-text', __( 'Copy', 'copy-the-code' ) ),
+						'copy'   => $this->get_page_setting( 'button-text', __( 'Copy to Clipboard', 'copy-the-code' ) ),
 						'copied' => $this->get_page_setting( 'button-copy-text', __( 'Copied!', 'copy-the-code' ) ),
 					],
 					'image-url'       => COPY_THE_CODE_URI . '/assets/images/copy-1.svg',
@@ -545,13 +545,13 @@ if ( ! class_exists( 'Copy_The_Code_Page' ) ) :
 		 *
 		 * @return array Settings.
 		 */
-		function get_page_settings() {
+		public function get_page_settings() {
 			$defaults = apply_filters(
 				'copy_the_code_default_page_settings',
 				[
 					'selector'         => 'pre',
 					// 'copy-as'          => 'text',
-					'button-text'      => __( 'Copy', 'copy-the-code' ),
+					'button-text'      => __( 'Copy to Clipboard', 'copy-the-code' ),
 					'button-title'     => __( 'Copy to Clipboard', 'copy-the-code' ),
 					'button-copy-text' => __( 'Copied!', 'copy-the-code' ),
 					'button-position'  => 'inside',

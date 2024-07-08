@@ -14,7 +14,7 @@
 		}
 	},
 	"version": "1.0.0",
-	"category": "widgets",
+	"category": "ctc-blocks",
 	"icon": "clipboard",
 	"description": "The Copy Icon block allows you to add a button to your page that will copy the text you specify to the clipboard.",
 	"textdomain": "copy-the-code"

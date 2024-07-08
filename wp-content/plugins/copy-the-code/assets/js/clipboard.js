@@ -1,4 +1,4 @@
-window.CTC = (function (window, document, navigator) {
+window.CTCWP = (function (window, document, navigator) {
     var textArea,
         copy;
 
@@ -33,7 +33,7 @@ window.CTC = (function (window, document, navigator) {
         document.body.removeChild(textArea);
 
         // Redirect to page.
-        if( copyTheCode && copyTheCode.redirect_url ) {
+        if ( typeof copyTheCode !== 'undefined' && copyTheCode.redirect_url ) {
             window.location.href = copyTheCode.redirect_url;
         }
     }

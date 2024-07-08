@@ -28,7 +28,7 @@
             text = $.trim(text);
 
             // Copy to clipboard.
-            CTC.copy(text);
+            CTCWP.copy(text);
 
             // Copied!
             self.addClass('copied');

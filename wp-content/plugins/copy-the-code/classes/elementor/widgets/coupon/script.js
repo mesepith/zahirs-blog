@@ -35,7 +35,7 @@
 
             parent.addClass( 'ctc-coupon-clicked' )
 
-            CTC.copy( couponCode )
+            CTCWP.copy( couponCode )
 
             window.open( href, target )
         },

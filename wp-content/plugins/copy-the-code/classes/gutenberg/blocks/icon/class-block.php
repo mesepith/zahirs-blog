@@ -74,7 +74,7 @@ class Icon {
 	 * @return string
 	 */
 	public function render( $attributes, $content ) {
-		$alignment = isset( $attributes['alignment'] ) ? $attributes['alignment'] : 'left';
+		$alignment    = isset( $attributes['alignment'] ) ? $attributes['alignment'] : 'left';
 		$copy_content = isset( $attributes['content'] ) ? $attributes['content'] : '';
 		ob_start();
 		?>

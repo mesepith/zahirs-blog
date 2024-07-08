@@ -3,7 +3,7 @@ Contributors: Mahesh901122, freemius
 Donate link: https://www.paypal.me/mwaghmare7/
 Tags: Clipboard, Copy, Copy to Clipboard, Coupon, Deal
 Tested up to: 6.5.3
-Stable tag: 3.8.1
+Stable tag: 3.8.2
 Requires PHP: 5.6
 Requires at least: 4.4
 License: GPLv2 or later
@@ -11,7 +11,7 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
 == Description ==
 
-**[Copy Anything to Clipboard](https://clipboard.agency/)** is the #1 WordPress plugin with **2,11,497+** downloads 🚀
+**[Copy Anything to Clipboard](https://clipboard.agency/)** is the #1 WordPress plugin with **2,14,933+** downloads 🚀
 
 ------
 
@@ -194,6 +194,10 @@ For more info check out the following:
 1. Install the <code>Copy Anything to Clipboard</code> plugin either via the WordPress plugin directory, or by uploading the files to your server at <code>wp-content/plugins</code>.
 
 == Changelog ==
+
+= 3.8.2 =
+
+* Fixed: Elementor copy button not works due to missing dependency.
 
 = 3.8.1 =
 
