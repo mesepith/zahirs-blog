@@ -30,7 +30,7 @@ if($success){
         <tr>
             <th><?php echo esc_html__('Limit Registered User','gpt3-ai-content-generator')?>:</th>
             <td>
-                <input<?php echo isset($wpaicg_settings['user_limited']) && $wpaicg_settings['user_limited'] ? ' checked':''?> type="checkbox" value="1" class="wpaicg_user_token_limit" name="wpaicg_limit_tokens[user_limited]">
+                <input <?php echo isset($wpaicg_settings['user_limited']) && $wpaicg_settings['user_limited'] ? ' checked':''?> type="checkbox" value="1" class="wpaicg_user_token_limit" name="wpaicg_limit_tokens[user_limited]">
             </td>
         </tr>
         <tr>
@@ -49,13 +49,13 @@ if($success){
                     echo '<input value="'.(isset($wpaicg_settings['limited_roles'][$key]) ? $wpaicg_settings['limited_roles'][$key] : '').'" class="wpaicg_role_'.esc_html($key).'" type="hidden" name="wpaicg_limit_tokens[limited_roles]['.esc_html($key).']">';
                 }
                 ?>
-                <input<?php echo isset($wpaicg_settings['role_limited']) && $wpaicg_settings['role_limited'] ? ' checked':''?> type="checkbox" value="1" class="wpaicg_role_limited" name="wpaicg_limit_tokens[role_limited]">
+                <input <?php echo isset($wpaicg_settings['role_limited']) && $wpaicg_settings['role_limited'] ? ' checked':''?> type="checkbox" value="1" class="wpaicg_role_limited" name="wpaicg_limit_tokens[role_limited]">
                 <a href="javascript:void(0)" class="wpaicg_limit_set_role<?php echo (isset($wpaicg_settings['user_limited']) && $wpaicg_settings['user_limited']) || !isset($wpaicg_settings['role_limited']) ? ' disabled': ''?>"><?php echo esc_html__('Configure Role Limits','gpt3-ai-content-generator')?></a>
             </td>
         </tr>
         <tr>
             <th><?php echo esc_html__('Limit Non-Registered User','gpt3-ai-content-generator')?>:</th>
-            <td><input<?php echo isset($wpaicg_settings['guest_limited']) && $wpaicg_settings['guest_limited'] ? ' checked':''?> type="checkbox" class="wpaicg_guest_token_limit" value="1" name="wpaicg_limit_tokens[guest_limited]"></td>
+            <td><input <?php echo isset($wpaicg_settings['guest_limited']) && $wpaicg_settings['guest_limited'] ? ' checked':''?> type="checkbox" class="wpaicg_guest_token_limit" value="1" name="wpaicg_limit_tokens[guest_limited]"></td>
         </tr>
         <tr>
             <th><?php echo esc_html__('Token Allocation','gpt3-ai-content-generator')?>:</th>
@@ -67,7 +67,9 @@ if($success){
         </tr>
         <tr>
             <th><?php echo esc_html__('Notification Message','gpt3-ai-content-generator')?>:</th>
-            <td><textarea style="width:300px; height:100px;" name="wpaicg_limit_tokens[limited_message]"><?php echo isset($wpaicg_settings['limited_message']) ? esc_html($wpaicg_settings['limited_message']) : ''?></textarea></td>
+            <td>
+                <textarea style="width:300px; height:100px;" name="wpaicg_limit_tokens[limited_message]"><?php echo isset($wpaicg_settings['limited_message']) ? esc_html(wp_unslash($wpaicg_settings['limited_message'])) : ''; ?></textarea>
+            </td>
         </tr>
         <tr>
             <th><?php echo esc_html__('Token Reset Interval','gpt3-ai-content-generator')?>:</th>
@@ -98,7 +100,7 @@ if($success){
         </tr>
         <tr>
             <th><?php echo esc_html__('Enable Token Purchasing','gpt3-ai-content-generator')?></th>
-            <td><input<?php echo $wpaicg_forms_enable_sale ? ' checked':''?> type="checkbox" class="wpaicg_forms_enable_sale" value="1" name="wpaicg_forms_enable_sale"></td>
+            <td><input <?php echo $wpaicg_forms_enable_sale ? ' checked':''?> type="checkbox" class="wpaicg_forms_enable_sale" value="1" name="wpaicg_forms_enable_sale"></td>
         </tr>
         <tr>
             <th></th>

@@ -27,7 +27,7 @@ if($checkRole){
         $menus = array(
             'shortcode' => esc_html__('Shortcode','gpt3-ai-content-generator'),
             'widget' => esc_html__('Widget','gpt3-ai-content-generator'),
-            'bots' => esc_html__('Chat Bots','gpt3-ai-content-generator'),
+            'bots' => esc_html__('Custom Bots','gpt3-ai-content-generator'),
             'logs' => esc_html__('Logs','gpt3-ai-content-generator'),
             'settings' => esc_html__('Settings','gpt3-ai-content-generator')
         );

@@ -32,8 +32,510 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
             add_action( 'wp_ajax_wpaicg_bulk_status', array( $this, 'wpaicg_bulk_status' ) );
             add_action( 'wp_ajax_wpaicg_read_csv', array( $this, 'wpaicg_read_csv' ) );
             add_action( 'wp_ajax_wpaicg_speech_record', array( $this, 'wpaicg_speech_record' ) );
+            add_action( 'wp_ajax_gpt3_pagination', array( $this, 'gpt3_ajax_pagination' ) );
+            add_action( 'wp_ajax_nopriv_gpt3_pagination', 'gpt3_ajax_pagination');
+            add_action( 'wp_ajax_delete_post_action', array( $this, 'delete_post_by_ajax' ) );
+            add_action( 'wp_ajax_delete_all_posts_action', array($this, 'delete_all_wpaicg_posts'));
+            add_action('wp_ajax_reload_items', array($this, 'reload_items'));
+            add_action('wp_ajax_fetch_batch_details', array($this, 'fetch_batch_details'));
+            add_action('wp_ajax_trigger_wpaicg_cron', array($this, 'trigger_wpaicg_cron'));
+            add_action('wp_ajax_restart_queue_process', array($this, 'restart_queue_process'));
+            add_action('wp_ajax_save_schedule', array($this, 'wpaicg_save_schedule'));
+            // Register cron hooks and schedule them
+            add_filter('cron_schedules', array($this, 'wpaicg_custom_cron_schedules'));
+            $this->wpaicg_register_cron_hooks();
+            $this->wpaicg_schedule_cron_jobs();
         }
 
+        public function wpaicg_custom_cron_schedules($schedules) {
+            $schedules['every_5_minutes'] = array(
+                'interval' => 300, // 5 minutes in seconds
+                'display'  => __('Every 5 Minutes', 'wpaicg')
+            );
+            $schedules['every_15_minutes'] = array(
+                'interval' => 900, // 15 minutes in seconds
+                'display'  => __('Every 15 Minutes', 'wpaicg')
+            );
+            $schedules['every_30_minutes'] = array(
+                'interval' => 1800, // 30 minutes in seconds
+                'display'  => __('Every 30 Minutes', 'wpaicg')
+            );
+            $schedules['every_2_hours'] = array(
+                'interval' => 7200, // 2 hours in seconds
+                'display'  => __('Every 2 Hours', 'wpaicg')
+            );
+            $schedules['every_6_hours'] = array(
+                'interval' => 21600, // 6 hours in seconds
+                'display'  => __('Every 6 Hours', 'wpaicg')
+            );
+            $schedules['every_12_hours'] = array(
+                'interval' => 43200, // 12 hours in seconds
+                'display'  => __('Every 12 Hours', 'wpaicg')
+            );
+
+            return $schedules;
+        }
+
+        public function wpaicg_save_schedule() {
+            check_ajax_referer('save_schedule_nonce', 'nonce');
+        
+            $task = sanitize_text_field($_POST['task']);
+            $value = sanitize_text_field($_POST['value']);
+            $option_name = 'wpaicg_cron_' . $task . '_schedule';
+        
+            if (update_option($option_name, $value)) {
+                // Reschedule cron jobs when schedule is updated
+                $this->wpaicg_clear_scheduled_cron_jobs();
+                $this->wpaicg_schedule_cron_jobs();
+                wp_send_json_success();
+            } else {
+                wp_send_json_error();
+            }
+        }
+
+        public function wpaicg_trigger_cron_task($task) {
+            $cron_url = $this->wpaicg_get_cron_url($task);
+
+            wp_remote_get($cron_url, array(
+                'timeout' => 1, // Wait for 1 second before aborting the request
+                'blocking' => false, // Non-blocking mode
+            ));
+        }
+
+        private function wpaicg_get_cron_url($task) {
+            switch ($task) {
+                case 'queue':
+                    return home_url('/index.php?wpaicg_cron=yes');
+                case 'sheets':
+                    return home_url('/index.php?wpaicg_sheets=yes');
+                case 'rss':
+                    return home_url('/index.php?wpaicg_rss=yes');
+                case 'tweet':
+                    return home_url('/index.php?wpaicg_tweet=yes');
+                case 'builder':
+                    return home_url('/index.php?wpaicg_builder=yes');
+                default:
+                    return '';
+            }
+        }
+
+        public function wpaicg_schedule_cron_jobs() {
+            $tasks = ['queue', 'sheets', 'rss', 'tweet', 'builder'];
+            $schedules = [
+                'none' => null,
+                '5minutes' => 'every_5_minutes',
+                '15minutes' => 'every_15_minutes',
+                '30minutes' => 'every_30_minutes',
+                '2hours' => 'every_2_hours',
+                '6hours' => 'every_6_hours',
+                '12hours' => 'every_12_hours',
+                '1hour' => 'hourly',
+                '1day' => 'daily',
+                '1week' => 'weekly'
+            ];
+
+            foreach ($tasks as $task) {
+                $schedule = get_option('wpaicg_cron_' . $task . '_schedule', 'none');
+                $wp_schedule = isset($schedules[$schedule]) ? $schedules[$schedule] : null;
+
+                // Clear existing schedule first
+                $this->wpaicg_clear_scheduled_cron_job($task);
+
+                // Only schedule if a valid schedule is set and it's not 'none'
+                if ($wp_schedule) {
+                    wp_schedule_event(time(), $wp_schedule, 'wpaicg_cron_trigger_' . $task);
+                }
+            }
+        }
+
+        public function wpaicg_clear_scheduled_cron_jobs() {
+            $tasks = ['queue', 'sheets', 'rss', 'tweet', 'builder'];
+
+            foreach ($tasks as $task) {
+                $this->wpaicg_clear_scheduled_cron_job($task);
+            }
+        }
+
+        public function wpaicg_clear_scheduled_cron_job($task) {
+            while ($timestamp = wp_next_scheduled('wpaicg_cron_trigger_' . $task)) {
+                wp_unschedule_event($timestamp, 'wpaicg_cron_trigger_' . $task);
+            }
+        }
+
+        public function wpaicg_register_cron_hooks() {
+            $tasks = ['queue', 'sheets', 'rss', 'tweet', 'builder'];
+
+            foreach ($tasks as $task) {
+                add_action('wpaicg_cron_trigger_' . $task, function() use ($task) {
+                    $this->wpaicg_trigger_cron_task($task);
+                });
+            }
+        }
+
+        public function restart_queue_process() {
+            // Security check, ensure user has the capability to perform this action
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error('Unauthorized operation');
+                return;
+            }
+
+            $files = [
+                WPAICG_PLUGIN_DIR . 'wpaicg_running.txt',
+                WPAICG_PLUGIN_DIR . '/wpaicg_sheets.txt',
+                WPAICG_PLUGIN_DIR . '/wpaicg_rss.txt',
+                WPAICG_PLUGIN_DIR . 'wpaicg_tweet.txt',
+            ];
+
+            foreach ($files as $file) {
+                if (file_exists($file)) {
+                    @unlink($file);
+                }
+            }
+
+            wp_send_json_success('Queue restarted successfully.');
+        }
+
+        public function trigger_wpaicg_cron() {
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error('Unauthorized');
+                return;
+            }
+        
+            // Retrieve the task parameter from the AJAX request
+            $task = isset($_POST['task']) ? $_POST['task'] : '';
+        
+            // Construct the URL based on the task parameter
+            $cron_url = home_url('/index.php?' . $task);
+        
+            // Make a non-blocking, timeout-limited request
+            wp_remote_get($cron_url, array(
+                'timeout' => 1, // Wait for 1 second before aborting the request
+                'blocking' => false, // Non-blocking mode
+            ));
+        
+            wp_send_json_success('Trigger initiated. Please refresh the page to see the updated status.');
+        }
+
+
+        public function fetch_batch_details() {
+            check_ajax_referer('fetch_batch_details_nonce', 'nonce');
+        
+            $batch_id = isset($_POST['batchId']) ? intval($_POST['batchId']) : 0;
+            if (!$batch_id) {
+                wp_send_json_error('Invalid batch ID');
+            }
+        
+            $batch_items = get_posts(array(
+                'post_type' => 'wpaicg_bulk',
+                'post_status' => array('publish', 'pending', 'draft', 'trash', 'inherit'),
+                'post_parent' => $batch_id,
+                'posts_per_page' => -1
+            ));
+            
+            $pricing = \WPAICG\WPAICG_Util::get_instance()->model_pricing;
+        
+            $html = '';
+            if ($batch_items) {
+                foreach ($batch_items as $item) {
+                    $status = esc_html($item->post_status);
+                    $title = esc_html($item->post_title);
+                    $run = get_post_meta($item->ID, '_wpaicg_generator_run', true);
+                    $formatted_run = $this->format_duration($run);
+                    $length = get_post_meta($item->ID, '_wpaicg_generator_length', true);
+                    $token = get_post_meta($item->ID, '_wpaicg_generator_token', true);
+                    $ai_model = get_post_meta($item->ID, 'wpaicg_ai_model', true);
+
+                    // Calculate cost
+                    $cost = 'N/A'; // Default value
+                    if (!empty($token) && array_key_exists($ai_model, $pricing)) {
+                        $cost_per_1k_tokens = $pricing[$ai_model];
+                        $cost = '$' . number_format($token * $cost_per_1k_tokens / 1000, 5);
+                    }
+        
+                    if ($status === 'publish') {
+                        $published_post_id = get_post_meta($item->ID, '_wpaicg_generator_post', true);
+                        $edit_post_link = get_edit_post_link($published_post_id);
+                        $title = $edit_post_link ? "<a href='" . esc_url($edit_post_link) . "' target='_blank'>$title</a>" : $title;
+                    }
+        
+                    // Assuming 'Pending', 'In Progress', 'Completed', 'Cancelled' as possible $status_text values
+                    $status_text_map = [
+                        'publish' => '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">Completed</span>',
+                        'pending' => '<span style="color: #000000;background: #f2ff05;border-radius: 5px;padding: 0 0.3em 0.1em;">Pending</span>',
+                        'draft' => '<span style="color: #ffffff;background: #ffc300;border-radius: 5px;padding: 0 0.3em 0.1em;">In Progress</span>',
+                        'trash' => '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">Cancelled</span>',
+                        'inherit' => '<span style="color: #ffffff;background: #e20000;border-radius: 5px;padding: 0 0.3em 0.1em;">Cancelled</span>',
+                    ];
+
+                    $status_text = array_key_exists($status, $status_text_map) ? $status_text_map[$status] : 'Unknown';
+
+                    // Show only Title and Status for non-completed items
+                    if ($status !== 'publish') {
+                        $html .= "<div><strong>Title:</strong> $title</div>";
+                        $html .= "<div><strong>Status:</strong> $status_text</div>";
+                        
+                        // Check for cancelled status and display error if present
+                        if ($status === 'trash' || $status === 'inherit') {
+                            $error = get_post_meta($item->ID, '_wpaicg_error', true);
+                            if ($error) {
+                                $html .= "<div style='display: block;white-space: break-spaces;'><strong>Reason:</strong> <span style='color: #e20000;'>" . esc_html($error) . "</span></div>";
+                            }
+                        }
+                        
+                        $html .= "<br>";
+                        continue; // Skip the rest of the details for non-completed items
+                    }
+
+                    // Continue to add other details for completed items
+                    if ($status === 'publish' && $published_post_id = get_post_meta($item->ID, '_wpaicg_generator_post', true)) {
+                        $edit_post_link = get_edit_post_link($published_post_id);
+                        $title = $edit_post_link ? "<a href='" . esc_url($edit_post_link) . "' target='_blank'>$title</a>" : $title;
+                    }
+
+
+                    $html .= "<div><strong>Title:</strong> $title</div>";
+                    $html .= "<div><strong>Status:</strong> $status_text</div>";
+                    $html .= "<div><strong>Duration:</strong> $formatted_run</div>";
+                    $html .= "<div><strong>Word Count:</strong> $length</div>";
+                    $html .= "<div><strong>Token:</strong> $token</div>";
+                    $html .= "<div><strong>Estimated Cost:</strong> $cost</div>";
+                    $html .= "<div><strong>Model:</strong> $ai_model</div><br>";
+
+                }
+            } else {
+                $html = "<div>No items found for this batch.</div>";
+            }
+        
+            wp_send_json_success($html);
+        }
+        
+        
+        public function format_duration($seconds) {
+            // Check if the run value is empty or not numeric and return a default message
+            if (empty($seconds) || !is_numeric($seconds)) {
+                return "Not available"; // Or return ""; for an empty string
+            }
+        
+            // Explicitly convert the input to a float to handle fractional seconds
+            $seconds = floatval($seconds);
+        
+            // If necessary, round to the nearest second
+            $seconds = round($seconds);
+        
+            $hours = floor($seconds / 3600);
+            $minutes = floor(($seconds % 3600) / 60);
+            $seconds = $seconds % 60;
+        
+            $parts = [];
+        
+            if ($hours > 0) {
+                $parts[] = $hours . ' hour' . ($hours == 1 ? '' : 's');
+            }
+            if ($minutes > 0) {
+                $parts[] = $minutes . ' min' . ($minutes == 1 ? '' : 's');
+            }
+            if ($seconds > 0 || count($parts) === 0) {
+                $parts[] = $seconds . ' sec' . ($seconds == 1 ? '' : 's');
+            }
+        
+            return implode(' and ', $parts);
+        }
+        
+        
+        public function gpt3_ajax_pagination() {
+            global $wpdb;
+            // Check for nonce security
+            if ( ! wp_verify_nonce( $_POST['nonce'], 'gpt3_ajax_pagination_nonce' ) ) {
+                wp_send_json_error(['msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $posts_per_page = 5; // Adjust as needed
+            $offset = ($page - 1) * $posts_per_page;
+        
+            // Calculate total number of posts from wpaicg_tracking or wpaicg_twitter
+            $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'wpaicg_tracking' OR post_type = 'wpaicg_twitter'");
+            $total_pages = ceil($total_posts / $posts_per_page);
+        
+            $posts = $wpdb->get_results($wpdb->prepare("
+                SELECT ID, post_title, post_status, post_mime_type, post_type
+                FROM {$wpdb->posts} 
+                WHERE post_type IN ('wpaicg_tracking', 'wpaicg_twitter')
+                ORDER BY post_date DESC 
+                LIMIT %d, %d", 
+                $offset, $posts_per_page
+            ));
+        
+            $output = '';
+            foreach ( $posts as $post ) {
+                $title = strlen($post->post_title) > 20 ? esc_html(substr($post->post_title, 0, 20)) . '...' : esc_html($post->post_title);
+                $status = '';
+                switch ($post->post_status) {
+                    case 'pending':
+                        $status = '<span style="color: #000000;background: #f2ff05;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Pending', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'publish':
+                        $status = '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Completed', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'draft':
+                        $status = '<span style="color: #e20000;">' . esc_html__('Error', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'trash':
+                        $status = '<span style="color: #e20000;">' . esc_html__('Cancelled', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                }
+                $source = ''; // Initialize source variable
+                // Determine source based on post_mime_type and post_type
+                if ($post->post_type == 'wpaicg_twitter') {
+                    $source = esc_html__('Twitter', 'gpt3-ai-content-generator');
+                } elseif (empty($post->post_mime_type) || $post->post_mime_type == 'editor') {
+                    $source = esc_html__('Bulk Editor', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'csv') {
+                    $source = esc_html__('CSV', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'rss') {
+                    $source = esc_html__('RSS', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'sheets') {
+                    $source = esc_html__('Google Sheets', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'multi') {
+                    $source = esc_html__('Copy-Paste', 'gpt3-ai-content-generator');
+                }
+                // Append "Action" column HTML
+                $output .= "<tr id='post-row-{$post->ID}'><td class='column-id'>" . esc_html($post->ID) . "</td><td class='column-batch'><a href='javascript:void(0)' class='show-details' data-id='{$post->ID}'>" . $title . "</a></td><td class='column-source'>" . $source . "</td><td class='column-status'>" . $status . "</td><td class='column-action'><button class='button button-primary delete-post' data-postid='{$post->ID}'>Delete</button></td></tr>";
+            }
+        
+            // Generate and return pagination HTML as before
+            $pagination_html = '<div class="gpt3-pagination">';
+            for ($i = 1; $i <= $total_pages; $i++) {
+                $pagination_html .= '<a href="#" data-page="' . $i . '">' . $i . '</a> ';
+            }
+            $pagination_html .= '</div>';
+        
+            // Send back both the table content and pagination HTML
+            wp_send_json_success(['content' => $output, 'pagination' => $pagination_html]);
+        
+            die();
+        }
+        
+        public function reload_items() {
+            global $wpdb;
+            // Check for nonce security
+            if ( ! wp_verify_nonce( $_POST['nonce'], 'gpt3_ajax_pagination_nonce' ) ) {
+                wp_send_json_error(['msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $page = isset($_POST['page']) ? intval($_POST['page']) : 1;
+            $posts_per_page = 5; // Adjust as needed
+            $offset = ($page - 1) * $posts_per_page;
+        
+            // Calculate total number of posts
+            $total_posts = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type IN ('wpaicg_tracking', 'wpaicg_twitter')");
+            $total_pages = ceil($total_posts / $posts_per_page);
+        
+            $posts = $wpdb->get_results($wpdb->prepare("
+                SELECT ID, post_title, post_status, post_mime_type, post_type
+                FROM {$wpdb->posts} 
+                WHERE post_type IN ('wpaicg_tracking', 'wpaicg_twitter') 
+                ORDER BY post_date DESC 
+                LIMIT %d, %d", 
+                $offset, $posts_per_page
+            ));
+    
+            $output = '';
+            foreach ( $posts as $post ) {
+                $title = strlen($post->post_title) > 20 ? esc_html(substr($post->post_title, 0, 20)) . '...' : esc_html($post->post_title);
+                $status = '';
+                switch ($post->post_status) {
+                    case 'pending':
+                        $status = '<span style="color: #000000;background: #f2ff05;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Pending', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'publish':
+                        $status = '<span style="color: #ffffff;background: #12b11a;border-radius: 5px;padding: 0 0.3em 0.1em;">' . esc_html__('Completed', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'draft':
+                        $status = '<span style="color: #e20000;">' . esc_html__('Error', 'gpt3-ai-content-generator') . '</span>';
+                        break;
+                    case 'trash':
+                        $status = '<span style="color: #e20000;">' . esc_html__('Cancelled', 'gpt-3-ai-content-generator') . '</span>';
+                        break;
+                }
+                $source = ''; // Initialize source variable
+                // Source determination logic
+                if ($post->post_type == 'wpaicg_twitter') {
+                    $source = esc_html__('Twitter', 'gpt3-ai-content-generator');
+                } elseif (empty($post->post_mime_type) || $post->post_mime_type == 'editor') {
+                    $source = esc_html__('Bulk Editor', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'csv') {
+                    $source = esc_html__('CSV', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'rss') {
+                    $source = esc_html__('RSS', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'sheets') {
+                    $source = esc_html__('Google Sheets', 'gpt3-ai-content-generator');
+                } elseif ($post->post_mime_type == 'multi') {
+                    $source = esc_html__('Copy-Paste', 'gpt3-ai-content-generator');
+                }
+                // Append "Action" column HTML
+                $output .= "<tr id='post-row-{$post->ID}'><td class='column-id'>" . esc_html($post->ID) . "</td><td class='column-batch'><a href='javascript:void(0)' class='show-details' data-id='{$post->ID}'>" . $title . "</a></td><td class='column-source'>" . $source . "</td><td class='column-status'>" . $status . "</td><td class='column-action'><button class='button button-primary delete-post' data-postid='{$post->ID}'>Delete</button></td></tr>";
+            }
+
+            wp_send_json_success(['content' => $output]);
+
+            die();
+        }
+
+        public function delete_post_by_ajax() {
+            global $wpdb; // Make sure you have access to the global $wpdb object
+        
+            // Check for nonce security
+            $nonce = $_POST['nonce'];
+            if (!wp_verify_nonce($nonce, 'gpt3_ajax_pagination_nonce')) {
+                wp_send_json_error(['msg' => 'Nonce verification failed']);
+                return; // Early return to stop execution if the nonce check fails
+            }
+        
+            $postid = isset($_POST['postid']) ? intval($_POST['postid']) : 0;
+            if ($postid <= 0) {
+                wp_send_json_error(['msg' => 'Invalid Post ID']);
+                return; // Early return to stop execution if the post ID is invalid
+            }
+        
+            // Delete the specified post and its related children posts
+            wp_delete_post($postid, true); // Bypass trash and permanently delete
+            $wpdb->delete($wpdb->posts, ['post_parent' => $postid, 'post_type' => 'wpaicg_bulk']); // Delete children
+        
+            // Clean up related post meta entries
+            $related_meta = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->postmeta} WHERE meta_key=%s AND meta_value=%d", 'wpaicg_twitter_track', $postid));
+            if ($related_meta) {
+                delete_post_meta($related_meta->post_id, 'wpaicg_tweeted');
+            }
+        
+            wp_send_json_success(['msg' => 'Post and related items deleted successfully']);
+        }
+        
+
+        public function delete_all_wpaicg_posts() {
+
+            global $wpdb;
+            // Security check
+            check_ajax_referer('gpt3_ajax_pagination_nonce', 'nonce');
+        
+            // Query to select all posts of the custom post types
+            $tasks_sql = $wpdb->prepare(
+                "SELECT ID FROM " . $wpdb->posts . " WHERE post_type IN ('wpaicg_bulk', 'wpaicg_tracking')"
+            );
+            $tasks = $wpdb->get_results($tasks_sql, ARRAY_A);
+        
+            // Loop through each task and delete it using wp_delete_post
+            foreach ($tasks as $task) {
+                wp_delete_post($task['ID'], true); // Set to true to bypass trash
+            }
+        
+            wp_send_json_success(); // Return success
+            
+            die();
+        }
+        
+        
+        
         public function wpaicg_speech_record()
         {
             $mime_types = ['mp3' => 'audio/mpeg','mp4' => 'video/mp4','mpeg' => 'video/mpeg','m4a' => 'audio/m4a','wav' => 'audio/wav','webm' => 'video/webm'];
@@ -168,7 +670,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'wpaicg_single_content',
                 'wpaicg_single_content',
                 array( $this, 'wpaicg_single_content' ),
-                1
+                2
             );
             add_submenu_page(
                 'wpaicg',
@@ -177,7 +679,7 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'wpaicg_bulk_content',
                 'wpaicg_bulk_content',
                 array( $this, 'wpaicg_bulk_content' ),
-                2
+                3
             );
             add_submenu_page(
                 'edit.php',
@@ -187,13 +689,13 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                 'wpaicg_single_content',
                 array( $this, 'wpaicg_single_content' )
             );
+
         }
 
         public function wpaicg_single_content()
         {
             include WPAICG_PLUGIN_DIR . 'admin/extra/wpaicg_single.php';
         }
-
         public function wpaicg_bulk_content()
         {
             include WPAICG_PLUGIN_DIR . 'admin/extra/wpaicg_bulk.php';
@@ -459,19 +961,18 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                         $wpaicg_generator_post_id = get_post_meta( $wpaicg_bulk->ID, '_wpaicg_generator_post', true );
                         $wpaicg_cost = 0;
                         $wpaicg_ai_model = get_post_meta($wpaicg_bulk->ID,'wpaicg_ai_model',true);
-                        if(!empty($wpaicg_generator_token)) {
-                            if ($wpaicg_ai_model == 'gpt-3.5-turbo' || $wpaicg_ai_model == 'gpt-3.5-turbo-16k') {
-                                $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * 0.002 / 1000, 5));
-                            }
-                            elseif ($wpaicg_ai_model == 'gpt-4') {
-                                $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * 0.06 / 1000, 5));
-                            }
-                            elseif ($wpaicg_ai_model == 'gpt-4-32k') {
-                                $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * 0.12 / 1000, 5));
+                        // Define pricing per 1K tokens
+                        $pricing = \WPAICG\WPAICG_Util::get_instance()->model_pricing;
+
+                        if (!empty($wpaicg_generator_token)) {
+                            if (array_key_exists($wpaicg_ai_model, $pricing)) {
+                                $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * $pricing[$wpaicg_ai_model] / 1000, 5));
                             } else {
+                                // Default cost calculation if the model is not listed
                                 $wpaicg_cost = '$' . esc_html(number_format($wpaicg_generator_token * $this->wpaicg_token_price, 5));
                             }
                         }
+
                         $wpaicg_result['data'][] = array(
                             'id'       => $wpaicg_bulk->ID,
                             'title'    => $wpaicg_bulk->post_title,
@@ -639,9 +1140,13 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                         $wpaicg_generator = WPAICG_Generator::get_instance();
                         $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                         $openai = WPAICG_OpenAI::get_instance()->openai();
-                        // if provider not openai then assing azure to $open_ai
-                        if($wpaicg_provider != 'OpenAI'){
-                            $openai = WPAICG_AzureAI::get_instance()->azureai();
+
+                        // Get the AI engine.
+                        try {
+                            $openai = WPAICG_Util::get_instance()->initialize_ai_engine();
+                        } catch (\Exception $e) {
+                            $wpaicg_result['msg'] = $e->getMessage();
+                            wp_send_json($wpaicg_result);
                         }
                         $wpaicg_generator_result = array();
                         if(!$openai){
@@ -800,13 +1305,9 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                                         'post_status' => 'trash',
                                     ) );
                                 } else {
-                                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-
-                                    if ($wpaicg_provider === 'OpenAI') {
-                                        $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-instruct');
-                                    } else if ($wpaicg_provider === 'Azure') {
-                                        $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                                    }
+                                    $ai_provider_info = \WPAICG\WPAICG_Util::get_instance()->get_default_ai_provider();
+                                    $wpaicg_provider = $ai_provider_info['provider'];
+                                    $wpaicg_ai_model = $ai_provider_info['model'];
 
                                     add_post_meta($wpaicg_post_id,'wpaicg_ai_model',$wpaicg_ai_model);
                                     add_post_meta($wpaicg_single->ID,'wpaicg_ai_model',$wpaicg_ai_model);
@@ -1317,7 +1818,19 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Content' ) ) {
                             }
                         } elseif ($wpaicg_provider === 'Azure') {
                             $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                        }
+                        } elseif ($wpaicg_provider === 'Google') {
+                            if (isset($_REQUEST['model']) && !empty($_REQUEST['model'])) {
+                                $wpaicg_ai_model = sanitize_text_field($_REQUEST['model']);
+                            } else {
+                                $wpaicg_ai_model = get_option('wpaicg_google_default_model', 'gemini-pro');
+                            }
+                        } elseif ($wpaicg_provider === 'OpenRouter') {
+                            if (isset($_REQUEST['model']) && !empty($_REQUEST['model'])) {
+                                $wpaicg_ai_model = sanitize_text_field($_REQUEST['model']);
+                            } else {
+                                $wpaicg_ai_model = get_option('wpaicg_openrouter_default_model', 'openai/gpt-4o');
+                            }
+                        } 
                         
                         $source_log = 'writer';
                         if (isset($_REQUEST['source_log']) && !empty($_REQUEST['source_log'])) {

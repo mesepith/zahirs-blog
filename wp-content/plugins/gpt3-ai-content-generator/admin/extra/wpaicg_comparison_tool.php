@@ -1,5 +1,14 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
+// if $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI'); is Azure or Google, display a notice and end further processing
+$wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
+if ($wpaicg_provider === 'Azure' || $wpaicg_provider === 'Google'): ?>
+    <div class="wpaicg-notice-info">
+        <p><?php echo esc_html__( 'Comparison tool is not available in Azure or Google. If you want to use it, change your provider to OpenAI under Settings - AI Engine tab.', 'gpt3-ai-content-generator' ); ?></p>
+    </div>
+    <?php return; ?>
+<?php endif; ?>
+<?php
 $wpaicg_defaults = array(
     'temperature' => 0.7,
     'max_tokens' => 500,

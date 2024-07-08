@@ -1,104 +1,109 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 global $wpdb;
-$wpaicg_files_page = isset($_GET['wpage']) && !empty($_GET['wpage']) ? sanitize_text_field($_GET['wpage']) : 1;
-$wpaicg_files_per_page = 20;
-$wpaicg_files_offset = ( $wpaicg_files_page * $wpaicg_files_per_page ) - $wpaicg_files_per_page;
-$wpaicg_files_count_sql = "SELECT COUNT(*) FROM ".$wpdb->posts." f WHERE f.post_type='wpaicg_file' AND (f.post_status='publish' OR f.post_status = 'future')";
-$wpaicg_files_sql = $wpdb->prepare("SELECT f.*
-       ,(SELECT fn.meta_value FROM ".$wpdb->postmeta." fn WHERE fn.post_id=f.ID AND fn.meta_key='wpaicg_filename') as filename 
-       ,(SELECT fp.meta_value FROM ".$wpdb->postmeta." fp WHERE fp.post_id=f.ID AND fp.meta_key='wpaicg_purpose') as purpose 
-       ,(SELECT fm.meta_value FROM ".$wpdb->postmeta." fm WHERE fm.post_id=f.ID AND fm.meta_key='wpaicg_purpose') as model 
-       ,(SELECT fc.meta_value FROM ".$wpdb->postmeta." fc WHERE fc.post_id=f.ID AND fc.meta_key='wpaicg_custom_name') as custom_name 
-       ,(SELECT fs.meta_value FROM ".$wpdb->postmeta." fs WHERE fs.post_id=f.ID AND fs.meta_key='wpaicg_file_size') as file_size 
-       ,(SELECT ft.meta_value FROM ".$wpdb->postmeta." ft WHERE ft.post_id=f.ID AND ft.meta_key='wpaicg_fine_tune') as finetune 
-       FROM ".$wpdb->posts." f WHERE f.post_type='wpaicg_file' AND (f.post_status='publish' OR f.post_status = 'future') ORDER BY f.post_date DESC LIMIT %d,%d",$wpaicg_files_offset,$wpaicg_files_per_page);
-$wpaicg_files = $wpdb->get_results($wpaicg_files_sql);
-$wpaicg_files_total = $wpdb->get_var( $wpaicg_files_count_sql );
+
+// Define posts per page
+$posts_per_page_finetune = 3;
+
+// Ensure the page number is at least 1
+$page_finetune = isset($_GET['page_finetune']) ? max(1, (int) $_GET['page_finetune']) : 1;
+
+// Calculate the offset
+$offset_finetune = ($page_finetune - 1) * $posts_per_page_finetune;
+
+// Retrieve the embeddings, ensuring a valid, non-negative offset from wpaicg_embeddings and wpaicg_pdfadmin
+global $wpdb;
+$posts_finetune = $wpdb->get_results($wpdb->prepare("SELECT f.*
+,(SELECT fn.meta_value FROM ".$wpdb->postmeta." fn WHERE fn.post_id=f.ID AND fn.meta_key='wpaicg_filename') as filename 
+,(SELECT fp.meta_value FROM ".$wpdb->postmeta." fp WHERE fp.post_id=f.ID AND fp.meta_key='wpaicg_purpose') as purpose 
+,(SELECT fm.meta_value FROM ".$wpdb->postmeta." fm WHERE fm.post_id=f.ID AND fm.meta_key='wpaicg_purpose') as model 
+,(SELECT fc.meta_value FROM ".$wpdb->postmeta." fc WHERE fc.post_id=f.ID AND fc.meta_key='wpaicg_custom_name') as custom_name 
+,(SELECT fs.meta_value FROM ".$wpdb->postmeta." fs WHERE fs.post_id=f.ID AND fs.meta_key='wpaicg_file_size') as file_size 
+,(SELECT ft.meta_value FROM ".$wpdb->postmeta." ft WHERE ft.post_id=f.ID AND ft.meta_key='wpaicg_fine_tune') as finetune 
+FROM ".$wpdb->posts." f WHERE f.post_type='wpaicg_file' AND (f.post_status='publish' OR f.post_status = 'future') ORDER BY f.post_date DESC LIMIT %d, %d", $offset_finetune, $posts_per_page_finetune));
+
+$total_posts_finetune = $wpdb->get_var("SELECT COUNT(*) FROM ".$wpdb->posts." f WHERE f.post_type='wpaicg_file' AND (f.post_status='publish' OR f.post_status = 'future')");
+$total_pages_finetune = ceil($total_posts_finetune / $posts_per_page_finetune);
+
+// Nonce for AJAX requests
+$nonce = wp_create_nonce('ajax_pagination_finetune_nonce');
+
 $fileTypes = array(
-    'fine-tune' => esc_html__('Fine-Tune','gpt3-ai-content-generator')
+    'fine-tune' => esc_html__('Fine-Tune','gpt3-ai-content-generator'),
+    'fine-tune-results' => esc_html__('Fine-Tune Results','gpt3-ai-content-generator'),
+    'assistants' => esc_html__('Assistants','gpt3-ai-content-generator'),
+    'assistants_output' => esc_html__('Assistants Output','gpt3-ai-content-generator')
 );
 ?>
-<style>
-    .wpaicg_form_upload_file{
-        background: #e3e3e3;
-        padding: 10px;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        margin-bottom: 20px;
-    }
-    .wpaicg_form_upload_file table{
-        max-width: 500px
-    }
-    .wpaicg_form_upload_file table th{
-        padding: 5px;
-    }
-    .wpaicg_form_upload_file table td{
-        padding: 5px;
-    }
-</style>
+
 <?php
 $wpaicgMaxFileSize = wp_max_upload_size();
 if($wpaicgMaxFileSize > 104857600){
     $wpaicgMaxFileSize = 104857600;
 }
 ?>
-<h1 class="wp-heading-inline"><?php echo esc_html__('Files','gpt3-ai-content-generator')?></h1>
-<button href="javascript:void(0)" class="page-title-action wpaicg_sync_files"><?php echo esc_html__('Sync Files','gpt3-ai-content-generator')?></button>
-<table class="wp-list-table widefat fixed striped table-view-list comments">
-    <thead>
-    <tr>
-        <th><?php echo esc_html__('ID','gpt3-ai-content-generator')?></th>
-        <th style="width: 50px;"><?php echo esc_html__('Size','gpt3-ai-content-generator')?></th>
-        <th><?php echo esc_html__('Created At','gpt3-ai-content-generator')?></th>
-        <th><?php echo esc_html__('Filename','gpt3-ai-content-generator')?></th>
-        <th><?php echo esc_html__('Purpose','gpt3-ai-content-generator')?></th>
-        <th><?php echo esc_html__('Action','gpt3-ai-content-generator')?></th>
-    </tr>
-    </thead>
-    <tbody>
-    <?php
-    if($wpaicg_files && is_array($wpaicg_files) && count($wpaicg_files)):
-        foreach($wpaicg_files as $wpaicg_file):
-            ?>
-            <tr>
-                <td><?php echo esc_html($wpaicg_file->post_title)?></td>
-                <td><?php echo esc_html(size_format($wpaicg_file->file_size))?></td>
-                <td><?php echo esc_html($wpaicg_file->post_date)?></td>
-                <td><?php echo esc_html($wpaicg_file->filename)?></td>
-                <td><?php echo !empty($wpaicg_file->purpose) ? esc_html($fileTypes[$wpaicg_file->purpose]) : 'Fine-Tune'?></td>
-                <td>
-                    <button data-id="<?php echo esc_html($wpaicg_file->ID);?>" class="button button-small wpaicg_create_fine_tune"><?php echo esc_html__('Create Fine-Tune','gpt3-ai-content-generator')?></button>
-                    <button data-id="<?php echo esc_html($wpaicg_file->ID);?>" class="button button-small wpaicg_retrieve_content"><?php echo esc_html__('Retrieve Content','gpt3-ai-content-generator')?></button>
-                    <button data-id="<?php echo esc_html($wpaicg_file->ID);?>" class="button button-small button-link-delete wpaicg_delete_file"><?php echo esc_html__('Delete','gpt3-ai-content-generator')?></button>
-                </td>
-            </tr>
+<div class="custom-modal-finetune-overlay">
+    <div class="custom-modal-finetune-window">
+        <div class="custom-modal-finetune-close">X</div>
+        <div class="custom-modal-finetune-title"></div>
+        <div class="custom-modal-finetune-content"></div>
+    </div>
+</div>
+<div class="custom-modal-create-finetune-overlay">
+    <div class="custom-modal-create-finetune-window">
+        <div class="custom-modal-create-finetune-close">X</div>
+        <div class="custom-modal-create-finetune-title"><?php echo esc_html__('Choose Model', 'gpt3-ai-content-generator')?></div>
+        <div class="custom-modal-create-finetune-content"></div>
+    </div>
+</div>
+<p></p>
+<!-- Tab links -->
+<div class="wpaicg_finetune_tab">
+  <button class="wpaicg_finetune_tablinks" onclick="openTab(event, 'files')" id="defaultOpen">Files</button>
+  <button class="wpaicg_finetune_tablinks" onclick="openTab(event, 'trainings')">Fine-tunes</button>
+</div>
+<!-- Tab content for Files -->
+<div id="files" class="wpaicg_finetune_tabcontent">
+    <div class="nice-form-group">
+        <button href="javascript:void(0)" class="button button-secondary wpaicg_sync_files"><?php echo esc_html__('Sync Files','gpt3-ai-content-generator')?></button>
+    </div>
+    <p></p>
+    <div class="content-area">
+        <input type="hidden" id="ajax_pagination_finetune_nonce" value="<?php echo wp_create_nonce('ajax_pagination_finetune_nonce'); ?>">
+        <div class="wpaicg-table-responsive">
+            <table id="paginated-finetune-table" class="wp-list-table widefat striped">
+                <thead>
+                <tr>
+                    <th class="column-id"><?php echo esc_html__('ID', 'gpt3-ai-content-generator'); ?></th>
+                    <th class="column-size"><?php echo esc_html__('Size', 'gpt3-ai-content-generator'); ?></th>
+                    <th class="column-created"><?php echo esc_html__('Created', 'gpt3-ai-content-generator'); ?></th>
+                    <th class="column-filename"><?php echo esc_html__('Filename', 'gpt3-ai-content-generator'); ?></th>
+                    <th class="column-purpose"><?php echo esc_html__('Purpose', 'gpt3-ai-content-generator'); ?></th>
+                    <th class="column-action"><?php echo esc_html__('Action', 'gpt3-ai-content-generator'); ?></th>
+                </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($posts_finetune as $post_finetune): ?>
+                        <?php echo \WPAICG\WPAICG_FineTune::get_instance()->generate_table_row_files($post_finetune); ?>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
         <?php
-        endforeach;
-    endif;
-    ?>
-    </tbody>
-</table>
-<div class="wpaicg-paginate mb-5">
+        echo \WPAICG\WPAICG_FineTune::get_instance()->generate_smart_pagination_finetune($page_finetune, $total_pages_finetune);
+        ?>
+        <p></p>
+    </div>
+</div>
+<!-- Tab content for Trainings -->
+<div id="trainings" class="wpaicg_finetune_tabcontent">
     <?php
-    echo paginate_links( array(
-        'base'         => admin_url('admin.php?page=wpaicg_finetune&wpage=%#%'),
-        'total'        => ceil($wpaicg_files_total / $wpaicg_files_per_page),
-        'current'      => $wpaicg_files_page,
-        'format'       => '?wpaged=%#%',
-        'show_all'     => false,
-        'prev_next'    => false,
-        'add_args'     => false,
-    ));
-    ?>
+        include WPAICG_PLUGIN_DIR.'admin/views/finetune/fine-tunes.php';
+        ?>
 </div>
 <script>
     jQuery(document).ready(function ($){
-        $('.wpaicg_modal_close').click(function (){
-            $('.wpaicg_modal_close').closest('.wpaicg_modal').hide();
-            $('.wpaicg_modal_close').closest('.wpaicg_modal').removeClass('wpaicg-small-modal');
-            $('.wpaicg-overlay').hide();
-        })
         function wpaicgLoading(btn){
             btn.attr('disabled','disabled');
             if(!btn.find('spinner').length){
@@ -119,9 +124,6 @@ if($wpaicgMaxFileSize > 104857600){
         var wpaicg_file_model = $('#wpaicg_file_model');
         var wpaicg_progress = $('.wpaicg_progress');
         var wpaicg_error_message = $('.wpaicg-error-msg');
-        var wpaicg_create_fine_tune = $('.wpaicg_create_fine_tune');
-        var wpaicg_retrieve_content = $('.wpaicg_retrieve_content');
-        var wpaicg_delete_file = $('.wpaicg_delete_file');
         var wpaicg_ajax_url = '<?php echo admin_url('admin-ajax.php')?>';
         var wpaicgAjaxRunning = false;
         $('.wpaicg_sync_files').click(function (){
@@ -140,7 +142,11 @@ if($wpaicgMaxFileSize > 104857600){
                         wpaicgAjaxRunning = false;
                         wpaicgRmLoading(btn);
                         if (res.status === 'success') {
-                            window.location.reload();
+                            $('#wpaicg-finetune-sync-message').show();
+                            setTimeout(function() {
+                                $('#wpaicg-finetune-sync-message').hide();
+                            }, 5000);
+                            location.reload();
                         } else {
                             alert(res.msg);
                         }
@@ -153,10 +159,10 @@ if($wpaicgMaxFileSize > 104857600){
                 })
             }
         })
-        wpaicg_delete_file.click(function (){
+        $(document).on('click', '.wpaicg_delete_file', function () {
             if(!wpaicgAjaxRunning) {
-                var conf = confirm('<?php echo esc_html__('Are you sure?','gpt3-ai-content-generator')?>');
-                if (conf) {
+                var conf_finetune = confirm('<?php echo esc_html__('Are you sure?','gpt3-ai-content-generator')?>');
+                if (conf_finetune) {
                     var btn = $(this);
                     var id = btn.attr('data-id');
                     $.ajax({
@@ -172,7 +178,13 @@ if($wpaicgMaxFileSize > 104857600){
                             wpaicgAjaxRunning = false;
                             wpaicgRmLoading(btn);
                             if (res.status === 'success') {
-                                window.location.reload();
+                                // display success message with timeout. wpaicg-finetune-success-message
+                                $('#wpaicg-finetune-delete-message').show();
+                                setTimeout(function() {
+                                    $('#wpaicg-finetune-delete-message').hide();
+                                }, 5000);
+                                // delete row with fade out effect
+                                btn.closest('tr').fadeOut();
                             } else {
                                 alert(res.msg);
                             }
@@ -207,11 +219,14 @@ if($wpaicgMaxFileSize > 104857600){
                         wpaicgRmLoading(btn);
                         wpaicgAjaxRunning = false;
                         if (res.status === 'success') {
-                            $('.wpaicg_modal_content').empty();
-                            $('.wpaicg-overlay').hide();
-                            $('.wpaicg_modal').hide();
-                            alert('<?php echo esc_html__('Congratulations! Your fine-tuning was created successfully. You can track its progress in the "Trainings" tab.','gpt3-ai-content-generator')?>');
+                            // Use the custom modal prefix for displaying success message
+                            $('.custom-modal-create-finetune-content').html('<?php echo esc_html__('Congratulations! Your fine-tuning was created successfully. You can track its progress in the "Trainings" tab.', 'gpt3-ai-content-generator')?>');
+                            $('.custom-modal-create-finetune-overlay').show();
 
+                            // Close modal functionality
+                            $('.custom-modal-create-finetune-close').on('click', function () {
+                                $('.custom-modal-create-finetune-overlay').hide();
+                            });
                         } else {
                             alert(res.msg);
                         }
@@ -224,7 +239,7 @@ if($wpaicgMaxFileSize > 104857600){
                 });
             }
         });
-        wpaicg_create_fine_tune.click(function (){
+        $(document).on('click', '.wpaicg_create_fine_tune', function () {
             if(!wpaicgAjaxRunning) {
                 var btn = $(this);
                 var id = btn.attr('data-id');
@@ -241,21 +256,24 @@ if($wpaicgMaxFileSize > 104857600){
                         wpaicgAjaxRunning = false;
                         wpaicgRmLoading(btn);
                         if (res.status === 'success') {
-                            $('.wpaicg_modal_content').empty();
-                            $('.wpaicg-overlay').show();
-                            $('.wpaicg_modal').show();
-                            $('.wpaicg_modal_title').html('<?php echo esc_html__('Choose Model','gpt3-ai-content-generator')?>');
-                            $('.wpaicg_modal').addClass('wpaicg-small-modal');
-                            var html = '<input type="hidden" id="wpaicg_create_finetune_id" value="' + id + '"><p><label><?php echo esc_html__('Select Model','gpt3-ai-content-generator')?></label>';
-                            html += '<select style="width: 100%" id="wpaicg_create_finetune_model">';
-                            html += '<option value=""><?php echo esc_html__('New Model','gpt3-ai-content-generator')?></option>';
+                            // Dynamically creating the modal content based on AJAX response
+                            var content = '<input type="hidden" id="wpaicg_create_finetune_id" value="' + id + '">';
+                            content += '<div class="nice-form-group"><select id="wpaicg_create_finetune_model">';
+                            content += '<option value=""><?php echo esc_html__('New Model', 'gpt3-ai-content-generator')?></option>';
                             $.each(res.data, function (idx, item) {
-                                html += '<option value="' + item + '">' + item + '</option>';
-                            })
-                            html += '</select>';
-                            html += '</p>';
-                            html += '<p><button style="width: 100%" class="button button-primary" id="wpaicg_create_finetune_btn"><?php echo esc_html__('Create','gpt3-ai-content-generator')?></button></p>'
-                            $('.wpaicg_modal_content').append(html)
+                                content += '<option value="' + item + '">' + item + '</option>';
+                            });
+                            content += '</select></div>';
+                            content += '<p><button class="button button-primary" id="wpaicg_create_finetune_btn"><?php echo esc_html__('Create', 'gpt3-ai-content-generator')?></button></p>';
+                            $('.custom-modal-create-finetune-content').html(content);
+
+                            // Show the modal
+                            $('.custom-modal-create-finetune-overlay').show();
+
+                            // Close modal functionality
+                            $('.custom-modal-create-finetune-close').on('click', function () {
+                                $('.custom-modal-create-finetune-overlay').hide();
+                            });
                         } else {
                             alert(res.msg);
                         }
@@ -268,7 +286,7 @@ if($wpaicgMaxFileSize > 104857600){
                 })
             }
         });
-        wpaicg_retrieve_content.click(function (){
+        $(document).on('click', '.wpaicg_retrieve_content', function () {
             if(!wpaicgAjaxRunning) {
                 var btn = $(this);
                 var id = btn.attr('data-id');
@@ -285,10 +303,19 @@ if($wpaicgMaxFileSize > 104857600){
                         wpaicgAjaxRunning = false;
                         wpaicgRmLoading(btn);
                         if (res.status === 'success') {
-                            $('.wpaicg_modal_title').html('<?php echo esc_html__('File Content','gpt3-ai-content-generator')?>');
-                            $('.wpaicg_modal_content').html('<pre>' + res.data + '</pre>');
-                            $('.wpaicg-overlay').show();
-                            $('.wpaicg_modal').show();
+                            var content = res.data;
+                            content = content.replace(/\n/g, "<br />");
+                            $('.custom-modal-finetune-title').html('Finetune Data');
+                            $('.custom-modal-finetune-content').html(content);
+
+                            // Show the modal
+                            $('.custom-modal-finetune-overlay').show();
+
+                            // Close the modal when clicking the close button
+                            $('.custom-modal-finetune-close').on('click', function() {
+                                $('.custom-modal-finetune-overlay').hide();
+                            });
+                            
                         } else {
                             alert(res.msg);
                         }
@@ -301,5 +328,48 @@ if($wpaicgMaxFileSize > 104857600){
                 })
             }
         });
+
+        // Handle pagination link clicks
+        $(document).on('click', '.finetune-pagination a', function(e){
+            e.preventDefault();
+            var page = $(this).data('page_finetune');
+            var ajaxurl = '<?php echo admin_url('admin-ajax.php'); ?>';
+            var nonce = $('#ajax_pagination_finetune_nonce').val();
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'post',
+                data: {
+                    action: 'ajax_pagination_finetune',
+                    wpage_finetune: page,
+                    nonce: nonce
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#paginated-finetune-table tbody').html(response.data.content);
+                        $('.finetune-pagination').replaceWith(response.data.pagination);
+                    }
+                }
+            });
+        });
+
     })
+</script>
+<script>
+function openTab(evt, tabName) {
+  var i, tabcontent, tablinks;
+  tabcontent = document.getElementsByClassName("wpaicg_finetune_tabcontent");
+  for (i = 0; i < tabcontent.length; i++) {
+    tabcontent[i].style.display = "none";
+  }
+  tablinks = document.getElementsByClassName("wpaicg_finetune_tablinks");
+  for (i = 0; i < tablinks.length; i++) {
+    tablinks[i].className = tablinks[i].className.replace(" active", "");
+  }
+  document.getElementById(tabName).style.display = "block";
+  evt.currentTarget.className += " active";
+}
+
+// Default open tab
+document.getElementById("defaultOpen").click();
 </script>

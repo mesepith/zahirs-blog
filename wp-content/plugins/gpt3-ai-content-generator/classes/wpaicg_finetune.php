@@ -38,24 +38,48 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
             add_action('wp_ajax_wpaicg_data_converter', [$this, 'wpaicg_data_converter']);
             add_action('wp_ajax_wpaicg_upload_convert', [$this, 'wpaicg_upload_convert']);
             add_action('wp_ajax_wpaicg_data_insert', [$this, 'wpaicg_data_insert']);
-            add_action('admin_menu', array($this, 'wpaicg_menu'));
+            // ajax_pagination_finetune
+            add_action('wp_ajax_ajax_pagination_finetune', [$this, 'ajax_pagination_finetune']);
+            add_action('wp_ajax_ajax_pagination_training', [$this, 'ajax_pagination_training']);
+            // wpaicg_fetch_google_models
+            add_action('wp_ajax_wpaicg_fetch_google_models', [$this, 'wpaicg_fetch_google_models']);
+
             add_filter('mime_types', function ($mime_types) {
                 $mime_types['jsonl'] = 'application/octet-stream';
                 return $mime_types;
             });
         }
 
-        public function wpaicg_menu()
+        public function wpaicg_fetch_google_models()
         {
-            add_submenu_page(
-                'wpaicg',
-                esc_html__('Train Your AI', 'gpt3-ai-content-generator'),
-                esc_html__('Train Your AI', 'gpt3-ai-content-generator'),
-                'wpaicg_finetune',
-                'wpaicg_finetune',
-                array($this, 'wpaicg_finetune'),
-                8
-            );
+            if (!current_user_can('manage_options')) {
+                wp_send_json(['status' => 'error', 'msg' => esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator')]);
+            }
+        
+            if (!wp_verify_nonce($_POST['nonce'], 'wpaicg-ajax-nonce')) {
+                wp_send_json(['status' => 'error', 'msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $api_key = get_option('wpaicg_google_model_api_key');
+            if (empty($api_key)) {
+                wp_send_json(['status' => 'error', 'msg' => 'Google API key is not configured. Please enter your Google API key in the settings and save it first.']);
+            }
+        
+            $google_ai = WPAICG_Google::get_instance();
+            $model_list = $google_ai->listModels();
+        
+            if (is_wp_error($model_list)) {
+                wp_send_json(['status' => 'error', 'msg' => $model_list->get_error_message()]);
+            }
+
+            // Check if the response is an error response from the Google API
+            if (isset($model_list['error'])) {
+                $api_error_msg = $model_list['error']['message'];
+                wp_send_json(['status' => 'error', 'msg' => $api_error_msg]);
+            }
+        
+            update_option('wpaicg_google_model_list', $model_list);
+            wp_send_json(['status' => 'success', 'msg' => 'Models updated successfully']);
         }
 
         public function wpaicgUploadOpenAI($file, $open_ai)
@@ -94,7 +118,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_data_insert()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_manual')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -150,7 +174,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_upload_convert()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_data')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -230,7 +254,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_data_converter_count()
         {
             global $wpdb;
-            if (!current_user_can('wpaicg_finetune_data')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -258,7 +282,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_data_converter()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_data')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -338,7 +362,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_create_finetune_modal()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_files')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -396,7 +420,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
             if ($wpaicg_provider != 'OpenAI') {
                 $open_ai = WPAICG_AzureAI::get_instance()->azureai();
             }
-            if (!current_user_can('wpaicg_finetune_file-tunes')) {
+            if (!current_user_can('manage_options')) {
                 echo esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 exit;
             }
@@ -428,7 +452,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_create_finetune()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_files')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -466,26 +490,31 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
                         $dataSend['model'] = 'gpt-3.5-turbo';
                     }
                     $result = $open_ai->createFineTune($dataSend);
-                    $wpaicg_result['model'] = $model;
-                    $result = json_decode($result);
-                    if (isset($result->error)) {
+                    if (!empty($result->error)) {
                         $wpaicg_result['msg'] = $result->error->message;
-                    } else {
-                        update_post_meta($wpaicg_file->ID, 'wpaicg_fine_tune', $result->id);
-                        $wpaicg_file_id = wp_insert_post(array(
-                            'post_title' => $result->id,
-                            'post_date' => date('Y-m-d H:i:s', $result->created_at),
-                            'post_status' => 'publish',
-                            'post_type' => 'wpaicg_finetune',
-                        ));
-                        add_post_meta($wpaicg_file_id, 'wpaicg_model', $result->model);
-                        add_post_meta($wpaicg_file_id, 'wpaicg_updated_at', date('Y-m-d H:i:s', $result->updated_at));
-                        add_post_meta($wpaicg_file_id, 'wpaicg_name', $result->fine_tuned_model);
-                        add_post_meta($wpaicg_file_id, 'wpaicg_org', $result->organization_id);
-                        add_post_meta($wpaicg_file_id, 'wpaicg_status', $result->status);
-                        $wpaicg_result['status'] = 'success';
-                        $wpaicg_result['data'] = $result;
+                        wp_send_json($wpaicg_result);
                     }
+                    $result = json_decode($result);
+                    update_post_meta($wpaicg_file->ID, 'wpaicg_fine_tune', $result->id);
+                    $wpaicg_file_id = wp_insert_post(array(
+                        'post_title' => $result->id,
+                        'post_date' => date('Y-m-d H:i:s', $result->created_at),
+                        'post_status' => 'publish',
+                        'post_type' => 'wpaicg_finetune',
+                    ));
+                    add_post_meta($wpaicg_file_id, 'wpaicg_model', $result->model);
+                    if (isset($result->updated_at)) {
+                        add_post_meta($wpaicg_file_id, 'wpaicg_updated_at', date('Y-m-d H:i:s', $result->updated_at));
+                    }                    
+                    add_post_meta($wpaicg_file_id, 'wpaicg_name', $result->fine_tuned_model);
+                    add_post_meta($wpaicg_file_id, 'wpaicg_org', $result->organization_id);
+                    add_post_meta($wpaicg_file_id, 'wpaicg_status', $result->status);
+                    $wpaicg_result = [
+                        'status' => 'success',
+                        'msg' => esc_html__('Fine tuning job created successfully.', 'gpt3-ai-content-generator'),
+                        'data' => $result
+                    ];
+
                 } else {
                     $wpaicg_result['msg'] = esc_html__('File not found', 'gpt3-ai-content-generator');
                 }
@@ -496,7 +525,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_finetune_upload()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_upload')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
             }
@@ -564,7 +593,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_get_finetune_file()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_files')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -667,7 +696,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_other_finetune()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_file-tunes')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -756,7 +785,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_delete_finetune_file()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_files')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -797,7 +826,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_delete_finetune()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_files')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -843,7 +872,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         public function wpaicg_cancel_finetune()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_file-tunes')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -867,12 +896,21 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
                         wp_send_json($wpaicg_result);
                     }
                     $result = $open_ai->cancelFineTune($wpaicg_file->post_title);
-                    $result = json_decode($result);
-                    if (isset($result->error)) {
+                    if (!empty($result->error)) {
                         $wpaicg_result['msg'] = $result->error->message;
+                        wp_send_json($wpaicg_result);
+                    }
+                    $result = json_decode($result, true); // Decode as associative array
+                    // Update or add post meta based on the status field from the response
+                    if (isset($result['status'])) {
+                        update_post_meta($wpaicg_file->ID, 'wpaicg_status', $result['status']);
+                        $wpaicg_result = [
+                            'status' => 'success',
+                            'msg' => esc_html__('Fine-tuning job status updated successfully.', 'gpt3-ai-content-generator'),
+                            'data' => $result
+                        ];
                     } else {
-                        add_post_meta($wpaicg_file->ID, 'wpaicg_status', 'cancelled');
-                        $wpaicg_result['status'] = 'success';
+                        $wpaicg_result['msg'] = esc_html__('Status field missing in the response.', 'gpt3-ai-content-generator');
                     }
                 } else {
                     $wpaicg_result['msg'] = esc_html__('File not found', 'gpt3-ai-content-generator');
@@ -885,7 +923,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         {
             global $wpdb;
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_file-tunes')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -898,9 +936,12 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
             $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
             $open_ai = WPAICG_OpenAI::get_instance()->openai();
             // if provider not openai then assing azure to $open_ai
-            if ($wpaicg_provider != 'OpenAI') {
+            if ($wpaicg_provider == 'Azure') {
                 $open_ai = WPAICG_AzureAI::get_instance()->azureai();
+            } else {
+                $open_ai = WPAICG_OpenAI::get_instance()->openai();
             }
+            
             if (!$open_ai) {
                 $wpaicg_result['msg'] = esc_html__('Missing API Setting', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -1022,7 +1063,7 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
         {
             global $wpdb;
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong', 'gpt3-ai-content-generator'));
-            if (!current_user_can('wpaicg_finetune_files')) {
+            if (!current_user_can('manage_options')) {
                 $wpaicg_result['status'] = 'error';
                 $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.', 'gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -1058,6 +1099,217 @@ if (!class_exists('\\WPAICG\\WPAICG_FineTune')) {
             wp_send_json($wpaicg_result);
         }
 
+        public function generate_table_row_files($post) {
+            // $wpaicg_file->file_size
+            $file_size = get_post_meta($post->ID, 'wpaicg_file_size', true);
+            // $wpaicg_file->post_date
+            $postdate = date('y-m-d H:i', strtotime($post->post_date));
+            // $wpaicg_file->filename
+            $filename = get_post_meta($post->ID, 'wpaicg_filename', true);
+            // Truncate filename if it's longer than 10 characters
+            $displayFilename = strlen($filename) > 10 ? substr($filename, 0, 10) . '...' : $filename;
+            // $wpaicg_file->purpose
+            $purpose = get_post_meta($post->ID, 'wpaicg_purpose', true);
+            // $wpaicg_file->ID
+            $file_id = $post->ID;
+            // Check and format post title if it's more than 10 characters
+            $post_title = strlen($post->post_title) > 10 ? substr($post->post_title, 0, 10) . '...' : $post->post_title;
+            // Check and format filename if it's more than 10 characters
+            $display_filename = strlen($filename) > 10 ? substr($filename, 0, 10) . '...' : $filename;
+
+            // Build the buttons HTML
+            $buttonsHtml = "<button data-id='" . esc_attr($file_id) . "' class='button button-small wpaicg_create_fine_tune'>" . esc_html__('Create Fine-tune', 'gpt3-ai-content-generator') . "</button> " .
+            "<button style='margin-top: 0.5em;margin-bottom: 0.5em;' data-id='" . esc_attr($file_id) . "' class='button button-small wpaicg_retrieve_content'>" . esc_html__('Retrieve Content', 'gpt3-ai-content-generator') . "</button> " .
+            "<button data-id='" . esc_attr($file_id) . "' class='button button-small button-link-delete wpaicg_delete_file'>" . esc_html__('Delete', 'gpt3-ai-content-generator') . "</button>";
+
+
+            return "<tr id='post-row-{$post->ID}'>
+                        <td class='column-id'>" . esc_html($post_title) . "</td>
+                        <td class='column-size'>" . esc_html($file_size) . "</td>
+                        <td class='column-created'>" . esc_html($postdate) . "</td>
+                        <td class='column-filename'>" . esc_html($displayFilename) . "</td>
+                        <td class='column-purpose'>" . esc_html($purpose) . "</td>
+                        <td class='column-action' style='display: flex;flex-direction: column;align-items: flex-start;'>{$buttonsHtml}</td>
+                    </tr>";
+        }
+
+        public function ajax_pagination_finetune() {
+            global $wpdb;
+            // Check for nonce security
+            if ( ! wp_verify_nonce( $_POST['nonce'], 'ajax_pagination_finetune_nonce' ) ) {
+                wp_send_json_error(['msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $page_finetune = isset($_POST['wpage_finetune']) ? intval($_POST['wpage_finetune']) : 1;
+            $posts_per_page_finetune = 3; // Adjust as needed
+            $offset_finetune = ($page_finetune - 1) * $posts_per_page_finetune;
+        
+            // Calculate total number of posts from wpaicg_embeddings
+            $total_posts_finetune = $wpdb->get_var("SELECT COUNT(*) FROM ".$wpdb->posts." f WHERE f.post_type='wpaicg_file' AND (f.post_status='publish' OR f.post_status = 'future')");
+            $total_pages_finetune = ceil($total_posts_finetune / $posts_per_page_finetune);
+        
+            $posts_finetune = $wpdb->get_results($wpdb->prepare("SELECT f.*
+            ,(SELECT fn.meta_value FROM ".$wpdb->postmeta." fn WHERE fn.post_id=f.ID AND fn.meta_key='wpaicg_filename') as filename 
+            ,(SELECT fp.meta_value FROM ".$wpdb->postmeta." fp WHERE fp.post_id=f.ID AND fp.meta_key='wpaicg_purpose') as purpose 
+            ,(SELECT fm.meta_value FROM ".$wpdb->postmeta." fm WHERE fm.post_id=f.ID AND fm.meta_key='wpaicg_purpose') as model 
+            ,(SELECT fc.meta_value FROM ".$wpdb->postmeta." fc WHERE fc.post_id=f.ID AND fc.meta_key='wpaicg_custom_name') as custom_name 
+            ,(SELECT fs.meta_value FROM ".$wpdb->postmeta." fs WHERE fs.post_id=f.ID AND fs.meta_key='wpaicg_file_size') as file_size 
+            ,(SELECT ft.meta_value FROM ".$wpdb->postmeta." ft WHERE ft.post_id=f.ID AND ft.meta_key='wpaicg_fine_tune') as finetune 
+            FROM ".$wpdb->posts." f WHERE f.post_type='wpaicg_file' AND (f.post_status='publish' OR f.post_status = 'future') ORDER BY f.post_date DESC LIMIT %d, %d", $offset_finetune, $posts_per_page_finetune));
+
+            $output_finetune = '';
+            foreach ( $posts_finetune as $post_finetune ) {
+                $output_finetune .= $this->generate_table_row_files($post_finetune);
+            }
+
+            $pagination_html_finetune = $this->generate_smart_pagination_finetune($page_finetune, $total_pages_finetune);
+
+            // Send back both the table content and pagination HTML
+            wp_send_json_success(['content' => $output_finetune, 'pagination' => $pagination_html_finetune]);
+        
+            die();
+        }
+
+        public function generate_smart_pagination_finetune($current_page_finetune, $total_pages_finetune) {
+            $html_finetune = '<div class="finetune-pagination">';
+            $range_finetune = 2; // Adjust as needed. This will show two pages before and after the current page.
+            $showEllipses_finetune = false;
+        
+            for ($i = 1; $i <= $total_pages_finetune; $i++) {
+                // Always show the first page, the last page, and the current page with $range pages on each side.
+                if ($i == 1 || $i == $total_pages_finetune || ($i >= $current_page_finetune - $range_finetune && $i <= $current_page_finetune + $range_finetune)) {
+                    $html_finetune .= sprintf('<a href="#" data-page_finetune="%d">%d</a> ', $i, $i);
+                    $showEllipses_finetune = true;
+                } elseif ($showEllipses_finetune) {
+                    $html_finetune .= '... ';
+                    $showEllipses_finetune = false;
+                }
+            }
+        
+            $html_finetune .= '</div>';
+            return $html_finetune;
+        }
+        
+        public function generate_table_row_training($post) {
+            $post_title = strlen($post->post_title) > 15 ? substr($post->post_title, 0, 15) . '...' : $post->post_title;
+            $model = $post->model;
+            $post_date = date('y-m-d H:i', strtotime($post->post_date));
+            $ft_model = $post->ft_model;
+            $org_id = $post->org_id;
+            
+            // combine model, ft_model, org_id, created, updated, title into details
+            $details = "<div style='font-size: 90%;white-space: break-spaces;'>";
+            $details .= "<strong>Base Model:</strong> {$model}<br>";
+            $details .= "<strong>Fine-tuned Model:</strong> {$ft_model}<br>";
+            $details .= "<strong>Created:</strong> {$post_date}<br>";
+            $details .= "</div>";
+
+            // Determine status color
+            $statusColor = '#6C757D'; // Default to Grey for "cancelled" or undefined statuses
+            switch ($post->ft_status) {
+                case 'validating_files':
+                    $statusColor = '#007BFF'; // Blue
+                    break;
+                case 'queued':
+                    $statusColor = '#FFA500'; // Orange
+                    break;
+                case 'running':
+                    $statusColor = '#28A745'; // Green
+                    break;
+                case 'succeeded':
+                    $statusColor = '#5CB85C'; // Light Green
+                    break;
+                case 'failed':
+                    $statusColor = '#DC3545'; // Red
+                    break;
+                case 'cancelled':
+                    $statusColor = '#DC3545'; // Red
+                    break;
+            }
+
+            // Now include the color in the status column
+            $statusHTML = "<td class='column-status' style='color: {$statusColor};'>" . esc_html($post->ft_status) . "</td>";
+
+            // Building the buttons HTML
+            $buttonsHtml = "<a style='margin-bottom: 0.5em;' class='wpaicg_get_other button button-small' data-type='events' data-id='" . esc_attr($post->ID) . "' href='javascript:void(0)'>" . esc_html__('Events', 'gpt3-ai-content-generator') . "</a>";
+
+            // Include Delete and Cancel buttons based on conditions
+            if (!$post->deleted) {
+                if ($post->ft_status == 'pending' || $post->ft_status == 'queued' || $post->ft_status == 'running') {
+                    $buttonsHtml .= "<a class='wpaicg_cancel_finetune button button-small button-link-delete' data-id='" . esc_attr($post->ID) . "' href='javascript:void(0)'>" . esc_html__('Cancel', 'gpt3-ai-content-generator') . "</a><br>";
+                }
+                if (!empty($post->ft_model)) {
+                    $buttonsHtml .= "<a class='wpaicg_delete_finetune button button-small button-link-delete' data-id='" . esc_attr($post->ID) . "' href='javascript:void(0)'>" . esc_html__('Delete', 'gpt3-ai-content-generator') . "</a><br>";
+                }
+            }
+
+            
+            return "<tr id='post-row-{$post->ID}'>
+                        <td class='column-id'>" . esc_html($post_title) . "</td>
+                        <td class='column-details'>" . $details . "</td>
+                        {$statusHTML}
+                        <td class='column-training' style='display: flex;flex-direction: column;align-items: flex-start;'>{$buttonsHtml}</td>
+                    </tr>";
+        }
+
+        public function ajax_pagination_training() {
+            global $wpdb;
+            // Check for nonce security
+            if ( ! wp_verify_nonce( $_POST['nonce'], 'ajax_pagination_training_nonce' ) ) {
+                wp_send_json_error(['msg' => esc_html__('Nonce verification failed', 'gpt3-ai-content-generator')]);
+            }
+        
+            $page_training = isset($_POST['wpage_training']) ? intval($_POST['wpage_training']) : 1;
+            $posts_per_page_training = 3; // Adjust as needed
+            $offset_training = ($page_training - 1) * $posts_per_page_training;
+        
+            // Calculate total number of posts from wpaicg_embeddings
+            $total_posts_training = $wpdb->get_var("SELECT COUNT(*) FROM " . $wpdb->posts . " f WHERE f.post_type='wpaicg_finetune' AND (f.post_status='publish' OR f.post_status = 'future')");
+            $total_pages_training = ceil($total_posts_training / $posts_per_page_training);
+        
+            $posts_trainings = $wpdb->get_results($wpdb->prepare("SELECT f.*
+            ,(SELECT fn.meta_value FROM " . $wpdb->postmeta . " fn WHERE fn.post_id=f.ID AND fn.meta_key='wpaicg_model' LIMIT 1) as model
+            ,(SELECT fp.meta_value FROM " . $wpdb->postmeta . " fp WHERE fp.post_id=f.ID AND fp.meta_key='wpaicg_updated_at' LIMIT 1) as updated_at
+            ,(SELECT fm.meta_value FROM " . $wpdb->postmeta . " fm WHERE fm.post_id=f.ID AND fm.meta_key='wpaicg_name' LIMIT 1) as ft_model
+            ,(SELECT fc.meta_value FROM " . $wpdb->postmeta . " fc WHERE fc.post_id=f.ID AND fc.meta_key='wpaicg_org' LIMIT 1) as org_id
+            ,(SELECT fs.meta_value FROM " . $wpdb->postmeta . " fs WHERE fs.post_id=f.ID AND fs.meta_key='wpaicg_status' LIMIT 1) as ft_status
+            ,(SELECT ft.meta_value FROM " . $wpdb->postmeta . " ft WHERE ft.post_id=f.ID AND ft.meta_key='wpaicg_fine_tune' LIMIT 1) as finetune
+            ,(SELECT fd.meta_value FROM " . $wpdb->postmeta . " fd WHERE fd.post_id=f.ID AND fd.meta_key='wpaicg_deleted' LIMIT 1) as deleted
+            FROM " . $wpdb->posts . " f WHERE f.post_type='wpaicg_finetune' AND (f.post_status='publish' OR f.post_status = 'future') ORDER BY f.post_date DESC LIMIT %d,%d", $offset_training, $posts_per_page_training));
+
+            $output_training = '';
+            foreach ( $posts_trainings as $post_training ) {
+                $output_training .= $this->generate_table_row_training($post_training);
+            }
+
+            $pagination_html_training = $this->generate_smart_pagination_training($page_training, $total_pages_training);
+
+            // Send back both the table content and pagination HTML
+            wp_send_json_success(['content' => $output_training, 'pagination' => $pagination_html_training]);
+        
+            die();
+        }
+
+        public function generate_smart_pagination_training($current_page_training, $total_pages_training) {
+            $html_training = '<div class="training-pagination">';
+            $range_training = 2; // Adjust as needed. This will show two pages before and after the current page.
+            $showEllipses_training = false;
+        
+            for ($i = 1; $i <= $total_pages_training; $i++) {
+                // Always show the first page, the last page, and the current page with $range pages on each side.
+                if ($i == 1 || $i == $total_pages_training || ($i >= $current_page_training - $range_training && $i <= $current_page_training + $range_training)) {
+                    $html_training .= sprintf('<a href="#" data-page_training="%d">%d</a> ', $i, $i);
+                    $showEllipses_training = true;
+                } elseif ($showEllipses_training) {
+                    $html_training .= '... ';
+                    $showEllipses_training = false;
+                }
+            }
+        
+            $html_training .= '</div>';
+            return $html_training;
+        }
+        
         public static function wpaicg_finetune()
         {
             include WPAICG_PLUGIN_DIR . 'admin/views/finetune/index.php';

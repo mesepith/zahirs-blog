@@ -25,11 +25,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
         public function wpaicg_template_delete()
         {
             $wpaicg_result = array('status' => 'error', 'msg'=>'Missing request');
-            if(!current_user_can('wpaicg_single_content_custom')){
-                $wpaicg_result['status'] = 'error';
-                $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
-                wp_send_json($wpaicg_result);
-            }
             if ( ! wp_verify_nonce( $_POST['nonce'], 'wpaicg-ajax-nonce' ) ) {
                 $wpaicg_result['msg'] = esc_html__('Nonce verification failed','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -47,11 +42,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
         public function wpaicg_save_template()
         {
             $wpaicg_result = array('status' => 'error', 'msg'=>esc_html__('Missing request','gpt3-ai-content-generator'));
-            if(!current_user_can('wpaicg_single_content_custom')){
-                $wpaicg_result['status'] = 'error';
-                $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
-                wp_send_json($wpaicg_result);
-            }
             if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'wpaicg_custom_mode_generator' ) ) {
                 $wpaicg_result['msg'] = esc_html__('Nonce verification failed','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -96,7 +86,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
                 }
                 $selected_template = $template_id;
                 ob_start();
-                include WPAICG_PLUGIN_DIR.'admin/extra/wpaicg_custom_model_template.php';
+                include WPAICG_PLUGIN_DIR.'admin/extra/wpaicg_single.php';
                 $wpaicg_result['setting'] = ob_get_clean();
                 $wpaicg_result['status'] = 'success';
             }
@@ -106,11 +96,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
         public function wpaicg_template_post()
         {
             $wpaicg_result = array('status' => 'error', 'msg'=>esc_html__('Missing request','gpt3-ai-content-generator'));
-            if(!current_user_can('wpaicg_single_content_custom')){
-                $wpaicg_result['status'] = 'error';
-                $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
-                wp_send_json($wpaicg_result);
-            }
             if ( ! wp_verify_nonce( $_POST['nonce'], 'wpaicg-ajax-nonce' ) ) {
                 $wpaicg_result['msg'] = esc_html__('Nonce verification failed','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -167,13 +152,16 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
                     $wpaicg_ai_model = isset($_REQUEST['model']) && !empty($_REQUEST['model']) ? sanitize_text_field($_REQUEST['model']) : 'gpt-3.5-turbo-16k';
                 } elseif ($wpaicg_provider === 'google') {
                     // If the provider is Google, use the 'google_model' variable
-                    $wpaicg_ai_model = isset($_REQUEST['google_model']) && !empty($_REQUEST['google_model']) ? sanitize_text_field($_REQUEST['google_model']) : 'default-google-model';
+                    $wpaicg_ai_model = isset($_REQUEST['google_model']) && !empty($_REQUEST['google_model']) ? sanitize_text_field($_REQUEST['google_model']) : 'gemini-pro';
+                } elseif ($wpaicg_provider === 'openrouter') {
+                    // If the provider is openrouter, use the 'openrouter_model' variable
+                    $wpaicg_ai_model = isset($_REQUEST['openrouter_model']) && !empty($_REQUEST['openrouter_model']) ? sanitize_text_field($_REQUEST['openrouter_model']) : 'openrouter/auto';
                 } elseif ($wpaicg_provider === 'azure') {
                     // If the provider is Azure, use the 'azure_deployment' variable
                     $wpaicg_ai_model = isset($_REQUEST['azure_deployment']) && !empty($_REQUEST['azure_deployment']) ? sanitize_text_field($_REQUEST['azure_deployment']) : get_option('wpaicg_azure_deployment', '');
                 } else {
                     // Fallback in case the provider is not recognized
-                    $wpaicg_ai_model = 'default-model';
+                    $wpaicg_ai_model = 'gpt-3.5-turbo-16k';
                 }
 
                 $source_log = 'custom';
@@ -194,11 +182,6 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
         public function wpaicg_template_generator()
         {
             $wpaicg_result = array('status' => 'error', 'msg'=>esc_html__('Missing request','gpt3-ai-content-generator'));
-            if(!current_user_can('wpaicg_single_content_custom')){
-                $wpaicg_result['status'] = 'error';
-                $wpaicg_result['msg'] = esc_html__('You do not have permission for this action.','gpt3-ai-content-generator');
-                wp_send_json($wpaicg_result);
-            }
             if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'wpaicg_custom_mode_generator' ) ) {
                 $wpaicg_result['msg'] = esc_html__('Nonce verification failed','gpt3-ai-content-generator');
                 wp_send_json($wpaicg_result);
@@ -268,13 +251,29 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
                 }
                 $wpaicg_provider = $template['provider'];
 
-                if ($wpaicg_provider == 'openai' || $wpaicg_provider == 'azure') {
-                    // OpenAI or Azure providers
-                    $openai = $wpaicg_provider == 'openai' ? WPAICG_OpenAI::get_instance()->openai() : WPAICG_AzureAI::get_instance()->azureai();
-                    $model = $wpaicg_provider == 'openai' ? $template['model'] : (!empty($template['azure_deployment']) ? $template['azure_deployment'] : get_option('wpaicg_azure_deployment', ''));
+                if (in_array($wpaicg_provider, ['openai', 'azure', 'openrouter'])) {
+                    // Determine the correct instance based on the provider
+                    switch ($wpaicg_provider) {
+                        case 'openai':
+                            $openai = WPAICG_OpenAI::get_instance()->openai();
+                            $model = $template['model'];
+                            break;
+                        case 'azure':
+                            $openai = WPAICG_AzureAI::get_instance()->azureai();
+                            $model = !empty($template['azure_deployment']) ? $template['azure_deployment'] : get_option('wpaicg_azure_deployment', '');
+                            break;
+                        case 'openrouter':
+                            $openai = WPAICG_OpenRouter::get_instance()->openai();
+                            $model = $template['model'];
+                            break;
+                    }
                 
                     $generator = WPAICG_Generator::get_instance();
-                    $generator->openai($openai);
+                    if ($wpaicg_provider == 'openrouter') {
+                        $generator->openai(WPAICG_OpenRouter::get_instance());
+                    } else {
+                        $generator->openai($openai);
+                    }
 
                     $data_request = array(
                         'prompt' => $prompt,
@@ -304,27 +303,16 @@ if(!class_exists('\\WPAICG\\WPAICG_Template')) {
                     $temperature = (float)$template['temperature'];
                     $top_p = (float)$template['top_p'];
                     $max_tokens = (float)$template['max_tokens'];
-                    $response = $googleAI->send_google_request($title, $model, $temperature, $top_p, $max_tokens);
-                
-                    // Process the response as needed
-                    if (isset($response['error'])) {
-                        // Handle error
-                        $result['status'] = 'error';
-                        $result['msg'] = $response['error'];
-                    } else {
-                        // Handle successful response
-                        if (isset($response['candidates'][0]['content']['parts'][0]['text'])) {
-                            $generatedText = $response['candidates'][0]['content']['parts'][0]['text'];
+                    $result = $googleAI->send_google_request($title, $model, $temperature, $top_p, $max_tokens,'template');
 
-                            // Process the text as needed
-                            $result['data'] = $generatedText;
-                            $result['msg'] = 'success';
-                            $result['status'] = 'success';
-                        } else {
-                            $result['status'] = 'error';
-                            $result['msg'] = 'No valid content found in the response';
-                        }
+                    if (!empty($result['status']) && $result['status'] === 'error') {
+                        wp_send_json(['msg' => $result['msg'], 'status' => 'error']);
+                    } else {
+                        $result['data'] = $result['data'];
+                        $result['msg'] = 'success';
+                        $result['status'] = 'success';
                     }
+                    
                 }
                 if ($result['status'] == 'error') {
                     $wpaicg_result['msg'] = $result['msg'];

@@ -17,10 +17,8 @@ if(!class_exists('\\WPAICG\\WPAICG_Editor')) {
             array('name' => 'Correct grammar', 'prompt' => 'Correct grammar in this: [text]'),
             array('name' => 'Generate a question', 'prompt' => 'Generate a question about this: [text]'),
             array('name' => 'Suggest a title', 'prompt' => 'Suggest a title for this: [text]'),
-            array('name' => 'Convert to passive voice', 'prompt' => 'Convert this to passive voice: [text]'),
             array('name' => 'Convert to active voice', 'prompt' => 'Convert this to active voice: [text]'),
             array('name' => 'Write a conclusion', 'prompt' => 'Write a conclusion for this: [text]'),
-            array('name' => 'Provide a counterargument', 'prompt' => 'Provide a counterargument for this: [text]'),
             array('name' => 'Generate a quote', 'prompt' => 'Generate a quote related to this: [text]'),
             array('name' => 'Translate to Spanish', 'prompt' => 'Translate this to Spanish: [text]')
         );
@@ -134,25 +132,46 @@ if(!class_exists('\\WPAICG\\WPAICG_Editor')) {
             }
             if(isset($_REQUEST['prompt']) && !empty($_REQUEST['prompt'])){
                 $prompt = sanitize_text_field($_REQUEST['prompt']);
-                $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-                $wpaicg_openai = WPAICG_OpenAI::get_instance()->openai();
-                // if provider not openai then assing azure to $open_ai
-                if($wpaicg_provider != 'OpenAI'){
-                    $wpaicg_openai = WPAICG_AzureAI::get_instance()->azureai();
-                    $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                } else {
-                    $wpaicg_ai_model = get_option('wpaicg_ai_model', 'gpt-3.5-turbo-16k');
+
+                // Get the AI engine.
+                try {
+                    $ai_engine = WPAICG_Util::get_instance()->initialize_ai_engine();
+                } catch (\Exception $e) {
+                    $wpaicg_result['msg'] = $e->getMessage();
+                    wp_send_json($wpaicg_result);
                 }
-                $wpaicg_generator = WPAICG_Generator::get_instance();
-                $wpaicg_generator->openai($wpaicg_openai);
-                $result = $wpaicg_generator->wpaicg_request(array(
-                    'model' => $wpaicg_ai_model,
-                    'prompt' => $prompt,
-                    'temperature' => 0.7,
-                    'max_tokens' => 2000,
-                    'frequency_penalty' => 0.01,
-                    'presence_penalty' => 0.01
-                ));
+
+                $ai_provider_info = \WPAICG\WPAICG_Util::get_instance()->get_default_ai_provider();
+                $wpaicg_provider = $ai_provider_info['provider'];
+                $wpaicg_ai_model = $ai_provider_info['model'];
+
+                if ($wpaicg_provider == 'Google') {
+
+                    $temperature = 0.7;
+                    $top_p = 1;
+                    $max_tokens = 2000;
+                    $result = $ai_engine->send_google_request($prompt, $wpaicg_ai_model, $temperature, $top_p, $max_tokens,'editor');
+
+                    if (!empty($result['status']) && $result['status'] === 'error') {
+                        wp_send_json(['msg' => $result['msg'], 'status' => 'error']);
+                    } else {
+                        $wpaicg_result = $result;
+                    }
+
+                }  else {
+                    $wpaicg_generator = WPAICG_Generator::get_instance();
+                    $wpaicg_generator->openai($ai_engine);
+
+                    $result = $wpaicg_generator->wpaicg_request(array(
+                        'model' => $wpaicg_ai_model,
+                        'prompt' => $prompt,
+                        'temperature' => 0.7,
+                        'max_tokens' => 2000,
+                        'frequency_penalty' => 0.01,
+                        'presence_penalty' => 0.01
+                    ));
+                 }
+
                 if($result['status'] == 'error'){
                     $wpaicg_result['msg'] = $result['msg'];
                 }

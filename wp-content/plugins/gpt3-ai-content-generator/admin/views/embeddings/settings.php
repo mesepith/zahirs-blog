@@ -2,76 +2,9 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 global $wpdb;
 
-$wpaicg_embeddings_settings_updated = false;
-
-// Retrieving the saved Embeddings Model option
-$wpaicg_openai_embeddings = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
 // Retrieving the provider option
 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 
-if(isset($_POST['wpaicg_save_builder_settings'])){
-    check_admin_referer('wpaicg_embeddings_settings');
-    if(isset($_POST['wpaicg_pinecone_api']) && !empty($_POST['wpaicg_pinecone_api'])) {
-        update_option('wpaicg_pinecone_api', sanitize_text_field($_POST['wpaicg_pinecone_api']));
-    }
-    else{
-        delete_option('wpaicg_pinecone_api');
-    }
-    if(isset($_POST['wpaicg_pinecone_environment']) && !empty($_POST['wpaicg_pinecone_environment'])) {
-        update_option('wpaicg_pinecone_environment', sanitize_text_field($_POST['wpaicg_pinecone_environment']));
-    }
-    else{
-        delete_option('wpaicg_pinecone_environment');
-    }
-
-    if(isset($_POST['wpaicg_builder_enable']) && !empty($_POST['wpaicg_builder_enable'])){
-        update_option('wpaicg_builder_enable','yes');
-    }
-    else{
-        delete_option('wpaicg_builder_enable');
-    }
-    if(isset($_POST['wpaicg_builder_types']) && is_array($_POST['wpaicg_builder_types']) && count($_POST['wpaicg_builder_types'])){
-        update_option('wpaicg_builder_types',\WPAICG\wpaicg_util_core()->sanitize_text_or_array_field($_POST['wpaicg_builder_types']));
-    }
-    else{
-        delete_option('wpaicg_builder_types');
-    }
-    if(isset($_POST['wpaicg_instant_embedding']) && !empty($_POST['wpaicg_instant_embedding'])){
-        update_option('wpaicg_instant_embedding',\WPAICG\wpaicg_util_core()->sanitize_text_or_array_field($_POST['wpaicg_instant_embedding']));
-    }
-    else{
-        update_option('wpaicg_instant_embedding','no');
-    }
-    if(isset($_POST['wpaicg_vector_db_provider'])) {
-        update_option('wpaicg_vector_db_provider', sanitize_text_field($_POST['wpaicg_vector_db_provider']));
-    }
-    if(isset($_POST['wpaicg_qdrant_api_key'])) {
-        update_option('wpaicg_qdrant_api_key', sanitize_text_field($_POST['wpaicg_qdrant_api_key']));
-    }
-    if(isset($_POST['wpaicg_qdrant_endpoint'])) {
-
-        $qdrantEndpoint = sanitize_text_field($_POST['wpaicg_qdrant_endpoint']);
-        // Check if ':6333' is already part of the endpoint
-        if(strpos($qdrantEndpoint, ':6333') === false) {
-            // Append ':6333' if not present
-            $qdrantEndpoint .= ':6333';
-        }
-        update_option('wpaicg_qdrant_endpoint', $qdrantEndpoint);
-        
-    }
-
-    // Save the currently selected Qdrant collection as the default
-    $selected_qdrant_collection = isset($_POST['wpaicg_qdrant_collections']) ? sanitize_text_field($_POST['wpaicg_qdrant_collections']) : '';
-    update_option('wpaicg_qdrant_default_collection', $selected_qdrant_collection);
-    
-    // Saving the Embeddings Model option
-    $wpaicg_openai_embeddings_value = isset($_POST['wpaicg_openai_embeddings']) ? sanitize_text_field($_POST['wpaicg_openai_embeddings']) : 'text-embedding-ada-002';
-    update_option('wpaicg_openai_embeddings', $wpaicg_openai_embeddings_value);
-    // Update the variable to reflect the new setting immediately
-    $wpaicg_openai_embeddings = get_option('wpaicg_openai_embeddings', 'text-embedding-ada-002');
-    
-    $wpaicg_embeddings_settings_updated = true;
-}
 $default_qdrant_collection = get_option('wpaicg_qdrant_default_collection', '');
 // Retrieve the current default vector DB setting
 $wpaicg_vector_db_provider = get_option('wpaicg_vector_db_provider', 'pinecone');
@@ -83,67 +16,19 @@ $wpaicg_builder_enable = get_option('wpaicg_builder_enable','');
 $wpaicg_instant_embedding = get_option('wpaicg_instant_embedding','yes');
 $wpaicg_pinecone_indexes = get_option('wpaicg_pinecone_indexes','');
 $wpaicg_pinecone_indexes = empty($wpaicg_pinecone_indexes) ? array() : json_decode($wpaicg_pinecone_indexes,true);
-$wpaicg_pinecone_environments = array(
-    'asia-northeast1-gcp' => 'GCP Asia-Northeast-1 (Tokyo)',
-    'asia-northeast1-gcp-free' => 'GCP Asia-Northeast-1 Free (Tokyo)',
-    'asia-northeast2-gcp' => 'GCP Asia-Northeast-2 (Osaka)',
-    'asia-northeast2-gcp-free' => 'GCP Asia-Northeast-2 Free (Osaka)',
-    'asia-northeast3-gcp' => 'GCP Asia-Northeast-3 (Seoul)',
-    'asia-northeast3-gcp-free' => 'GCP Asia-Northeast-3 Free (Seoul)',
-    'asia-southeast1-gcp' => 'GCP Asia-Southeast-1 (Singapore)',
-    'asia-southeast1-gcp-free' => 'GCP Asia-Southeast-1 Free',
-    'eu-west1-gcp' => 'GCP EU-West-1 (Ireland)',
-    'eu-west1-gcp-free' => 'GCP EU-West-1 Free (Ireland)',
-    'eu-west2-gcp' => 'GCP EU-West-2 (London)',
-    'eu-west2-gcp-free' => 'GCP EU-West-2 Free (London)',
-    'eu-west3-gcp' => 'GCP EU-West-3 (Frankfurt)',
-    'eu-west3-gcp-free' => 'GCP EU-West-3 Free (Frankfurt)',
-    'eu-west4-gcp' => 'GCP EU-West-4 (Netherlands)',
-    'eu-west4-gcp-free' => 'GCP EU-West-4 Free (Netherlands)',
-    'eu-west6-gcp' => 'GCP EU-West-6 (Zurich)',
-    'eu-west6-gcp-free' => 'GCP EU-West-6 Free (Zurich)',
-    'eu-west8-gcp' => 'GCP EU-West-8 (Italy)',
-    'eu-west8-gcp-free' => 'GCP EU-West-8 Free (Italy)',
-    'eu-west9-gcp' => 'GCP EU-West-9 (France)',
-    'eu-west9-gcp-free' => 'GCP EU-West-9 Free (France)',
-    'gcp-starter' => 'GCP Starter',
-    'northamerica-northeast1-gcp' => 'GCP Northamerica-Northeast1',
-    'northamerica-northeast1-gcp-free' => 'GCP Northamerica-Northeast1 Free',
-    'southamerica-northeast2-gcp' => 'GCP Southamerica-Northeast2 (Toronto)',
-    'southamerica-northeast2-gcp-free' => 'GCP Southamerica-Northeast2 Free (Toronto)',
-    'southamerica-east1-gcp' => 'GCP Southamerica-East1 (Sao Paulo)',
-    'southamerica-east1-gcp-free' => 'GCP Southamerica-East1 Free (Sao Paulo)',
-    'us-central1-gcp' => 'GCP US-Central-1 (Iowa)',
-    'us-central1-gcp-free' => 'GCP US-Central-1 Free (Iowa)',
-    'us-east1-aws' => 'AWS US-East-1 (Virginia)',
-    'us-east1-aws-free' => 'AWS US-East-1 Free (Virginia)',
-    'us-east-1-aws' => 'AWS US-East-1 (Virginia)',
-    'us-east-1-aws-free' => 'AWS US-East-1 Free (Virginia)',
-    'us-east1-gcp' => 'GCP US-East-1 (South Carolina)',
-    'us-east1-gcp-free' => 'GCP US-East-1 Free (South Carolina)',
-    'us-east4-gcp' =>  'GCP US-East-4 (Virginia)',
-    'us-east4-gcp-free' =>  'GCP US-East-4 Free (Virginia)',
-    'us-west1-gcp' => 'GCP US-West-1 (N. California)',
-    'us-west1-gcp-free' => 'GCP US-West-1 Free (N. California)',
-    'us-west-2' => 'US-West-2',
-    'us-west2-gcp' => 'GCP US-West-2 (Oregon)',
-    'us-west2-gcp-free' => 'GCP US-West-2 Free (Oregon)',
-    'us-west3-gcp' => 'GCP US-West-3 (Salt Lake City)',
-    'us-west3-gcp-free' => 'GCP US-West-3 Free (Salt Lake City)',
-    'us-west4-gcp' => 'GCP US-West-4 (Las Vegas)',
-    'us-west4-gcp-free' => 'GCP US-West-4 Free (Las Vegas)'
-);
+
 if($wpaicg_embeddings_settings_updated){
     ?>
-    <div class="notice notice-success">
+    <div class="wpaicg-embedding-save-message">
         <p><?php echo esc_html__('Records updated successfully','gpt3-ai-content-generator')?></p>
     </div>
+    <p></p>
     <?php
 }
 ?>
 <style>
     /* Modal Style */
-    #wpaicg_modal_overlay {
+    #wpaicg_emb_modal_overlay {
         display: none;
         position: fixed;
         top: 0;
@@ -154,7 +39,7 @@ if($wpaicg_embeddings_settings_updated){
         z-index: 1000;
     }
 
-    .wpaicg_modal {
+    .wpaicg_emb_modal {
         background: #fff;
         border: 1px solid #ddd;
         border-radius: 4px;
@@ -171,203 +56,256 @@ if($wpaicg_embeddings_settings_updated){
         box-sizing: border-box;
     }
 
-    .wpaicg_modal h2 {
+    .wpaicg_emb_modal h2 {
         font-size: 20px;
         margin-top: 0;
     }
 
-    .wpaicg_modal_content p {
+    .wpaicg_emb_modal_content p {
         font-size: 14px;
         line-height: 1.5;
         color: #333;
     }
 
-    .wpaicg_assign_footer {
+    .wpaicg_assign_footer_emb {
         text-align: right;
         margin-top: 20px;
     }
 
-    .wpaicg_assign_footer button {
+    .wpaicg_assign_footer_emb button {
         margin-left: 10px;
     }
 
     /* Responsive adjustments */
     @media screen and (max-width: 600px) {
-        .wpaicg_modal {
+        .wpaicg_emb_modal {
             width: 80%;
         }
     }
 
 </style>
+<style>
+    .wpaicg_modal {
+        width: 600px;
+        left: calc(50% - 300px);
+        height: 40%;
+    }
+    .wpaicg_modal_content{
+        height: calc(100% - 103px);
+        overflow-y: auto;
+    }
+    .wpaicg_assign_footer{
+        position: absolute;
+        bottom: 0;
+        display: flex;
+        justify-content: space-between;
+        width: calc(100% - 20px);
+        align-items: center;
+        border-top: 1px solid #ccc;
+        left: 0;
+        padding: 3px 10px;
+    }
+</style>
 <form action="" method="post">
     <?php
     wp_nonce_field('wpaicg_embeddings_settings');
     ?>
-    <table class="form-table">
-        <tr>
-            <th scope="row"><?php echo esc_html__('Default Vector DB','gpt3-ai-content-generator')?></th>
-            <td>
-                <select name="wpaicg_vector_db_provider">
-                    <option value="pinecone" <?php selected($wpaicg_vector_db_provider, 'pinecone'); ?>>Pinecone</option>
-                    <option value="qdrant" <?php selected($wpaicg_vector_db_provider, 'qdrant'); ?>>Qdrant</option>
-                </select>
-            </td>
-        </tr>
-    </table>
+    <h1><?php echo esc_html__('Vector Database','gpt3-ai-content-generator')?></h1>
+    <div class="nice-form-group">
+        <label><?php echo esc_html__('Default Vector DB','gpt3-ai-content-generator')?></label>
+        <select style="width: 50%;" name="wpaicg_vector_db_provider">
+            <option value="pinecone" <?php selected($wpaicg_vector_db_provider, 'pinecone'); ?>>Pinecone</option>
+            <option value="qdrant" <?php selected($wpaicg_vector_db_provider, 'qdrant'); ?>>Qdrant</option>
+        </select>
+    </div>
+    <div class="nice-form-group">
+    </div>
     <!-- Pinecone Settings -->
     <div id="wpaicg_pinecone_settings">
-        <table class="form-table">
-            <tr>
-                <th scope="row"><?php echo esc_html__('Pinecone API','gpt3-ai-content-generator')?></th>
-                <td>
-                    <input type="text" class="regular-text wpaicg_pinecone_api" name="wpaicg_pinecone_api" value="<?php echo esc_attr($wpaicg_pinecone_api)?>">
-                    <a href="https://www.pinecone.io" target="_blank" style="margin-left: 10px;"><?php echo esc_html__('Get your API key', 'gpt3-ai-content-generator'); ?></a>
-                </td>
-            </tr>
-            <tr>
-                <th scope="row">&nbsp;</th>
-                <td>
-                    <button type="button" class="button button-primary wpaicg_pinecone_indexes"><?php echo esc_html__('Sync Indexes','gpt3-ai-content-generator')?></button>
-                </td>
-            </tr>
-            <tr>
-                <th scope="row"><?php echo esc_html__('Pinecone Index','gpt3-ai-content-generator')?></th>
-                <td>
-                    <select class="wpaicg_pinecone_environment" name="wpaicg_pinecone_environment" old-value="<?php echo esc_attr($wpaicg_pinecone_environment)?>">
-                        <option value=""><?php echo esc_html__('Select Index','gpt3-ai-content-generator')?></option>
-                        <?php
-                        foreach($wpaicg_pinecone_indexes as $wpaicg_pinecone_index){
-                            echo '<option'.($wpaicg_pinecone_environment == $wpaicg_pinecone_index['url'] ? ' selected':'').' value="'.esc_html($wpaicg_pinecone_index['url']).'">'.esc_html($wpaicg_pinecone_index['name']).'</option>';
-                        }
-                        ?>
-                    </select>
-                </td>
-            </tr>
-        </table>
+        <div class="nice-form-group">
+            <label><?php echo esc_html__('Pinecone API Key','gpt3-ai-content-generator')?></label>
+            <input type="text" style="width: 50%;" class="wpaicg_pinecone_api" name="wpaicg_pinecone_api" value="<?php echo esc_attr($wpaicg_pinecone_api)?>">
+            <a href="https://www.pinecone.io" target="_blank" style="margin-left: 10px;"><?php echo esc_html__('Get your API key', 'gpt3-ai-content-generator'); ?></a>
+        </div>
+        <div class="nice-form-group">
+            <label><?php echo esc_html__('Pinecone Index','gpt3-ai-content-generator')?></label>
+            <select style="width: 50%;" class="wpaicg_pinecone_environment" name="wpaicg_pinecone_environment" old-value="<?php echo esc_attr($wpaicg_pinecone_environment); ?>">
+                <option value=""><?php echo esc_html__('Select Index', 'gpt3-ai-content-generator'); ?></option>
+                <?php
+                $wpaicg_pinecone_indexes = get_option('wpaicg_pinecone_indexes', '[]');
+                $wpaicg_pinecone_indexes = json_decode($wpaicg_pinecone_indexes, true);
+                foreach ($wpaicg_pinecone_indexes as $wpaicg_pinecone_index) {
+                    if (isset($wpaicg_pinecone_index['dimension'])) {
+                        $dimensionText = ' (' . esc_html($wpaicg_pinecone_index['dimension']) . ')';
+                    } else {
+                        $dimensionText = ''; // or perhaps default to '(Unknown Dimension)' if preferred
+                    }
+                    $displayText = esc_html($wpaicg_pinecone_index['name']) . $dimensionText;
+                    echo '<option' . ($wpaicg_pinecone_environment == $wpaicg_pinecone_index['url'] ? ' selected' : '') . ' value="' . esc_html($wpaicg_pinecone_index['url']) . '">' . $displayText . '</option>';
+                }
+                ?>
+            </select>
+            <button type="button" style="padding-top: 0.5em; padding-bottom: 0.5em;" class="button button-primary wpaicg_pinecone_indexes"><?php echo esc_html__('Sync Indexes','gpt3-ai-content-generator')?></button>
+        </div>
     </div>
     <!-- Qdrant Settings -->
     <div id="wpaicg_qdrant_settings" style="display:none;">
-        <table class="form-table wpaicg_qdrant_settings">
-            <tr>
-                <th scope="row"><?php echo esc_html__('Qdrant API Key','gpt3-ai-content-generator')?></th>
-                <td>
-                    <input type="text" class="regular-text" name="wpaicg_qdrant_api_key" value="<?php echo esc_attr(get_option('wpaicg_qdrant_api_key', '')); ?>">
-                    <a href="https://qdrant.tech" target="_blank" style="margin-left: 10px;"><?php echo esc_html__('Get your API key', 'gpt3-ai-content-generator'); ?></a>
-                </td>
-            </tr>
-            <tr>
-                <th scope="row"><?php echo esc_html__('Cluster URL','gpt3-ai-content-generator')?></th>
-                <td>
-                    <input type="text" class="regular-text" name="wpaicg_qdrant_endpoint" value="<?php echo esc_attr(get_option('wpaicg_qdrant_endpoint', '')); ?>">
-                </td>
-            </tr>
-            <tr>
-                <th scope="row"><?php echo esc_html__('Qdrant Collections','gpt3-ai-content-generator')?></th>
-                <td>
-                    <button type="button" class="button button-primary wpaicg_sync_qdrant_collections"><?php echo esc_html__('Sync Collections','gpt3-ai-content-generator')?></button>
-                    <select class="wpaicg_qdrant_collections_dropdown" name="wpaicg_qdrant_collections" style="<?php echo empty($wpaicg_qdrant_collections) ? 'display: none;' : '' ?>">
-                    <?php
-                    $default_qdrant_collection = get_option('wpaicg_qdrant_default_collection', '');
-                    foreach ($wpaicg_qdrant_collections as $collection):
+        <div class="nice-form-group">
+            <label><?php echo esc_html__('Qdrant API Key','gpt3-ai-content-generator')?></label>
+            <input type="text" style="width: 50%;" name="wpaicg_qdrant_api_key" value="<?php echo esc_attr(get_option('wpaicg_qdrant_api_key', '')); ?>">
+            <a href="https://qdrant.tech" target="_blank" style="margin-left: 10px;"><?php echo esc_html__('Get your API key', 'gpt3-ai-content-generator'); ?></a>
+        </div>
+        <div class="nice-form-group">
+            <label><?php echo esc_html__('Qdrant Endpoint','gpt3-ai-content-generator')?></label>
+            <input type="text" style="width: 50%;" name="wpaicg_qdrant_endpoint" value="<?php echo esc_attr(get_option('wpaicg_qdrant_endpoint', '')); ?>">
+            <input type="checkbox" style="margin: 1em 0.5em;" name="wpaicg_qdrant_use_port" <?php checked(get_option('wpaicg_qdrant_use_port', 'yes'), 'yes'); ?> value="yes">
+            <label><?php echo esc_html__('Use Default Port','gpt3-ai-content-generator')?></label>
+        </div>
+        <div class="nice-form-group">
+            <label><?php echo esc_html__('Qdrant Collections','gpt3-ai-content-generator')?></label>
+            <select style="width: 50%;" class="wpaicg_qdrant_collections_dropdown" name="wpaicg_qdrant_collections">
+                <!-- PHP will dynamically fill this select based on the options retrieved -->
+                <?php
+                $default_qdrant_collection = get_option('wpaicg_qdrant_default_collection', '');
+                $wpaicg_qdrant_collections = get_option('wpaicg_qdrant_collections', []);  // Make sure this is decoded correctly if stored as JSON
+                foreach ($wpaicg_qdrant_collections as $collection):
+                    if (is_array($collection) && isset($collection['name'])) {
+                        // New structure with name and dimension
+                        $name = $collection['name'];
+                        $dimension = isset($collection['dimension']) ? ' (' . esc_html($collection['dimension']) . ')' : ' (Dimension missing)';
+                        $selected = ($name === $default_qdrant_collection) ? ' selected' : '';
+                        echo '<option value="'.esc_attr($name).'"'.$selected.'>'.esc_html($name) . $dimension .'</option>';
+                    } else {
+                        // Old structure where the collection itself is a string
                         $selected = ($collection === $default_qdrant_collection) ? ' selected' : '';
                         echo '<option value="'.esc_attr($collection).'"'.$selected.'>'.esc_html($collection).'</option>';
-                    endforeach;
-                    ?>
-                </select>
-
-                    <button type="button" class="button wpaicg_create_new_collection_btn"><?php echo esc_html__('Create New','gpt3-ai-content-generator')?></button>
-                    <div class="wpaicg_new_collection_input" style="display:none; margin-top: 20px;">
-                        <input type="text" class="regular-text wpaicg_new_collection_name">
-                        <button type="button" class="button button-primary wpaicg_submit_new_collection"><?php echo esc_html__('Create','gpt3-ai-content-generator')?></button>
-                    </div>
-                </td>
-            </tr>
-        </table>
+                    }
+                endforeach;
+                ?>
+            </select>
+            <button type="button" style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button button-primary wpaicg_sync_qdrant_collections"><?php echo esc_html__('Sync Collections','gpt3-ai-content-generator')?></button>
+            <button type="button" style="padding-top: 0.5em;padding-bottom: 0.5em;" class="button wpaicg_create_new_collection_btn"><?php echo esc_html__('Create New','gpt3-ai-content-generator')?></button>
+        </div>
+        <div class="wpaicg_new_collection_input" style="display:none; margin-top: 20px;">
+            <div class="nice-form-group">
+                <input type="text" style="width: 50%;" class="wpaicg_new_collection_name" placeholder="<?php echo esc_html__('Enter collection name','gpt3-ai-content-generator')?>">
+                <input type="number" style="width: 20%;" class="wpaicg_new_collection_dimension" value="1536" placeholder="Dimension (e.g., 1536)">
+                <button type="button" style="padding-top: 0.5em;padding-bottom: 0.5em;width: 12%;" class="button button-primary wpaicg_submit_new_collection"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
+            </div>
+        </div>
     </div>
+    <p></p>
+    <h1><?php echo esc_html__('Embedding Model', 'gpt3-ai-content-generator'); ?></h1>
+    <div class="nice-form-group">
+        <label><?php echo esc_html__('Embedding Model', 'gpt3-ai-content-generator'); ?></label>
+        <select name="wpaicg_embedding_model" style="width: 50%;">
+            <?php
+            // Try to get the main embedding model option
+            $main_embedding_model = get_option('wpaicg_main_embedding_model', '');
 
-    <?php if ($wpaicg_provider == 'OpenAI'): ?>
-    <h3><?php echo esc_html__('Embeddings Model','gpt3-ai-content-generator')?></h3>
-    <table class="form-table">
-        <tr>
-            <th scope="row"><?php echo esc_html__('Select Model','gpt3-ai-content-generator')?></th>
-            <td>
-                <select name="wpaicg_openai_embeddings">
-                    <option value="text-embedding-3-small" <?php selected($wpaicg_openai_embeddings, 'text-embedding-3-small'); ?>><?php echo esc_html__('text-embedding-3-small','gpt3-ai-content-generator')?></option>
-                    <option value="text-embedding-3-large" <?php selected($wpaicg_openai_embeddings, 'text-embedding-3-large'); ?>><?php echo esc_html__('text-embedding-3-large','gpt3-ai-content-generator')?></option>
-                    <option value="text-embedding-ada-002" <?php selected($wpaicg_openai_embeddings, 'text-embedding-ada-002'); ?>><?php echo esc_html__('text-embedding-ada-002','gpt3-ai-content-generator')?></option>
-                </select>
-            </td>
-        </tr>
-    </table>
-    <?php endif; ?>
-    <h3><?php echo esc_html__('Instant Embedding','gpt3-ai-content-generator')?></h3>
-    <p><?php echo esc_html__('Enable this option to get instant embeddings for your content. Go to your post, page or products page and select all your contents and click on Instant Embedding button.','gpt3-ai-content-generator')?></p>
-    <table class="form-table">
-        <tr>
-            <th scope="row"><?php echo esc_html__('Enable','gpt3-ai-content-generator')?>:</th>
-            <td>
-                <div class="mb-5">
-                    <label><input<?php echo $wpaicg_instant_embedding == 'yes' ? ' checked':'';?> type="checkbox" name="wpaicg_instant_embedding" value="yes">
-                </div>
-            </td>
-        </tr>
-    </table>
-    <h3><?php echo esc_html__('Index Builder','gpt3-ai-content-generator')?></h3>
-    <p><?php echo esc_html__('You can use index builder to build your index. Difference between index builder and instant embedding is that once you complete the cron job, index builder will monitor your content and will update the index automatically.','gpt3-ai-content-generator')?></p>
-    <table class="form-table">
-        <tr>
-            <th scope="row"><?php echo esc_html__('Cron Indexing','gpt3-ai-content-generator')?></th>
-            <td>
-                <select name="wpaicg_builder_enable">
-                    <option value=""><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
-                    <option<?php echo esc_html($wpaicg_builder_enable) == 'yes' ? ' selected':'';?> value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
-                </select>
-            </td>
-        </tr>
-        <tr>
-            <th scope="row"><?php echo esc_html__('Build Index for','gpt3-ai-content-generator')?>:</th>
-            <td>
-                <div class="mb-5">
-                    <div class="mb-5"><label><input<?php echo in_array('post',$wpaicg_builder_types) ? ' checked':'';?> type="checkbox" name="wpaicg_builder_types[]" value="post">&nbsp;<?php echo esc_html__('Posts','gpt3-ai-content-generator')?></label></div>
-                    <div class="mb-5"><label><input<?php echo in_array('page',$wpaicg_builder_types) ? ' checked':'';?> type="checkbox" name="wpaicg_builder_types[]" value="page">&nbsp;<?php echo esc_html__('Pages','gpt3-ai-content-generator')?></label></div>
-                    <?php
-                    if(class_exists('WooCommerce')):
-                        ?>
-                        <div class="mb-5">
-                            <label><input<?php echo in_array('product',$wpaicg_builder_types) ? ' checked':'';?> type="checkbox" name="wpaicg_builder_types[]" value="product">&nbsp;<?php echo esc_html__('Products','gpt3-ai-content-generator')?></label>
-                        </div>
-                    <?php
-                    endif;
+            // Retrieve the full list of models from the utility class for all providers
+            $embedding_models = \WPAICG\WPAICG_Util::get_instance()->get_embedding_models();
+
+            // Loop through all models grouped by providers
+            foreach ($embedding_models as $provider => $models) {
+                echo "<optgroup label='" . esc_attr($provider) . "'>"; // Group by provider
+                foreach ($models as $model_key => $model_desc) {
+                    $value = esc_attr($provider . ':' . $model_key);
+                    $selected = ($value === $main_embedding_model) ? ' selected' : '';
+                    echo "<option value='{$value}'{$selected}>"
+                        . esc_html("{$model_key} ({$model_desc})", 'gpt3-ai-content-generator')
+                        . "</option>";
+                }
+                echo "</optgroup>";
+            }
+            ?>
+        </select>
+    </div>
+    <p></p>
+    <h1><?php echo esc_html__('Instant Embedding','gpt3-ai-content-generator')?></h1>
+    <p><?php echo esc_html__('Use this feature to feed your WordPress content to the vector database with one click. Go to Posts -> All Posts , select your content, and click Instant Embedding button to save your content in the vector database.','gpt3-ai-content-generator')?></p>
+    <div class="nice-form-group">
+        <input <?php echo $wpaicg_instant_embedding == 'yes' ? ' checked':'';?> type="checkbox" name="wpaicg_instant_embedding" value="yes">
+        <label><?php echo esc_html__('Enable Instant Embedding','gpt3-ai-content-generator')?></label>
+    </div>
+    <p></p>
+    <h1><?php echo esc_html__('Auto-Scan','gpt3-ai-content-generator')?></h1>
+    <p><?php echo esc_html__('Use Auto-Scan to automatically feed your WordPress content to the vector database. With Auto-Scan, you can set up a cron job to automatically add new or updated content to the vector database, keeping your index up to date without manual intervention.','gpt3-ai-content-generator')?></p>
+    <div class="nice-form-group">
+        <label><?php echo esc_html__('Enable Auto-Scan','gpt3-ai-content-generator')?></label>
+        <select name="wpaicg_builder_enable" style="width: 50%;">
+            <option value=""><?php echo esc_html__('No','gpt3-ai-content-generator')?></option>
+            <option <?php echo esc_html($wpaicg_builder_enable) == 'yes' ? ' selected':'';?> value="yes"><?php echo esc_html__('Yes','gpt3-ai-content-generator')?></option>
+        </select>
+    </div>
+    <fieldset class="nice-form-group">
+        <legend><?php echo esc_html__('Post Types to Scan','gpt3-ai-content-generator')?></legend>
+        <div class="nice-form-group">
+            <input type="checkbox" id="post" name="wpaicg_builder_types[]" value="post" <?php echo in_array('post', $wpaicg_builder_types) ? 'checked' : ''; ?> />
+            <label for="post"><?php echo esc_html__('Posts', 'gpt3-ai-content-generator'); ?></label>
+        </div>
+        <div class="nice-form-group">
+            <input type="checkbox" id="page" name="wpaicg_builder_types[]" value="page" <?php echo in_array('page', $wpaicg_builder_types) ? 'checked' : ''; ?> />
+            <label for="page"><?php echo esc_html__('Pages', 'gpt3-ai-content-generator'); ?></label>
+        </div>
+        <?php if(class_exists('WooCommerce')): ?>
+        <div class="nice-form-group">
+            <input type="checkbox" id="product" name="wpaicg_builder_types[]" value="product" <?php echo in_array('product', $wpaicg_builder_types) ? 'checked' : ''; ?> />
+            <label for="product"><?php echo esc_html__('Products', 'gpt3-ai-content-generator'); ?></label>
+        </div>
+        <?php endif; ?>
+        <?php
+        if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()){
+            include WPAICG_LIBS_DIR.'views/builder/custom_post_type.php';
+        }
+        else{
+            $wpaicg_all_post_types = get_post_types(array(
+                'public'   => true,
+                '_builtin' => false,
+            ),'objects');
+            $wpaicg_custom_types = [];
+            foreach($wpaicg_all_post_types as $key=>$all_post_type) {
+                if ($key != 'product') {
+                    $wpaicg_custom_types[$key] = (array)$all_post_type;
+                }
+            }
+            if(count($wpaicg_custom_types)){
+                foreach($wpaicg_custom_types as $key=>$wpaicg_custom_type){
                     ?>
+                    <div class="nice-form-group">
+                        <input disabled type="checkbox" >&nbsp;<?php echo esc_html($wpaicg_custom_type['label'])?>
+                        <input class="wpaicg_builder_custom_<?php echo esc_html($key)?>" type="hidden">
+                        <a disabled href="javascript:void(0)">[<?php echo esc_html__('Select Fields','gpt3-ai-content-generator')?>]</a>
+                        <a href="<?php echo esc_url(admin_url('admin.php?page=wpaicg-pricing')); ?>" class="pro-feature-label"><?php echo esc_html__('Pro','gpt3-ai-content-generator')?></a>
+                    </div>
                     <?php
-                    if(\WPAICG\wpaicg_util_core()->wpaicg_is_pro()){
-                        include WPAICG_LIBS_DIR.'views/builder/custom_post_type.php';
-                    }
-                    else{
-                        include __DIR__.'/custom_post_type.php';
-                    }
-                    ?>
-                </div>
-            </td>
-        </tr>
-    </table>
-    <button class="button button-primary" name="wpaicg_save_builder_settings"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
+                }
+            }
+        }
+        ?>
+    </fieldset>
+    <p></p>
+
+    <div class="nice-form-group">
+        <button class="button button-primary" name="wpaicg_save_builder_settings"><?php echo esc_html__('Save','gpt3-ai-content-generator')?></button>
+    </div>
 </form>
 <!-- Modal HTML -->
 <div id="embeddingModelChangeModal" style="display:none;">
-    <div class="wpaicg_modal">
-        <div class="wpaicg_modal_content">
+    <div class="wpaicg_emb_modal">
+        <div class="wpaicg_emb_modal_content">
             <p><strong><?php echo esc_html__('Important Notice', 'gpt3-ai-content-generator'); ?></strong></p>
-            <p><?php echo esc_html__('Changing the embeddings model will require you to reindex all your content and delete old indexes.', 'gpt3-ai-content-generator'); ?></p>
-            <p><?php echo esc_html__('Make sure to reindex all your content after the model change.', 'gpt3-ai-content-generator'); ?></p>
+            <p><?php echo esc_html__('Changing the embeddings model will require you to reindex all your content and delete old indexes. Make sure to reindex all your content after the model change.', 'gpt3-ai-content-generator'); ?></p>
+            <p></p> <!-- Dimension and reindexing info will be dynamically inserted here -->
             <p><?php echo esc_html__('Do you want to proceed?', 'gpt3-ai-content-generator'); ?></p>
         </div>
-        <div class="wpaicg_assign_footer">
+        <div class="wpaicg_assign_footer_emb">
             <button id="confirmModelChange" class="button button-primary"><?php echo esc_html__('Yes, Proceed', 'gpt3-ai-content-generator'); ?></button>
             <button id="cancelModelChange" class="button"><?php echo esc_html__('Cancel', 'gpt3-ai-content-generator'); ?></button>
         </div>
     </div>
 </div>
+
 
 <script>
     jQuery(document).ready(function($){
@@ -393,13 +331,13 @@ if($wpaicg_embeddings_settings_updated){
 
         // Function to show modal
         function showModal() {
-            $('#wpaicg_modal_overlay').show();
+            $('#wpaicg_emb_modal_overlay').show();
             $('#embeddingModelChangeModal').show();
         }
 
         // Function to hide modal
         function hideModal() {
-            $('#wpaicg_modal_overlay').hide();
+            $('#wpaicg_emb_modal_overlay').hide();
             $('#embeddingModelChangeModal').hide();
         }
 
@@ -433,12 +371,42 @@ if($wpaicg_embeddings_settings_updated){
             btn.find('.spinner').remove();
         }
 
+        $('select[name="wpaicg_openai_embeddings"], select[name="wpaicg_google_embeddings"], select[name="wpaicg_azure_embeddings"]').change(function() {
+            var selectedProvider = '<?php echo $wpaicg_provider; ?>';
+            var selectedModel = $(this).val();
+            var dimensionInfo = '';
+
+            if (selectedProvider === 'OpenAI') {
+                switch (selectedModel) {
+                    case 'text-embedding-3-small':
+                        dimensionInfo = 'You have selected text-embedding-3-small. Make sure your vector dimension is <strong>1536</strong>.';
+                        break;
+                    case 'text-embedding-3-large':
+                        dimensionInfo = 'You have selected text-embedding-3-large. Make sure your vector dimension is <strong>3072</strong>.';
+                        break;
+                    case 'text-embedding-ada-002':
+                        dimensionInfo = 'You have selected text-embedding-ada-002. Make sure your vector dimension is <strong>1536</strong>.';
+                        break;
+                }
+            } else if (selectedProvider === 'Google') {
+                dimensionInfo = 'Make sure your dimension is <strong>768</strong>.';
+            }
+
+            if (dimensionInfo !== '') {
+                $('.wpaicg_emb_modal_content p:nth-of-type(3)').html(dimensionInfo);
+            }
+            
+            showModal();
+        });
+
+
         function updateCollectionsDropdown(collections) {
             var dropdown = $('.wpaicg_qdrant_collections_dropdown');
             if (collections.length > 0) {
                 dropdown.empty().show();
                 $.each(collections, function(index, collection) {
-                    dropdown.append($('<option></option>').attr('value', collection).text(collection));
+                    var displayText = collection.name + ' (' + collection.dimension + ')';
+                    dropdown.append($('<option></option>').attr('value', collection.name).text(displayText));
                 });
             } else {
                 dropdown.hide();
@@ -453,10 +421,19 @@ if($wpaicg_embeddings_settings_updated){
         // Handle the creation of new collection
         $('.wpaicg_submit_new_collection').click(function() {
             var collectionName = $('.wpaicg_new_collection_name').val().trim();
+            var dimension = parseInt($('.wpaicg_new_collection_dimension').val().trim(), 10); // Parse as integer
             var apiKey = $('input[name="wpaicg_qdrant_api_key"]').val().trim();
             var endpoint = $('input[name="wpaicg_qdrant_endpoint"]').val().trim();
             if (!collectionName) {
                 alert('Please enter a collection name.');
+                return;
+            }
+            if (!dimension || isNaN(dimension)) {
+                alert('Please enter a valid dimension as a number.');
+                return;
+            }
+            if (dimension < 128 || dimension > 65536) {
+                alert('Please enter a dimension between 128 and 65536.');
                 return;
             }
 
@@ -469,6 +446,7 @@ if($wpaicg_embeddings_settings_updated){
                     action: 'wpaicg_create_collection',
                     nonce: '<?php echo wp_create_nonce('wpaicg-ajax-nonce') ?>',
                     collection_name: collectionName,
+                    dimension: dimension,
                     api_key: apiKey,
                     endpoint: endpoint
                 },
@@ -480,7 +458,7 @@ if($wpaicg_embeddings_settings_updated){
                         // Add the new collection to the dropdown
                         $('.wpaicg_qdrant_collections_dropdown').append($('<option>', {
                             value: collectionName,
-                            text: collectionName
+                            text: collectionName + ' (' + dimension + ')'
                         })).val(collectionName);
 
                         // Update collections in the options table
@@ -583,8 +561,9 @@ if($wpaicg_embeddings_settings_updated){
                             var formattedIndexes = [];
 
                             res.indexes.forEach(function(index){
-                                selectList += '<option value="'+index.host+'"'+(old_value === index.host ? ' selected':'')+'>'+index.name+'</option>';
-                                formattedIndexes.push({name: index.name, url: index.host});
+                                var displayText = index.name + ' (' + index.dimension + ')';
+                                selectList += '<option value="' + index.host + '"' + (old_value === index.host ? ' selected' : '') + '>' + displayText + '</option>';
+                                formattedIndexes.push({ name: index.name, url: index.host, dimension: index.dimension });
                             });
 
                             $('.wpaicg_pinecone_environment').html(selectList);
@@ -612,4 +591,15 @@ if($wpaicg_embeddings_settings_updated){
             }
         })
     })
+</script>
+<script>
+jQuery(document).ready(function($) {
+    // Check if the message exists
+    if ($('.wpaicg-embedding-save-message').length) {
+        setTimeout(function() {
+            // Add the 'hidden' class to fade and hide the message
+            $('.wpaicg-embedding-save-message').addClass('wpaicg-embedding-save-message-hidden');
+        }, 5000); // Hide after 5 seconds (5000 milliseconds)
+    }
+});
 </script>

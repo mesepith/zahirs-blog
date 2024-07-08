@@ -101,19 +101,17 @@ if(!class_exists('\\WPAICG\\WPAICG_Comment')) {
                 wp_send_json($wpaicg_result);
                 exit;
             }
-            $wpaicg_generator = WPAICG_Generator::get_instance();
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-            $openai = WPAICG_OpenAI::get_instance()->openai();
-            // if provider not openai then assing azure to $open_ai
-            if($wpaicg_provider != 'OpenAI'){
-                $openai = WPAICG_AzureAI::get_instance()->azureai();
-            }
-            if(!$openai){
-                $wpaicg_result['msg'] = esc_html__('Missing OpenAI API Settings','gpt3-ai-content-generator');
+
+            // Get the AI engine.
+            try {
+                $ai_engine = WPAICG_Util::get_instance()->initialize_ai_engine();
+            } catch (\Exception $e) {
+                $wpaicg_result['msg'] = $e->getMessage();
                 wp_send_json($wpaicg_result);
-                exit;
             }
-            $wpaicg_generator->openai($openai);
+
+            $wpaicg_generator = WPAICG_Generator::get_instance();
+            $wpaicg_generator->openai($ai_engine);
             if(isset($_REQUEST['id']) && !empty($_REQUEST['id'])){
                 $commentID = sanitize_text_field($_REQUEST['id']);
                 $comment = get_comment($commentID);
@@ -157,20 +155,38 @@ if(!class_exists('\\WPAICG\\WPAICG_Comment')) {
                             $parent_comments = implode("\n",$parent_comments);
                             $prompt = str_replace('[parent_comments]',$parent_comments,$prompt);
                         }
-                        $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-                        if ($wpaicg_provider === 'Azure') {
-                            $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
+
+                        $ai_provider_info = \WPAICG\WPAICG_Util::get_instance()->get_default_ai_provider();
+                        $wpaicg_provider = $ai_provider_info['provider'];
+                        $wpaicg_ai_model = $ai_provider_info['model'];
+
+                        if ($wpaicg_provider === 'Google') {
+                            // Prepare options for Google request
+                            $title = $prompt;
+                            $model = $wpaicg_ai_model;
+                            $temperature = 0.7;
+                            $top_p = 1;
+                            $max_tokens = 1000;
+                            $result = $ai_engine->send_google_request($title, $model, $temperature, $top_p, $max_tokens);
+
+                            if (!empty($result['status']) && $result['status'] === 'error') {
+                                wp_send_json(['msg' => $result['msg'], 'status' => 'error']);
+                            } else {
+                                $wpaicg_result = $result;
+                            }
+                            
                         } else {
-                            $wpaicg_ai_model = 'gpt-3.5-turbo-16k';  // Default model for OpenAI
+                            // OpenAI or Azure request
+                            $result = $wpaicg_generator->wpaicg_request(array(
+                                'model' => $wpaicg_ai_model,
+                                'prompt' => $prompt,
+                                'temperature' => 0.7,
+                                'max_tokens' => 1000,
+                                'frequency_penalty' => 0.01,
+                                'presence_penalty' => 0.01,
+                            ));
                         }
-                        $result = $wpaicg_generator->wpaicg_request(array(
-                            'model' => $wpaicg_ai_model,
-                            'prompt' => $prompt,
-                            'temperature' => 0.7,
-                            'max_tokens' => 1000,
-                            'frequency_penalty' => 0.01,
-                            'presence_penalty' => 0.01,
-                        ));
+
                         if($result['status'] == 'error'){
                             $wpaicg_result['msg'] = $result['msg'];
                         }

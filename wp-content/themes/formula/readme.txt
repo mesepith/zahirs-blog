@@ -3,7 +3,7 @@ Contributors: awordpresslife
 Requires at least: 4.5
 Tested up to: 6.4
 Requires PHP: 5.2
-Stable tag: 0.4.9
+Stable tag: 0.5.0
 License: GNU General Public License v3 or later
 License URI: http://www.gnu.org/licenses/gpl.html
 Tags: one-column, two-columns, right-sidebar, flexible-header, custom-background, custom-header, custom-menu, editor-style, featured-images, footer-widgets, post-formats, theme-options, threaded-comments, rtl-language-support, translation-ready, full-width-template, custom-logo, blog, e-commerce, portfolio
@@ -80,6 +80,9 @@ License: CC0 1.0 Universal (CC0 1.0)
 Source: https://openai.com/dall-e-2/
 
 == Changelog ==
+@Version 0.5.0
+* Typography hardcode on mobile view resolved.
+
 @Version 0.4.9
 * Tested Upto 6.4 version
 

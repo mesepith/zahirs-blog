@@ -77,11 +77,27 @@
                             return (await o.json()).data;
                         })(e);
                     } catch (e) {
-                        return await wp.data.dispatch("core/block-editor").removeBlocks(t.clientId), void alert("An API error occurred with the following response body: \n\n" + e.message);
+                        await wp.data.dispatch("core/block-editor").removeBlocks(t.clientId);
+                        alert("An API error occurred with the following response body: \n\n" + e.message);
+                        removeLoadingSpinner(); // Call this to ensure spinner is removed even in case of error
+                        return; // Early return on error
                     }
                     const c = r.replace(/\n/g, "<br>");
                     let a = t.attributes;
-                    (a.content = c), wp.data.dispatch("core/block-editor").updateBlock(t.clientId, a);
+                    a.content = c;
+                
+                    // Update the block with new content
+                    wp.data.dispatch("core/block-editor").updateBlock(t.clientId, { attributes: a });
+                
+                    // Remove the loading spinner
+                    removeLoadingSpinner();
+                }
+
+                function removeLoadingSpinner() {
+                    let spinner = document.querySelector(".wpaicg-editor-loading");
+                    if (spinner) {
+                        spinner.remove();
+                    }
                 }
                 function n() {
                     let t = l(),

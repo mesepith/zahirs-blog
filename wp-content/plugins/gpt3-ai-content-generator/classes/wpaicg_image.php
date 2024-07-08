@@ -32,6 +32,27 @@ if(!class_exists('\\WPAICG\\WPAICG_Image')) {
                 wp_schedule_event( time(), 'hourly', 'wpaicg_remove_image_tokens_limited' );
             }
             add_action( 'wpaicg_remove_image_tokens_limited', array( $this, 'wpaicg_remove_tokens_limit' ) );
+            add_action('wp_ajax_wpaicg_delete_all_image_logs', [$this,'wpaicg_delete_all_image_logs']);
+        }
+
+        public function wpaicg_delete_all_image_logs() {
+            check_ajax_referer('wpaicg_delete_all_image_logs_nonce', 'nonce');
+            
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(['message' => 'You do not have sufficient permissions']);
+                return;
+            }
+        
+            global $wpdb;
+            $wpaicgFormLogTable = $wpdb->prefix . 'wpaicg_image_logs';
+        
+            $result = $wpdb->query("TRUNCATE TABLE `$wpaicgFormLogTable`");
+        
+            if ($result === false) {
+                wp_send_json_error(['message' => 'Failed to delete logs']);
+            } else {
+                wp_send_json_success(['message' => 'All logs have been deleted successfully']);
+            }
         }
 
         public function wpaicg_remove_tokens_limit()
@@ -207,7 +228,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Image')) {
                 'wpaicg_image_generator',
                 'wpaicg_image_generator',
                 array( $this, 'wpaicg_image_generator' ),
-                4
+                7
             );
         }
 
@@ -242,111 +263,114 @@ if(!class_exists('\\WPAICG\\WPAICG_Image')) {
         public function wpaicg_image_generator_action()
         {
             $wpaicg_result = array('status' => 'error', 'msg' => esc_html__('Something went wrong','gpt3-ai-content-generator'));
-            $open_ai = WPAICG_OpenAI::get_instance()->openai();
-            $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
-            // if provider not openai then assing azure to $open_ai
-            if($wpaicg_provider != 'OpenAI'){
-                $open_ai = WPAICG_AzureAI::get_instance()->azureai();
-            }
-            $wpaicg_nonce = sanitize_text_field($_REQUEST['_wpnonce']);
-            if ( !wp_verify_nonce( $wpaicg_nonce, 'wpaicg-image-generator' ) ) {
+
+            // verify nonce wpaicg-image-generator
+            if ( ! wp_verify_nonce( $_POST['_wpnonce'], 'wpaicg-image-generator' ) ) {
                 $wpaicg_result['msg'] = esc_html__('Nonce verification failed','gpt3-ai-content-generator');
+                wp_send_json($wpaicg_result);
+            }
+
+            $wpaicg_pricing_handling = WPAICG_Playground::get_instance()->wpaicg_token_handling('image');
+
+            if($wpaicg_pricing_handling['limited']){
+                $wpaicg_result['msg'] = $wpaicg_pricing_handling['message'];
             }
             else {
-                if (!$open_ai) {
-                    $wpaicg_result['msg'] = 'Missing API Setting';
+                $prompt = sanitize_text_field($_POST['prompt']);
+                $prompt_title = sanitize_text_field($_POST['prompt']);
+                $img_size = sanitize_text_field($_POST['img_size']);
+                $img_model = sanitize_text_field($_POST['img_model']);
+                $img_type = sanitize_text_field($_POST['img_type']);
+
+                $extra_params = [];
+
+                // Initialize the quality variable.
+                $quality = '';
+                $style = '';
+                
+
+                // Check if the model is 'Dall-E 3 HD', modify the model and set quality to 'hd'.
+                if ($img_model === 'dall-e-3-hd') {
+                    $img_model = 'dall-e-3'; // Remove '-hd' part
+                    $extra_params['model'] = $img_model;
+                    $extra_params['quality'] = 'hd';
+                } elseif ($img_model === 'dall-e-3') {
+                    $extra_params['model'] = $img_model;
+                }
+                
+                $num_images = (int)sanitize_text_field($_POST['num_images']);
+                // Set the number of images to 1 if the model is 'dall-e-3' or 'dall-e-3-hd'.
+                // Set the number of images to 1 if the model is 'dall-e-3' or 'dall-e-3-hd'.
+                if ($img_model === 'dall-e-3' || $img_model === 'dall-e-3-hd') {
+                    $num_images = 1;
+
+                    // If the image size is either '256x256' or '512x512', set it to '1024x1024'.
+                    if (in_array($img_size, ['256x256', '512x512'])) {
+                        $img_size = '1024x1024';
+                    }
+                    // Add style to extra_params
+                    $extra_params['style'] = $img_type;
+                }
+
+                $prompt_elements = array(
+                    'artist' => esc_html__('Painter','gpt3-ai-content-generator'),
+                    'art_style' => esc_html__('Style','gpt3-ai-content-generator'),
+                    'photography_style' => esc_html__('Photography Style','gpt3-ai-content-generator'),
+                    'composition' => esc_html__('Composition','gpt3-ai-content-generator'),
+                    'resolution' => esc_html__('Resolution','gpt3-ai-content-generator'),
+                    'color' => esc_html__('Color','gpt3-ai-content-generator'),
+                    'special_effects' => esc_html__('Special Effects','gpt3-ai-content-generator'),
+                    'lighting' => esc_html__('Lighting','gpt3-ai-content-generator'),
+                    'subject' => esc_html__('Subject','gpt3-ai-content-generator'),
+                    'camera_settings' => esc_html__('Camera Settings','gpt3-ai-content-generator'),
+                );
+                foreach ($prompt_elements as $key => $value) {
+                    if ($_POST[$key] != "None") {
+                        $prompt = $prompt . ". " . $value . ": " . sanitize_text_field($_POST[$key]);
+                    }
+                }
+
+                // Merge the base parameters with the extra parameters.
+                $img_params = array_merge([
+                    "prompt" => $prompt,
+                    "n" => $num_images,
+                    "size" => $img_size,
+                    "response_format" => "url"
+                ], $extra_params);
+
+                // Get the AI engine.
+                try {
+                    $ai_engine = WPAICG_Util::get_instance()->initialize_ai_engine();
+                } catch (\Exception $e) {
+                    $wpaicg_result['msg'] = $e->getMessage();
+                    wp_send_json($wpaicg_result);
+                }
+
+                // Make the API call with the combined parameters.
+                $imgresult = $ai_engine->image($img_params);
+
+                if (isset($imgresult['status']) && $imgresult['status'] === 'error') {
+                    $wpaicg_result['msg'] = $imgresult['msg'];
+                    wp_send_json($wpaicg_result);
+                } 
+
+
+                $img_result = json_decode($imgresult);
+
+                if (isset($img_result->error)) {
+                    $wpaicg_result['msg'] = trim($img_result->error->message);
+                    if(strpos($wpaicg_result['msg'],'limit has been reached') !== false){
+                        $wpaicg_result['msg'] .= ' '.esc_html__('Please note that this message is coming from OpenAI and it is not related to our plugin. It means that you do not have enough credit from OpenAI. You can check your usage here: https://platform.openai.com/account/usage','gpt3-ai-content-generator');
+                    }
                 } else {
-                    $wpaicg_pricing_handling = WPAICG_Playground::get_instance()->wpaicg_token_handling('image');
-                    if($wpaicg_pricing_handling['limited']){
-                        $wpaicg_result['msg'] = $wpaicg_pricing_handling['message'];
+                    $wpaicg_result['imgs'] = array();
+                    for ($i = 0; $i < $num_images; $i++) {
+                        $wpaicg_result['imgs'][] = $img_result->data[$i]->url;
                     }
-                    else {
-                        $prompt = sanitize_text_field($_POST['prompt']);
-                        $prompt_title = sanitize_text_field($_POST['prompt']);
-                        $img_size = sanitize_text_field($_POST['img_size']);
-                        $img_model = sanitize_text_field($_POST['img_model']);
-                        $img_type = sanitize_text_field($_POST['img_type']);
-
-                        $extra_params = [];
-
-                        // Initialize the quality variable.
-                        $quality = '';
-                        $style = '';
-                        
-
-                        // Check if the model is 'Dall-E 3 HD', modify the model and set quality to 'hd'.
-                        if ($img_model === 'dall-e-3-hd') {
-                            $img_model = 'dall-e-3'; // Remove '-hd' part
-                            $extra_params['model'] = $img_model;
-                            $extra_params['quality'] = 'hd';
-                        } elseif ($img_model === 'dall-e-3') {
-                            $extra_params['model'] = $img_model;
-                        }
-                        
-                        $num_images = (int)sanitize_text_field($_POST['num_images']);
-                        // Set the number of images to 1 if the model is 'dall-e-3' or 'dall-e-3-hd'.
-                        // Set the number of images to 1 if the model is 'dall-e-3' or 'dall-e-3-hd'.
-                        if ($img_model === 'dall-e-3' || $img_model === 'dall-e-3-hd') {
-                            $num_images = 1;
-
-                            // If the image size is either '256x256' or '512x512', set it to '1024x1024'.
-                            if (in_array($img_size, ['256x256', '512x512'])) {
-                                $img_size = '1024x1024';
-                            }
-                            // Add style to extra_params
-                            $extra_params['style'] = $img_type;
-                        }
-
-                        $prompt_elements = array(
-                            'artist' => esc_html__('Painter','gpt3-ai-content-generator'),
-                            'art_style' => esc_html__('Style','gpt3-ai-content-generator'),
-                            'photography_style' => esc_html__('Photography Style','gpt3-ai-content-generator'),
-                            'composition' => esc_html__('Composition','gpt3-ai-content-generator'),
-                            'resolution' => esc_html__('Resolution','gpt3-ai-content-generator'),
-                            'color' => esc_html__('Color','gpt3-ai-content-generator'),
-                            'special_effects' => esc_html__('Special Effects','gpt3-ai-content-generator'),
-                            'lighting' => esc_html__('Lighting','gpt3-ai-content-generator'),
-                            'subject' => esc_html__('Subject','gpt3-ai-content-generator'),
-                            'camera_settings' => esc_html__('Camera Settings','gpt3-ai-content-generator'),
-                        );
-                        foreach ($prompt_elements as $key => $value) {
-                            if ($_POST[$key] != "None") {
-                                $prompt = $prompt . ". " . $value . ": " . sanitize_text_field($_POST[$key]);
-                            }
-                        }
-
-                        // Merge the base parameters with the extra parameters.
-                        $img_params = array_merge([
-                            "prompt" => $prompt,
-                            "n" => $num_images,
-                            "size" => $img_size,
-                            "response_format" => "url"
-                        ], $extra_params);
-
-                        // Make the API call with the combined parameters.
-                        $imgresult = $open_ai->image($img_params);
-
-                        // Make the API call with the combined parameters.
-                        $imgresult = $open_ai->image($img_params);
-
-                        $img_result = json_decode($imgresult);
-                        if (isset($img_result->error)) {
-                            $wpaicg_result['msg'] = trim($img_result->error->message);
-                            if(strpos($wpaicg_result['msg'],'limit has been reached') !== false){
-                                $wpaicg_result['msg'] .= ' '.esc_html__('Please note that this message is coming from OpenAI and it is not related to our plugin. It means that you do not have enough credit from OpenAI. You can check your usage here: https://platform.openai.com/account/usage','gpt3-ai-content-generator');
-                            }
-                        } else {
-                            $wpaicg_result['imgs'] = array();
-                            for ($i = 0; $i < $num_images; $i++) {
-                                $wpaicg_result['imgs'][] = $img_result->data[$i]->url;
-                            }
-                            $wpaicg_result['title'] = $prompt_title;
-                            $wpaicg_result['status'] = 'success';
-                            /*Save log for user and deduce tokens*/
-                            WPAICG_Account::get_instance()->save_log('image', $this->wpaicg_images_price());
-                        }
-                    }
-
+                    $wpaicg_result['title'] = $prompt_title;
+                    $wpaicg_result['status'] = 'success';
+                    /*Save log for user and deduce tokens*/
+                    WPAICG_Account::get_instance()->save_log('image', $this->wpaicg_images_price());
                 }
             }
             wp_send_json($wpaicg_result);

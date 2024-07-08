@@ -31,11 +31,182 @@ if(!class_exists('\\WPAICG\\WPAICG_Promptbase')) {
             add_action('wp_ajax_wpaicg_prompt_delete',[$this,'wpaicg_prompt_delete']);
             add_action('wp_ajax_wpaicg_prompt_log', [$this,'wpaicg_prompt_log']);
             add_action('wp_ajax_wpaicg_prompt_duplicate', [$this,'wpaicg_prompt_duplicate']);
+            // wpaicg_export_prompts
+            add_action('wp_ajax_wpaicg_export_prompts', [$this,'wpaicg_export_prompts']);
+            add_action('wp_ajax_nopriv_wpaicg_export_prompts', [$this,'wpaicg_export_prompts']);
+            // wpaicg_import_prompts
+            add_action('wp_ajax_wpaicg_import_prompts', [$this,'wpaicg_import_prompts']);
+            add_action('wp_ajax_nopriv_wpaicg_import_prompts', [$this,'wpaicg_import_prompts']);
+            // wpaicg_delete_all_prompts
+            add_action('wp_ajax_wpaicg_delete_all_prompts', [$this,'wpaicg_delete_all_prompts']);
+            add_action('wp_ajax_nopriv_wpaicg_delete_all_prompts', [$this,'wpaicg_delete_all_prompts']);
             add_action('wp_ajax_nopriv_wpaicg_prompt_log', [$this,'wpaicg_prompt_log']);
             if ( ! wp_next_scheduled( 'wpaicg_remove_promptbase_tokens_limited' ) ) {
                 wp_schedule_event( time(), 'hourly', 'wpaicg_remove_promptbase_tokens_limited' );
             }
             add_action( 'wpaicg_remove_promptbase_tokens_limited', array( $this, 'wpaicg_remove_tokens_limit' ) );
+            add_action('wp_ajax_wpaicg_delete_all_prompt_logs', [$this,'wpaicg_delete_all_prompt_logs']);
+        }
+
+        public function wpaicg_delete_all_prompt_logs() {
+            check_ajax_referer('wpaicg_delete_all_prompt_logs_nonce', 'nonce');
+            
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(['message' => 'You do not have sufficient permissions']);
+                return;
+            }
+        
+            global $wpdb;
+            $wpaicgFormLogTable = $wpdb->prefix . 'wpaicg_promptbase_logs';
+            $wpaicgFeedbackTable = $wpdb->prefix . 'wpaicg_prompt_feedback';
+        
+            // Truncate the form logs table
+            $resultLogs = $wpdb->query("TRUNCATE TABLE `$wpaicgFormLogTable`");
+            // Truncate the feedback table
+            $resultFeedback = $wpdb->query("TRUNCATE TABLE `$wpaicgFeedbackTable`");
+        
+            if ($resultLogs === false || $resultFeedback === false) {
+                wp_send_json_error(['message' => 'Failed to delete logs and feedback']);
+            } else {
+                wp_send_json_success(['message' => 'All logs and feedback have been deleted successfully']);
+            }
+        }
+
+        function wpaicg_export_prompts() {
+            global $wpdb, $wp_filesystem;
+        
+            // Security and permissions checks
+            $nonce = isset($_REQUEST['nonce']) ? $_REQUEST['nonce'] : '';
+            if (!wp_verify_nonce($nonce, 'wpaicg_export_prompts')) {
+                wp_send_json_error(esc_html__('Nonce verification failed', 'gpt3-ai-content-generator'));
+                return;
+            }
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error(esc_html__('You do not have sufficient permissions to access this page.', 'gpt3-ai-content-generator'));
+                return;
+            }
+        
+            // WP_Filesystem initialization
+            require_once(ABSPATH . 'wp-admin/includes/file.php');
+            WP_Filesystem();
+        
+            // Fetch AI forms and their meta
+            $forms = $wpdb->get_results("SELECT ID, post_title, post_content FROM {$wpdb->posts} WHERE post_type = 'wpaicg_prompt' AND post_status = 'publish'", ARRAY_A);
+            $settings = [];
+            foreach ($forms as $form) {
+                if (!empty($form['post_content'])) {
+                    $meta = get_post_meta($form['ID']);
+                    // Optionally filter or clean meta data here
+                    $settings[] = [
+                        'title' => $form['post_title'],
+                        'content' => maybe_unserialize($form['post_content']),
+                        'meta' => $meta, // Include meta data
+                    ];
+                }
+            }
+        
+            // JSON encoding and file saving
+            $json_content = json_encode($settings);
+            $upload_dir = wp_upload_dir();
+            $file_name = 'prompts_export_' . wp_rand() . '.json';
+            $file_path = $upload_dir['basedir'] . '/' . $file_name;
+        
+            if ($wp_filesystem->put_contents($file_path, $json_content)) {
+                wp_send_json_success(['url' => $upload_dir['baseurl'] . '/' . $file_name]);
+            } else {
+                wp_send_json_error(esc_html__('Failed to export AI forms.', 'gpt3-ai-content-generator'));
+            }
+        }
+
+        function wpaicg_import_prompts() {
+            // Security checks
+            if (!check_ajax_referer('wpaicg_import_prompts_nonce', 'nonce', false)) {
+                wp_send_json_error('Nonce verification failed');
+                return;
+            }
+            
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error('You do not have sufficient permissions');
+                return;
+            }
+            
+            // Check if file is uploaded and read its contents
+            if (isset($_FILES['file']['tmp_name'])) {
+                $file_contents = file_get_contents($_FILES['file']['tmp_name']);
+                $data = json_decode($file_contents, true);
+                
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    wp_send_json_error('Invalid JSON file');
+                    return;
+                }
+                
+                foreach ($data as $form_data) {
+                    if (empty($form_data['title']) || empty($form_data['content'])) {
+                        continue;
+                    }
+                    
+                    $post_data = [
+                        'post_title'   => sanitize_text_field($form_data['title']),
+                        'post_content' => wp_kses_post($form_data['content']),
+                        'post_status'  => 'publish',
+                        'post_type'    => 'wpaicg_prompt',
+                    ];
+                    
+                    $post_id = wp_insert_post($post_data, true);
+                    
+                    if (is_wp_error($post_id)) {
+                        continue;
+                    }
+                    
+                    if (!empty($form_data['meta']) && is_array($form_data['meta'])) {
+                        foreach ($form_data['meta'] as $meta_key => $meta_value) {
+                            // Ensure meta values are saved as simple strings where appropriate
+                            if (is_array($meta_value) && count($meta_value) === 1) {
+                                // If it's a single-element array, extract the value directly
+                                $meta_value = reset($meta_value);
+                            }
+                            update_post_meta($post_id, sanitize_text_field($meta_key), $meta_value);
+                        }
+                    }
+                }
+                
+                wp_send_json_success('AI forms imported successfully');
+            } else {
+                wp_send_json_error('No file uploaded');
+            }
+        }
+
+        function wpaicg_delete_all_prompts() {
+            // Security checks
+            if (!check_ajax_referer('wpaicg_delete_all_prompts_nonce', 'nonce', false)) {
+                wp_send_json_error('Nonce verification failed');
+                return;
+            }
+        
+            if (!current_user_can('manage_options')) {
+                wp_send_json_error('You do not have sufficient permissions');
+                return;
+            }
+        
+            $args = [
+                'post_type'      => 'wpaicg_prompt',
+                'posts_per_page' => -1,
+                'fields'         => 'ids', // Only get post IDs to improve performance
+            ];
+        
+            $forms = get_posts($args);
+        
+            // Check if there are forms to delete
+            if (empty($forms)) {
+                wp_send_json_success('There are no custom forms to delete.');
+                return; // Exit the function if no forms found
+            }
+        
+            foreach ($forms as $form_id) {
+                wp_delete_post($form_id, true); // Set to true to bypass trash and permanently delete
+            }
+        
+            wp_send_json_success('All custom forms have been deleted.');
         }
 
         public function wpaicg_remove_tokens_limit()
@@ -175,7 +346,7 @@ if(!class_exists('\\WPAICG\\WPAICG_Promptbase')) {
                         'post_status' => 'publish'
                     ));
                 }
-                $prompt_fields = array('prompt','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','editor','bgcolor','header','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
+                $prompt_fields = array('prompt','response','category','engine','max_tokens','temperature','top_p','best_of','frequency_penalty','presence_penalty','stop','color','icon','editor','bgcolor','header','embeddings','use_default_embedding_model','selected_embedding_model','selected_embedding_provider','vectordb','collections','pineconeindexes','suffix_text','suffix_position','embeddings_limit','dans','ddraft','dclear','dnotice','generate_text','noanswer_text','draft_text','clear_text','stop_text','cnotice_text','download_text','ddownload','copy_button','copy_text','feedback_buttons');
                 
                 foreach($prompt_fields as $prompt_field){
                     if(isset($_POST[$prompt_field]) && !empty($_POST[$prompt_field])){

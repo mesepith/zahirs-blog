@@ -43,38 +43,75 @@ if (!class_exists('\\WPAICG\\WPAICG_Qdrant')) {
         }
         
 
+
         public function show_collections() {
             if ( ! wp_verify_nonce($_POST['nonce'], 'wpaicg-ajax-nonce') ) {
                 die(esc_html__('Nonce verification failed', 'gpt3-ai-content-generator'));
             }
-    
+        
             $apiKey = sanitize_text_field($_POST['api_key']);
             // update option 
             update_option('wpaicg_qdrant_api_key', $apiKey);
-
+        
             $endpoint = sanitize_text_field($_POST['endpoint']);
             update_option('wpaicg_qdrant_endpoint', $endpoint);
-
-            // add /collections to endpoint
-            $endpoint = rtrim($endpoint, '/') . '/collections';
-    
-            $response = wp_remote_get($endpoint, [
+        
+            // Adjust endpoint to fetch collection names
+            $collectionsEndpoint = rtrim($endpoint, '/') . '/collections';
+        
+            $response = wp_remote_get($collectionsEndpoint, [
                 'headers' => ['api-key' => $apiKey]
             ]);
-
+            
             if (is_wp_error($response)) {
                 wp_send_json_error(['error' => $response->get_error_message()]);
-            } else {
-                $body = json_decode(wp_remote_retrieve_body($response), true);
-                if (isset($body['error'])) {
-                    wp_send_json_error(['error' => $body['error']]);
-                }
-                $collections = array_column($body['result']['collections'], 'name');
-                wp_send_json_success($collections);
             }
-    
+        
+            $body = json_decode(wp_remote_retrieve_body($response), true);
+            if (isset($body['error'])) {
+                wp_send_json_error(['error' => $body['error']]);
+            }
+        
+            $collections = array_column($body['result']['collections'], 'name');
+            $collectionDetails = [];
+        
+            // Loop through each collection to fetch details
+            foreach ($collections as $collectionName) {
+                $detailEndpoint = rtrim($endpoint, '/') . '/collections/' . urlencode($collectionName);
+                $detailResponse = wp_remote_get($detailEndpoint, [
+                    'headers' => ['api-key' => $apiKey]
+                ]);
+        
+                if (is_wp_error($detailResponse)) {
+                    continue; // Skip this collection if there's an error fetching its details
+                }
+        
+                $detailBody = json_decode(wp_remote_retrieve_body($detailResponse), true);
+                if (isset($detailBody['error']) || !isset($detailBody['result']['config']['params']['vectors']['size'])) {
+                    continue; // Skip if no size information
+                }
+        
+                $dimension = $detailBody['result']['config']['params']['vectors']['size'];
+                $vectors_count = isset($detailBody['result']['vectors_count']) ? $detailBody['result']['vectors_count'] : null;
+                $indexed_vectors_count = isset($detailBody['result']['indexed_vectors_count']) ? $detailBody['result']['indexed_vectors_count'] : null;
+                $points_count = isset($detailBody['result']['points_count']) ? $detailBody['result']['points_count'] : null;
+        
+                $collectionDetails[] = [
+                    'name' => $collectionName,
+                    'dimension' => $dimension,
+                    'vectors_count' => $vectors_count,
+                    'points_count' => $points_count
+                ];
+            }
+        
+            if (empty($collectionDetails)) {
+                wp_send_json_error(['error' => 'No collections found or unable to retrieve details.']);
+            }
+        
+            wp_send_json_success($collectionDetails);
             die();
         }
+        
 
         public function connect_to_qdrant()
         {
@@ -109,6 +146,8 @@ if (!class_exists('\\WPAICG\\WPAICG_Qdrant')) {
             }
 
             $collectionName = sanitize_text_field($_POST['collection_name']);
+            $dimension = intval($_POST['dimension']); // Get the dimension from POST data
+
             $apiKey = sanitize_text_field($_POST['api_key']); 
             $endpoint = rtrim(sanitize_text_field($_POST['endpoint']), '/') . '/collections/' . $collectionName; 
 
@@ -121,7 +160,7 @@ if (!class_exists('\\WPAICG\\WPAICG_Qdrant')) {
                 'body' => json_encode([
                     'vectors' => [
                         'distance' => 'Cosine',
-                        'size' => 1536,
+                        'size' => $dimension
                     ],
                 ])
             ]);

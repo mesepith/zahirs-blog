@@ -5,29 +5,99 @@ if ( ! defined( 'ABSPATH' ) ) exit;
     jQuery(document).ready(function($) {
         $('.wpaicg_sync_finetune').click(function (){
             var btn = $(this);
+            var icon = btn.find('svg'); // Select the SVG icon
+            var originalContent = btn.html(); // Save the original button content
+
             $.ajax({
                 url: '<?php echo admin_url('admin-ajax.php')?>',
-                data: {action: 'wpaicg_fetch_finetunes','nonce': '<?php echo wp_create_nonce('wpaicg-ajax-nonce')?>'},
+                data: {action: 'wpaicg_fetch_finetunes', 'nonce': '<?php echo wp_create_nonce('wpaicg-ajax-nonce')?>'},
                 dataType: 'JSON',
                 type: 'POST',
                 beforeSend: function (){
-                    btn.html('Loading..');
+                    icon.addClass('rotating'); // Add the rotating class
                 },
                 success: function (res){
-                    btn.html("Sync");
+                    icon.removeClass('rotating'); // Remove the rotating class
+                    btn.html(originalContent); // Restore the original content
                     if(res.status === 'success'){
                         window.location.reload();
-                    }
-                    else{
+                    } else {
                         alert(res.msg || 'An error occurred.');
                     }
                 },
                 error: function (jqXHR, textStatus, errorThrown){
-                    btn.html("Sync");
+                    icon.removeClass('rotating'); // Remove the rotating class
+                    btn.html(originalContent); // Restore the original content
                     alert('Error: ' + errorThrown);
                 }
-            })
-        })
+            });
+        });
+
+        $('.wpaicg_sync_google_models').click(function () {
+            var btn = $(this);
+            var icon = btn.find('svg'); // Select the SVG icon
+            var originalContent = btn.html(); // Save the original button content
+
+            $.ajax({
+                url: '<?php echo admin_url('admin-ajax.php')?>',
+                data: {action: 'wpaicg_fetch_google_models', 'nonce': '<?php echo wp_create_nonce('wpaicg-ajax-nonce')?>'},
+                dataType: 'JSON',
+                type: 'POST',
+                beforeSend: function (){
+                    icon.addClass('rotating'); // Add the rotating class
+                },
+                success: function (res){
+                    icon.removeClass('rotating'); // Remove the rotating class
+                    btn.html(originalContent); // Restore the original content
+                    if(res.status === 'success'){
+                        window.location.reload();
+                    } else {
+                        alert(res.msg || 'An error occurred.');
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown){
+                    icon.removeClass('rotating'); // Remove the rotating class
+                    btn.html(originalContent); // Restore the original content
+                    alert('Error: ' + errorThrown);
+                }
+            });
+        });
+
+        $('.wpaicg_sync_openrouter_models').click(function() {
+            var btn = $(this);
+            var icon = btn.find('svg'); // Select the SVG icon
+            var originalContent = btn.html(); // Save the original button content
+
+            $.ajax({
+                url: '<?php echo admin_url('admin-ajax.php')?>',
+                type: 'POST',
+                dataType: 'JSON',
+                data: {
+                    action: 'wpaicg_sync_openrouter_models',
+                    nonce: '<?php echo wp_create_nonce('wpaicg_sync_openrouter_models'); ?>'
+                },
+                beforeSend: function() {
+                    icon.addClass('rotating'); // Add the rotating class
+                },
+                success: function(response) {
+                    icon.removeClass('rotating'); // Remove the rotating class
+                    btn.html(originalContent); // Restore the original content
+                    if (response.success) {
+                        window.location.reload();
+                    } else {
+                        alert(response.data || 'An error occurred.');
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    icon.removeClass('rotating'); // Remove the rotating class
+                    btn.html(originalContent); // Restore the original content
+                    alert('Error: ' + errorThrown);
+                }
+            });
+        });
+
+
+
         $('#wpaicg-meta-description').on('keyup', function (){
             if($(this).val() === ''){
                 $('#wpaicg-seo-tab-item').removeClass('wpaicg-has-seo');
@@ -590,7 +660,8 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                 alert('<?php echo esc_html__('Please wait content generated','gpt3-ai-content-generator')?>')
             }
             else {
-                var data = $('#wpaicg-post-form select').serialize()+'&'+$('#wpaicg-post-form input').serialize()+'&'+$('#wpaicg-post-form textarea').serialize();
+                // var data = $('#wpaicg-post-form select').serialize()+'&'+$('#wpaicg-post-form input').serialize()+'&'+$('#wpaicg-post-form textarea').serialize();
+                var data = $('#right-nav-express select').serialize()+'&'+$('#right-nav-express input').serialize()+'&'+$('#right-nav-express textarea').serialize() + '&' + $('#expressdata select').serialize()+'&'+$('#expressdata input').serialize()+'&'+$('#expressdata textarea').serialize();
                 data = data+'&title='+title+'&content='+content+'&action=wpaicg_save_draft_post_extra&nonce=<?php echo wp_create_nonce('wpaicg-ajax-nonce')?>';
                 if($('#post_ID').length){
                     data += '&post_id='+$('#post_ID').val();

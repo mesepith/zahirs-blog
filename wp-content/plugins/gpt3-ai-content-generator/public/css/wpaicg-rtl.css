@@ -12,6 +12,10 @@
     right: auto;
     left: 47px;
 }
+[dir=rtl] .wpaicg-img-icon{
+    right: auto;
+    left: 47px;
+}
 [dir=rtl] .wpaicg-chat-shortcode-content ul li strong,[dir=rtl] .wpaicg-chatbox-content ul li strong{
     float: right!important;
     margin-right: 0;

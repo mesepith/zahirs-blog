@@ -49,7 +49,7 @@ $total = $wpdb->get_var( $total_query );
 $items_per_page = 10;
 $offset = ( $wpaicg_log_page * $items_per_page ) - $items_per_page;
 $wpaicg_logs = $wpdb->get_results($query . " ORDER BY created_at DESC LIMIT {$offset}, {$items_per_page}");
-$totalPage         = ceil($total / $items_per_page);
+$totalPage = ceil($total / $items_per_page);
 ?>
 <style>
     .wpaicg_modal{
@@ -69,6 +69,9 @@ $totalPage         = ceil($total / $items_per_page);
     <div class="wpaicg-d-flex mb-5">
         <input style="width: 100%" value="<?php echo esc_html($search)?>" class="regular-text" name="search" type="text" placeholder="<?php echo esc_html__('Type for search','gpt3-ai-content-generator')?>">
         <button class="button button-primary"><?php echo esc_html__('Search','gpt3-ai-content-generator')?></button>
+        <?php if ($total > 0) : ?>
+        <button id="delete-all" class="button button-secondary" style="color: white;background: #9d0000;border: #9d0000;margin-left: 5px;"><?php echo esc_html__('Delete All','gpt3-ai-content-generator')?></button>
+        <?php endif; ?>
     </div>
 </form>
 <table class="wp-list-table widefat fixed striped table-view-list posts">
@@ -106,18 +109,23 @@ $totalPage         = ceil($total / $items_per_page);
             if($wpaicg_log->source > 0){
                 $source = get_the_title($wpaicg_log->source);
             }
-            if($wpaicg_ai_model === 'gpt-3.5-turbo' || $wpaicg_ai_model === 'gpt-3.5-turbo-16k') {
-                $wpaicg_estimated = 0.002 * $wpaicg_usage_token / 1000;
+            
+            // Define pricing per 1K tokens
+            $pricing = \WPAICG\WPAICG_Util::get_instance()->model_pricing;
+            $google_models = get_option('wpaicg_google_model_list', array());
+
+            foreach ($google_models as $google_model) {
+                $pricing[$google_model] = 0.002;
             }
-            if($wpaicg_ai_model === 'gpt-4') {
-                $wpaicg_estimated = 0.06 * $wpaicg_usage_token / 1000;
-            }
-            if($wpaicg_ai_model === 'gpt-4-32k') {
-                $wpaicg_estimated = 0.12 * $wpaicg_usage_token / 1000;
-            }
-            else{
+
+            // Calculate estimated cost
+            if (array_key_exists($wpaicg_ai_model, $pricing)) {
+                $wpaicg_estimated = $pricing[$wpaicg_ai_model] * $wpaicg_usage_token / 1000;
+            } else {
+                // Default pricing if the model is not listed
                 $wpaicg_estimated = 0.02 * $wpaicg_usage_token / 1000;
             }
+
             ?>
             <tr>
                 <td><?php echo esc_html($wpaicg_log->prompt_id)?></td>
@@ -142,13 +150,13 @@ $totalPage         = ceil($total / $items_per_page);
                     // Check if NumberFormatter class exists
                     if (class_exists('NumberFormatter')) {
                         $formatter = new NumberFormatter('en_US', NumberFormatter::CURRENCY);
-                        $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, 4);
-                        $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, 4);
+                        $formatter->setAttribute(NumberFormatter::MIN_FRACTION_DIGITS, 6);
+                        $formatter->setAttribute(NumberFormatter::MAX_FRACTION_DIGITS, 6);
                         $formattedNumber = $formatter->format($wpaicg_estimated);
                     } else {
                         // Fallback method if NumberFormatter is not available
                         // Using number_format() function for formatting
-                        $formattedNumber = '$' . number_format($wpaicg_estimated, 4, '.', ',');
+                        $formattedNumber = '$' . number_format($wpaicg_estimated, 6, '.', ',');
                     }
 
                     // Output the formatted number, escaped for safety
@@ -264,4 +272,26 @@ $totalPage         = ceil($total / $items_per_page);
             $('.wpaicg-overlay, .wpaicg_modal').show();
         });
     });
+</script>
+<script>
+jQuery(document).ready(function($) {
+    $('#delete-all').click(function() {
+        if (confirm('Are you sure you want to delete all logs? This action cannot be undone.')) {
+            $.ajax({
+                url: ajaxurl, // Make sure ajaxurl is defined globally
+                type: 'POST',
+                data: {
+                    action: 'wpaicg_delete_all_logs', // The action hook for backend
+                    nonce: '<?php echo wp_create_nonce("wpaicg_delete_all_logs_nonce"); ?>'
+                },
+                success: function(response) {
+                    alert(response.data.message);
+                    if (response.success) {
+                        location.reload(); // Reload the page to update the log table
+                    }
+                }
+            });
+        }
+    });
+});
 </script>

@@ -3,11 +3,11 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 
-if($wpaicg_provider == 'Azure') {
+if($wpaicg_provider != 'OpenAI'){
     ?>
     <div>
         <p></p>
-        <p>Audio Converter is not available in Azure. Please go to Settings - AI Engine and switch to OpenAI to use this feature.</p>
+        <p>Audio Converter is available for OpenAI only. Please go to Settings - AI Engine and switch to OpenAI to use this feature.</p>
     </div>
     <?php
     exit; // Stop the script if the provider is Azure

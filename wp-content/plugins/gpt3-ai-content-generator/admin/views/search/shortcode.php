@@ -1,7 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) exit;
-$wpaicg_pinecone_api = get_option('wpaicg_pinecone_api','');
-$wpaicg_pinecone_environment = get_option('wpaicg_pinecone_environment','');
+
 $wpaicg_search_placeholder = get_option('wpaicg_search_placeholder',esc_html__('Search anything..','gpt3-ai-content-generator'));
 $wpaicg_search_no_result = get_option('wpaicg_search_no_result','');
 $wpaicg_search_font_size = get_option('wpaicg_search_font_size','13');
@@ -14,12 +13,8 @@ $wpaicg_search_result_font_size = get_option('wpaicg_search_result_font_size','1
 $wpaicg_search_result_font_color = get_option('wpaicg_search_result_font_color','#000');
 $wpaicg_search_result_bg_color = get_option('wpaicg_search_result_bg_color','');
 $wpaicg_search_loading_color = get_option('wpaicg_search_loading_color','#ccc');
-if(empty($wpaicg_pinecone_api) || empty($wpaicg_pinecone_environment)):
-    ?>
-<p><?php echo esc_html__('Seems like you haven\'t entered your keys, therefore this feature is disabled.','gpt3-ai-content-generator')?></p>
-<?php
-else:
 ?>
+
 <style>
     .wpaicg-search{
         width: <?php echo esc_html($wpaicg_search_width)?>;
@@ -166,5 +161,3 @@ else:
     </div>
     <div class="wpaicg-search-source"></div>
 </div>
-<?php
-endif;

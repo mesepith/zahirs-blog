@@ -38,9 +38,13 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Custom_Prompt' ) ) {
                 $wpaicg_generator = WPAICG_Generator::get_instance();
                 $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                 $openai = WPAICG_OpenAI::get_instance()->openai();
-                // if provider not openai then assing azure to $open_ai
-                if($wpaicg_provider != 'OpenAI'){
-                    $openai = WPAICG_AzureAI::get_instance()->azureai();
+
+                // Get the AI engine.
+                try {
+                    $openai = WPAICG_Util::get_instance()->initialize_ai_engine();
+                } catch (\Exception $e) {
+                    $wpaicg_result['msg'] = $e->getMessage();
+                    wp_send_json($wpaicg_result);
                 }
                 if(!$openai){
                     $wpaicg_result['msg'] = esc_html__('Missing API Setting','gpt3-ai-content-generator');
@@ -142,10 +146,14 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Custom_Prompt' ) ) {
                     ) );
                     $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
                     $openai = WPAICG_OpenAI::get_instance()->openai();
-                    // if provider not openai then assing azure to $open_ai
-                    if($wpaicg_provider != 'OpenAI'){
-                        $openai = WPAICG_AzureAI::get_instance()->azureai();
+                    // Get the AI engine.
+                    try {
+                        $openai = WPAICG_Util::get_instance()->initialize_ai_engine();
+                    } catch (\Exception $e) {
+                        $wpaicg_result['msg'] = $e->getMessage();
+                        wp_send_json($wpaicg_result);
                     }
+
                     if(!$openai){
                         $wpaicg_content_class->wpaicg_bulk_error_log($wpaicg_single->ID, 'Missing API Setting');
                     }
@@ -418,13 +426,10 @@ if ( !class_exists( '\\WPAICG\\WPAICG_Custom_Prompt' ) ) {
                                         'post_status' => 'trash',
                                     ) );
                                 } else {
-                                    $wpaicg_provider = get_option('wpaicg_provider', 'OpenAI');
 
-                                    if ($wpaicg_provider === 'OpenAI') {
-                                        $wpaicg_ai_model = get_option('wpaicg_ai_model', 'text-davinci-003');
-                                    } else if ($wpaicg_provider === 'Azure') {
-                                        $wpaicg_ai_model = get_option('wpaicg_azure_deployment', '');
-                                    }
+                                    $ai_provider_info = \WPAICG\WPAICG_Util::get_instance()->get_default_ai_provider();
+                                    $wpaicg_provider = $ai_provider_info['provider'];
+                                    $wpaicg_ai_model = $ai_provider_info['model'];
                                     
                                     add_post_meta($wpaicg_post_id,'wpaicg_ai_model',$wpaicg_ai_model);
                                     add_post_meta($wpaicg_single->ID,'wpaicg_ai_model',$wpaicg_ai_model);

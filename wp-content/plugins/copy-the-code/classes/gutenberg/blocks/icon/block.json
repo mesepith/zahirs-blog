@@ -1,0 +1,21 @@
+{
+	"$schema": "https://json.schemastore.org/block.json",
+	"apiVersion": 3,
+	"name": "copy-the-code/icon",
+	"title": "Copy to Clipboard Icon",
+	"attributes": {
+		"content": {
+			"type": "string",
+			"default": ""
+		},
+		"alignment": {
+			"type": "string",
+			"default": "left"
+		}
+	},
+	"version": "1.0.0",
+	"category": "widgets",
+	"icon": "clipboard",
+	"description": "The Copy Icon block allows you to add a button to your page that will copy the text you specify to the clipboard.",
+	"textdomain": "copy-the-code"
+}

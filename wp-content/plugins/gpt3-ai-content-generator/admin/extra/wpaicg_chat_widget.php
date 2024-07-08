@@ -39,9 +39,7 @@ if($wpaicg_chat_status == 'active'):
 ?>
 <div data-id="<?php echo esc_html($randomWidgetID)?>" id="wpaicgChat<?php echo esc_html($randomWidgetID)?>" class="wpaicg_chat_widget<?php echo $wpaicg_chat_position == 'left' ? ' wpaicg_widget_left' : ' wpaicg_widget_right'?>">
     <div class="wpaicg_chat_widget_content">
-        <?php
-        echo do_shortcode('[wpaicg_chatgpt_widget]');
-        ?>
+        <?php echo do_shortcode('[wpaicg_chatgpt_widget]'); ?>
     </div>
     <div class="wpaicg_toggle" id="wpaicg_toggle_<?php echo esc_html($randomWidgetID)?>">
         <img src="<?php echo esc_html($wpaicg_chat_icon_url)?>" />

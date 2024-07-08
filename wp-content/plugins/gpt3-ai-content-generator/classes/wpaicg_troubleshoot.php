@@ -38,6 +38,11 @@ if(!class_exists('\\WPAICG\\WPAICG_TroubleShoot')) {
         
             $collectionName = sanitize_text_field($_POST['collection_name']);
             $apiKey = get_option('wpaicg_qdrant_api_key', '');
+            $dimension = 1536;
+
+            if ($wpaicg_provider === 'Google') {
+                $dimension = 768;
+            } 
             $endpoint = get_option('wpaicg_qdrant_endpoint', '') . '/collections/' . $collectionName;
         
             $response = wp_remote_request($endpoint, [
@@ -49,7 +54,7 @@ if(!class_exists('\\WPAICG\\WPAICG_TroubleShoot')) {
                 'body' => json_encode([
                     'vectors' => [
                         'distance' => 'Cosine',
-                        'size' => 1536,
+                        'size' => $dimension
                     ],
                 ])
             ]);
@@ -228,7 +233,6 @@ if(!class_exists('\\WPAICG\\WPAICG_TroubleShoot')) {
             }
             else{
                 echo wp_remote_retrieve_body($response);
-                error_log(wp_remote_retrieve_body($response));
                 die();
             }
         }
@@ -268,7 +272,6 @@ if(!class_exists('\\WPAICG\\WPAICG_TroubleShoot')) {
             $endpoint = sanitize_text_field($_REQUEST['endpoint']) . '/collections/' . sanitize_text_field($_REQUEST['collection_name']) . '/points/delete?wait=true';
             $api_key = get_option('wpaicg_qdrant_api_key', '');
             $points = str_replace("\\", '', sanitize_text_field($_REQUEST['data']));
-            error_log($points);
         
             $response = wp_remote_request($endpoint, array(
                 'method' => 'POST',

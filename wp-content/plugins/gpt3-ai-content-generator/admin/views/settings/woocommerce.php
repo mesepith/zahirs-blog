@@ -2,36 +2,36 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
     ?>
     <div id="tabs-7">
-        <h3>Product Writer</h3>
+        <h3><?php echo esc_html__('Product Writer','gpt3-ai-content-generator')?></h3>
         <div class="wpcgai_form_row">
             <label class="wpcgai_label"><?php echo esc_html__('Write a product title','gpt3-ai-content-generator')?>:</label>
             <?php $wpaicg_woo_generate_title = get_option('wpaicg_woo_generate_title',false); ?>
-            <input<?php echo $wpaicg_woo_generate_title ? ' checked':'';?> type="checkbox" name="wpaicg_woo_generate_title" value="1">
+            <input <?php echo $wpaicg_woo_generate_title ? ' checked':'';?> type="checkbox" name="wpaicg_woo_generate_title" value="1">
             <a class="wpcgai_help_link" href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
         </div>
         <div class="wpcgai_form_row">
             <label class="wpcgai_label"><?php echo esc_html__('Write a full product description','gpt3-ai-content-generator')?>:</label>
             <?php $wpaicg_woo_generate_description = get_option('wpaicg_woo_generate_description',false); ?>
-            <input<?php echo $wpaicg_woo_generate_description ? ' checked':'';?> type="checkbox" name="wpaicg_woo_generate_description" value="1">
+            <input <?php echo $wpaicg_woo_generate_description ? ' checked':'';?> type="checkbox" name="wpaicg_woo_generate_description" value="1">
             <a class="wpcgai_help_link" href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
         </div>
         <div class="wpcgai_form_row">
             <label class="wpcgai_label"><?php echo esc_html__('Write a short product description','gpt3-ai-content-generator')?>:</label>
             <?php $wpaicg_woo_generate_short = get_option('wpaicg_woo_generate_short',false); ?>
-            <input<?php echo $wpaicg_woo_generate_short ? ' checked':'';?> type="checkbox" name="wpaicg_woo_generate_short" value="1">
+            <input <?php echo $wpaicg_woo_generate_short ? ' checked':'';?> type="checkbox" name="wpaicg_woo_generate_short" value="1">
             <a class="wpcgai_help_link" href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
         </div>
         <div class="wpcgai_form_row">
             <label class="wpcgai_label"><?php echo esc_html__('Generate product tags','gpt3-ai-content-generator')?>:</label>
             <?php $wpaicg_woo_generate_tags = get_option('wpaicg_woo_generate_tags',false); ?>
-            <input<?php echo $wpaicg_woo_generate_tags ? ' checked':'';?> type="checkbox" name="wpaicg_woo_generate_tags" value="1">
+            <input <?php echo $wpaicg_woo_generate_tags ? ' checked':'';?> type="checkbox" name="wpaicg_woo_generate_tags" value="1">
             <a class="wpcgai_help_link" href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
         </div>
-        <h2>SEO Optimization</h2>
+        <h3><?php echo esc_html__('SEO Optimization','gpt3-ai-content-generator')?></h3>
         <div class="wpcgai_form_row">
             <label class="wpcgai_label"><?php echo esc_html__('Generate meta description','gpt3-ai-content-generator')?>:</label>
             <?php $wpaicg_woo_meta_description = get_option('wpaicg_woo_meta_description',false); ?>
-            <input<?php echo $wpaicg_woo_meta_description ? ' checked':'';?> type="checkbox" name="wpaicg_woo_meta_description" value="1">
+            <input <?php echo $wpaicg_woo_meta_description ? ' checked':'';?> type="checkbox" name="wpaicg_woo_meta_description" value="1">
             <a class="wpcgai_help_link" href="https://docs.aipower.org/docs/woocommerce#woocommerce-product-writer" target="_blank">?</a>
         </div>
         <div class="wpcgai_form_row">
@@ -91,7 +91,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
             }
             ?>
         </div>
-        <h2>Prompt Design</h2>
+        <h3><?php echo esc_html__('Prompt Design','gpt3-ai-content-generator')?></h3>
         <?php
         $wpaicg_woo_custom_prompt = get_option('wpaicg_woo_custom_prompt',false);
         $wpaicg_woo_custom_prompt_title = get_option('wpaicg_woo_custom_prompt_title',esc_html__('Compose an SEO-optimized title in English for the following product: %s. Ensure it is engaging, concise, and includes relevant keywords to maximize its visibility on search engines.','gpt3-ai-content-generator'));
