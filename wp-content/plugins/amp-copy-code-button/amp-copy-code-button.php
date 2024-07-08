@@ -7,6 +7,7 @@ Author: Zahir Alam
 */
 
 // Enqueue AMP iframe script
+// Enqueue AMP iframe script
 function amp_copy_code_button_scripts() {
     if ( function_exists( 'is_amp_endpoint' ) && is_amp_endpoint() ) {
         echo '<script async custom-element="amp-iframe" src="https://cdn.ampproject.org/v0/amp-iframe-0.1.js"></script>';
@@ -22,7 +23,7 @@ function add_copy_button_to_code_blocks( $content ) {
         $replacement = '<div class="code-block-container">
                             <pre class="wp-block-code"><code>$1</code></pre>
                             <amp-iframe sandbox="allow-scripts" width="64" height="42" frameborder="0" src="' . $plugin_url . 'amp-copy-code.html#$1">
-                                <button class="copy-button" placeholder disabled>Copy</button>
+                                <button class="copy-button" placeholder>Copy</button>
                             </amp-iframe>
                         </div>';
         $content = preg_replace( $pattern, $replacement, $content );
