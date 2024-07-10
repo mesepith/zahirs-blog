@@ -1,0 +1,738 @@
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Dynamico\n"
+"Report-Msgid-Bugs-To: https://themezee.com/\n"
+"POT-Creation-Date: 2021-05-18 14:34+0200\n"
+"PO-Revision-Date: 2016-09-15 21:02+0100\n"
+"Last-Translator: \n"
+"Language-Team: ThemeZee <support@themezee.com>\n"
+"Language: en_US\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.4.2\n"
+"X-Poedit-KeywordsList: __;_e;_x:1,2c;_ex:1,2c;_n:1,2;_nx:1,2,4c;_n_noop:1,2;"
+"_nx_noop:1,2,3c;esc_attr__;esc_html__;esc_attr_e;esc_html_e;esc_attr_x:1,2c;"
+"esc_html_x:1,2c\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Poedit-SourceCharset: UTF-8\n"
+"X-Poedit-Basepath: ..\n"
+"X-Textdomain-Support: yes\n"
+"X-Poedit-SearchPath-0: .\n"
+
+#: 404.php:17
+msgid "404: Page not found"
+msgstr ""
+
+#: 404.php:22
+msgid ""
+"It looks like nothing was found at this location. Maybe try a search or one "
+"of the links below?"
+msgstr ""
+
+#: comments.php:33
+msgid "One comment"
+msgstr ""
+
+#: comments.php:36
+#, php-format
+msgid "%s comments"
+msgstr ""
+
+#: comments.php:58
+msgid "Comments are closed."
+msgstr ""
+
+#: functions.php:51
+msgid "Main Navigation"
+msgstr ""
+
+#: functions.php:52
+msgid "Social Icons (Header)"
+msgstr ""
+
+#: functions.php:123 inc/addons.php:138 inc/addons.php:139
+msgid "Expand child menu"
+msgstr ""
+
+#: functions.php:124 inc/addons.php:138 inc/addons.php:139
+msgid "Collapse child menu"
+msgstr ""
+
+#: functions.php:187
+msgid "Sidebar"
+msgstr ""
+
+#: functions.php:189
+msgctxt "widget area description"
+msgid "Appears on blog pages and single posts."
+msgstr ""
+
+#: functions.php:198
+msgid "Header"
+msgstr ""
+
+#: functions.php:200
+msgid "Appears on header area. You can add a search or an ad widget here."
+msgstr ""
+
+#: functions.php:209
+msgid "Footer Copyright"
+msgstr ""
+
+#: functions.php:211
+msgctxt "widget area description"
+msgid "Appears in the bottom footer line."
+msgstr ""
+
+#: functions.php:226
+msgid "Post Thumbnail"
+msgstr ""
+
+#: functions.php:227
+msgid "Dynamico Ultra Wide (3:1)"
+msgstr ""
+
+#: functions.php:228
+msgid "Dynamico Landscape (16:9)"
+msgstr ""
+
+#: functions.php:229
+msgid "Dynamico Classic (4:3)"
+msgstr ""
+
+#: functions.php:230
+msgid "Dynamico Square (1:1)"
+msgstr ""
+
+#: functions.php:231
+msgid "Dynamico Portrait (3:4)"
+msgstr ""
+
+#: header.php:28
+msgid "Skip to content"
+msgstr ""
+
+#: inc/back-compat.php:42 inc/back-compat.php:52 inc/back-compat.php:65
+#, php-format
+msgid ""
+"%1$s requires at least WordPress version %2$s. You are running version %3$s. "
+"Please upgrade and try again."
+msgstr ""
+
+#: inc/customizer/controls/category-dropdown-control.php:31
+msgid "All Categories"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:25 inc/theme-info.php:46
+msgid "Theme Links"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:28 inc/theme-info.php:47
+msgid "https://themezee.com/themes/dynamico/"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:29 inc/theme-info.php:47
+msgid "Theme Page"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:35 inc/theme-info.php:48
+msgid "Theme Demo"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:40 inc/theme-info.php:49
+#: inc/theme-info.php:71
+msgid "https://themezee.com/docs/dynamico-documentation/"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:41 inc/theme-info.php:49
+#: inc/theme-info.php:65
+msgid "Theme Documentation"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:46
+msgid ""
+"https://themezee.com/changelogs/?action=themezee-"
+"changelog&type=theme&slug=dynamico/"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:47 inc/theme-info.php:50
+msgid "Theme Changelog"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:52 inc/theme-info.php:51
+#: inc/theme-info.php:155
+msgid "https://wordpress.org/support/theme/dynamico/reviews/"
+msgstr ""
+
+#: inc/customizer/controls/links-control.php:53 inc/theme-info.php:51
+#: inc/theme-info.php:155
+msgid "Rate this theme"
+msgstr ""
+
+#: inc/customizer/controls/plugin-control.php:33
+msgid "Install Plugin"
+msgstr ""
+
+#: inc/customizer/controls/upgrade-control.php:25 inc/theme-info.php:111
+msgid "Pro Version Add-on"
+msgstr ""
+
+#: inc/customizer/controls/upgrade-control.php:28 inc/theme-info.php:114
+#, php-format
+msgid ""
+"Purchase the %s Pro Add-on to get additional features and advanced "
+"customization options."
+msgstr ""
+
+#: inc/customizer/controls/upgrade-control.php:32 inc/theme-info.php:117
+msgid "https://themezee.com/addons/dynamico-pro/"
+msgstr ""
+
+#: inc/customizer/controls/upgrade-control.php:33 inc/theme-info.php:118
+#, php-format
+msgid "Learn more about %s Pro"
+msgstr ""
+
+#: inc/customizer/customizer.php:39 inc/theme-info.php:78
+msgid "Theme Options"
+msgstr ""
+
+#: inc/customizer/customizer.php:44
+msgid "Background"
+msgstr ""
+
+#: inc/customizer/default-options.php:63
+msgid "Read more"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:19
+msgid "Blog Settings"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:36
+msgid "Blog Layout"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:42
+msgid "Horizontal List"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:43
+msgid "Horizontal List (alternative)"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:44
+msgid "Vertical List"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:45
+msgid "Vertical List (alternative)"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:46
+msgid "Two Column Grid"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:47
+msgid "Three Column Grid"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:60
+msgid "Blog Image"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:66
+#: inc/customizer/sections/post-settings.php:195
+msgid "Ultra Wide (3:1)"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:67
+#: inc/customizer/sections/post-settings.php:196
+msgid "Landscape (16:9)"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:68
+#: inc/customizer/sections/post-settings.php:197
+msgid "Classic (4:3)"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:69
+msgid "Square (1:1)"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:70
+msgid "Portrait (3:4)"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:71
+#: inc/customizer/sections/post-settings.php:198
+msgid "Flexible Height"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:72
+#: inc/customizer/sections/post-settings.php:176
+msgid "Hide Image"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:85
+msgid "Blog Content"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:91
+msgid "Full post"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:92
+msgid "Post excerpt"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:105
+msgid "Excerpt Length"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:121
+msgid "Excerpt More Text"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:155
+msgid "Read More Link"
+msgstr ""
+
+#: inc/customizer/sections/blog-settings.php:171
+msgid "Number of Posts"
+msgstr ""
+
+#: inc/customizer/sections/featured-posts-settings.php:19
+msgid "Featured Posts"
+msgstr ""
+
+#: inc/customizer/sections/featured-posts-settings.php:30
+msgid "Display Featured Posts"
+msgstr ""
+
+#: inc/customizer/sections/featured-posts-settings.php:45
+msgid "Show Featured Posts on blog page"
+msgstr ""
+
+#: inc/customizer/sections/featured-posts-settings.php:62
+msgid "Featured Posts Category"
+msgstr ""
+
+#: inc/customizer/sections/featured-posts-settings.php:78
+msgid "Featured Posts Layout"
+msgstr ""
+
+#: inc/customizer/sections/featured-posts-settings.php:84
+msgid "One Post"
+msgstr ""
+
+#: inc/customizer/sections/featured-posts-settings.php:85
+msgid "Four Posts"
+msgstr ""
+
+#: inc/customizer/sections/footer-settings.php:19
+msgid "Footer Settings"
+msgstr ""
+
+#: inc/customizer/sections/footer-settings.php:36
+msgid "Footer Text"
+msgstr ""
+
+#: inc/customizer/sections/footer-settings.php:59
+msgid "Display credit link on footer line"
+msgstr ""
+
+#: inc/customizer/sections/layout-settings.php:19
+msgid "Layout Settings"
+msgstr ""
+
+#: inc/customizer/sections/layout-settings.php:36
+msgid "Theme Layout"
+msgstr ""
+
+#: inc/customizer/sections/layout-settings.php:42
+msgid "Centered Layout"
+msgstr ""
+
+#: inc/customizer/sections/layout-settings.php:43
+msgid "Wide Layout"
+msgstr ""
+
+#: inc/customizer/sections/layout-settings.php:56
+msgid "Sidebar Position"
+msgstr ""
+
+#: inc/customizer/sections/layout-settings.php:62
+msgid "Left Sidebar"
+msgstr ""
+
+#: inc/customizer/sections/layout-settings.php:63
+msgid "Right Sidebar"
+msgstr ""
+
+#: inc/customizer/sections/layout-settings.php:70
+msgid "Box Shadows"
+msgstr ""
+
+#: inc/customizer/sections/layout-settings.php:86
+msgid "Display shadows on content boxes"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:19
+msgid "Post Settings"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:30
+msgid "Post Details on blog and archives"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:46
+#: inc/customizer/sections/post-settings.php:120
+msgid "Display date"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:62
+#: inc/customizer/sections/post-settings.php:136
+msgid "Display author"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:78
+#: inc/customizer/sections/post-settings.php:152
+msgid "Display comments"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:94
+#: inc/customizer/sections/post-settings.php:248
+msgid "Display categories"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:104
+msgid "Post Details on single posts"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:168
+msgid "Single Post Layout"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:174
+msgid "Featured image above title"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:175
+msgid "Featured image below title"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:189
+msgid "Single Post Image"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:216
+msgid "Single Post Footer"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:232
+msgid "Display tags"
+msgstr ""
+
+#: inc/customizer/sections/post-settings.php:264
+msgid "Display previous/next post navigation"
+msgstr ""
+
+#: inc/customizer/sections/theme-info-settings.php:19 inc/theme-info.php:20
+msgid "Theme Info"
+msgstr ""
+
+#: inc/customizer/sections/theme-info-settings.php:48
+msgid "Magazine Blocks"
+msgstr ""
+
+#: inc/customizer/sections/theme-info-settings.php:49
+msgid ""
+"Install our free Magazine Blocks to create a magazine-styled homepage in the "
+"Editor with just a few clicks."
+msgstr ""
+
+#: inc/customizer/sections/website-settings.php:34
+msgid "Retina Logo"
+msgstr ""
+
+#: inc/customizer/sections/website-settings.php:50
+msgid "Scale down logo image for retina displays"
+msgstr ""
+
+#: inc/customizer/sections/website-settings.php:66
+msgid "Display Site Title"
+msgstr ""
+
+#: inc/customizer/sections/website-settings.php:82
+msgid "Display Tagline"
+msgstr ""
+
+#: inc/gutenberg.php:35
+msgctxt "block color"
+msgid "Primary"
+msgstr ""
+
+#: inc/gutenberg.php:40
+msgctxt "block color"
+msgid "Secondary"
+msgstr ""
+
+#: inc/gutenberg.php:45
+msgctxt "block color"
+msgid "Tertiary"
+msgstr ""
+
+#: inc/gutenberg.php:50
+msgctxt "block color"
+msgid "Contrast"
+msgstr ""
+
+#: inc/gutenberg.php:55
+msgctxt "block color"
+msgid "Accent"
+msgstr ""
+
+#: inc/gutenberg.php:60
+msgctxt "block color"
+msgid "Highlight"
+msgstr ""
+
+#: inc/gutenberg.php:65
+msgctxt "block color"
+msgid "White"
+msgstr ""
+
+#: inc/gutenberg.php:70
+msgctxt "block color"
+msgid "Light Gray"
+msgstr ""
+
+#: inc/gutenberg.php:75
+msgctxt "block color"
+msgid "Gray"
+msgstr ""
+
+#: inc/gutenberg.php:80
+msgctxt "block color"
+msgid "Dark Gray"
+msgstr ""
+
+#: inc/gutenberg.php:85
+msgctxt "block color"
+msgid "Black"
+msgstr ""
+
+#: inc/gutenberg.php:94
+msgctxt "block font size"
+msgid "Small"
+msgstr ""
+
+#: inc/gutenberg.php:99
+msgctxt "block font size"
+msgid "Medium"
+msgstr ""
+
+#: inc/gutenberg.php:104
+msgctxt "block font size"
+msgid "Large"
+msgstr ""
+
+#: inc/gutenberg.php:109
+msgctxt "block font size"
+msgid "Extra Large"
+msgstr ""
+
+#: inc/gutenberg.php:114
+msgctxt "block font size"
+msgid "Huge"
+msgstr ""
+
+#: inc/gutenberg.php:124 inc/template-tags.php:448
+msgid "Dynamico"
+msgstr ""
+
+#: inc/gutenberg.php:128
+msgid "Portfolio"
+msgstr ""
+
+#: inc/gutenberg.php:134
+msgid "Services"
+msgstr ""
+
+#: inc/gutenberg.php:140
+msgid "About"
+msgstr ""
+
+#: inc/gutenberg.php:146
+msgid "Projects"
+msgstr ""
+
+#: inc/template-tags.php:120
+#, php-format
+msgid "Search Results for: %s"
+msgstr ""
+
+#: inc/template-tags.php:273
+#, php-format
+msgid "View all posts by %s"
+msgstr ""
+
+#: inc/template-tags.php:298
+msgid "No comments"
+msgstr ""
+
+#: inc/template-tags.php:299
+msgid "1 comment"
+msgstr ""
+
+#: inc/template-tags.php:300
+#, php-format
+msgid "% comments"
+msgstr ""
+
+#: inc/template-tags.php:336
+msgid "Tagged with"
+msgstr ""
+
+#: inc/template-tags.php:375
+msgctxt "post navigation"
+msgid "Previous Post"
+msgstr ""
+
+#: inc/template-tags.php:376
+msgctxt "post navigation"
+msgid "Next Post"
+msgstr ""
+
+#: inc/template-tags.php:410
+msgctxt "pagination"
+msgid "Previous Posts"
+msgstr ""
+
+#: inc/template-tags.php:411
+msgctxt "pagination"
+msgid "Next Posts"
+msgstr ""
+
+#: inc/template-tags.php:447
+#, php-format
+msgid "WordPress Theme: %1$s by %2$s."
+msgstr ""
+
+#: inc/theme-info.php:19 inc/theme-info.php:40
+#, php-format
+msgid "Welcome to %1$s %2$s"
+msgstr ""
+
+#: inc/theme-info.php:50
+msgid ""
+"https://themezee.com/changelogs/?action=themezee-"
+"changelog&type=theme&slug=dynamico"
+msgstr ""
+
+#: inc/theme-info.php:58
+#, php-format
+msgid "Getting started with %s"
+msgstr ""
+
+#: inc/theme-info.php:68
+msgid ""
+"Need help to set up and configure this theme? We got you covered! Check out "
+"the extensive theme documentation on our website."
+msgstr ""
+
+#: inc/theme-info.php:72
+#, php-format
+msgid "View %s's documentation"
+msgstr ""
+
+#: inc/theme-info.php:81
+#, php-format
+msgid ""
+"%s makes use of the Customizer for all theme settings. Click on \"Customize "
+"Theme\" to open the Customizer now."
+msgstr ""
+
+#: inc/theme-info.php:84
+msgid "Customize Theme"
+msgstr ""
+
+#: inc/theme-info.php:104
+msgid "Get more features"
+msgstr ""
+
+#: inc/theme-info.php:128
+msgid "Recommended Plugins"
+msgstr ""
+
+#: inc/theme-info.php:131
+msgid ""
+"Extend the functionality of your WordPress website with our free and easy to "
+"use plugins."
+msgstr ""
+
+#: inc/theme-info.php:135
+msgid "Install Plugins"
+msgstr ""
+
+#: inc/theme-info.php:152
+#, php-format
+msgid "%1$s is proudly brought to you by %2$s. If you like this theme, %3$s :)"
+msgstr ""
+
+#: inc/theme-info.php:154
+msgid "https://themezee.com/"
+msgstr ""
+
+#: inc/theme-info.php:155
+msgctxt "If you like this theme, rate it"
+msgid "rate it"
+msgstr ""
+
+#: searchform.php:13 searchform.php:17
+msgctxt "label"
+msgid "Search for:"
+msgstr ""
+
+#: searchform.php:15
+msgctxt "placeholder"
+msgid "Search &hellip;"
+msgstr ""
+
+#: searchform.php:21
+msgctxt "submit button"
+msgid "Search"
+msgstr ""
+
+#: template-parts/header/site-navigation.php:21
+msgid "Menu"
+msgstr ""
+
+#: template-parts/header/site-navigation.php:26
+msgid "Primary Menu"
+msgstr ""
+
+#: template-parts/page/content-none.php:16
+msgid "Nothing Found"
+msgstr ""
+
+#: template-parts/page/content-none.php:25
+#, php-format
+msgid ""
+"Ready to publish your first post? <a href=\"%1$s\">Get started here</a>."
+msgstr ""
+
+#: template-parts/page/content-none.php:29
+msgid ""
+"Sorry, but nothing matched your search terms. Please try again with some "
+"different keywords."
+msgstr ""
+
+#: template-parts/page/content-none.php:34
+msgid ""
+"It seems we can&rsquo;t find what you&rsquo;re looking for. Perhaps "
+"searching can help."
+msgstr ""
