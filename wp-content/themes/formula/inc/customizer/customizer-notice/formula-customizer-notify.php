@@ -140,29 +140,37 @@ class formula_Customizer_Notify {
 	}
 
 
-	public function formula_customizer_notify_dismiss_recommended_action_callback() {
 
+	// Callback function for dismissing recommended actions.
+	public function formula_customizer_notify_dismiss_recommended_action_callback() {
 		global $formula_customizer_notify_recommended_actions;
 
-		$action_id = ( isset( $_GET['id'] ) ) ? $_GET['id'] : 0;
+		// Sanitize the input.
+		$action_id = isset( $_GET['id'] ) ? sanitize_text_field( $_GET['id'] ) : 0;
 
-		echo $action_id;
+		// Validate the action_id.
+		if ( ! is_numeric( $action_id ) || $action_id <= 0 ) {
+			wp_send_json_error( 'Invalid action ID' );
+			wp_die();
+		}
 
 		if ( ! empty( $action_id ) ) {
-
 			if ( get_option( 'formula_customizer_notify_show' ) ) {
-
 				$formula_customizer_notify_show_recommended_actions = get_option( 'formula_customizer_notify_show' );
-				switch ( $_GET['todo'] ) {
+				$todo = isset( $_GET['todo'] ) ? sanitize_text_field( $_GET['todo'] ) : '';
+
+				switch ( $todo ) {
 					case 'add':
 						$formula_customizer_notify_show_recommended_actions[ $action_id ] = true;
 						break;
 					case 'dismiss':
 						$formula_customizer_notify_show_recommended_actions[ $action_id ] = false;
 						break;
+					default:
+						wp_send_json_error( 'Invalid action' );
+						wp_die();
 				}
 				update_option( 'formula_customizer_notify_show', $formula_customizer_notify_show_recommended_actions );
-
 			} else {
 				$formula_customizer_notify_show_recommended_actions = array();
 				if ( ! empty( $formula_customizer_notify_recommended_actions ) ) {
@@ -177,31 +185,42 @@ class formula_Customizer_Notify {
 				}
 			}
 		}
-		die();
+
+		wp_send_json_success( 'Action updated successfully' );
+		wp_die();
 	}
 
-
+	// Callback function for dismissing recommended plugins.
 	public function formula_customizer_notify_dismiss_recommended_plugins_callback() {
+		// Sanitize the input.
+		$action_id = isset( $_GET['id'] ) ? sanitize_text_field( $_GET['id'] ) : 0;
 
-		$action_id = ( isset( $_GET['id'] ) ) ? $_GET['id'] : 0;
-
-		echo $action_id;
+		// Validate the action_id.
+		if ( ! is_numeric( $action_id ) || $action_id <= 0 ) {
+			wp_send_json_error( 'Invalid action ID' );
+			wp_die();
+		}
 
 		if ( ! empty( $action_id ) ) {
-
 			$formula_lite_customizer_notify_show_recommended_plugins = get_option( 'formula_customizer_notify_show_recommended_plugins' );
+			$todo = isset( $_GET['todo'] ) ? sanitize_text_field( $_GET['todo'] ) : '';
 
-			switch ( $_GET['todo'] ) {
+			switch ( $todo ) {
 				case 'add':
 					$formula_lite_customizer_notify_show_recommended_plugins[ $action_id ] = false;
 					break;
 				case 'dismiss':
 					$formula_lite_customizer_notify_show_recommended_plugins[ $action_id ] = true;
 					break;
+				default:
+					wp_send_json_error( 'Invalid action' );
+					wp_die();
 			}
 			update_option( 'formula_customizer_notify_show_recommended_plugins', $formula_lite_customizer_notify_show_recommended_plugins );
 		}
-		die();
+
+		wp_send_json_success( 'Plugin action updated successfully' );
+		wp_die();
 	}
 
 }
