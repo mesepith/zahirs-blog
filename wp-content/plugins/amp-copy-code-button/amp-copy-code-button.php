@@ -10,9 +10,21 @@ Author: Zahir Alam
 function amp_copy_code_button_scripts() {
     if ( function_exists( 'is_amp_endpoint' ) && is_amp_endpoint() ) {
         echo '<script async custom-element="amp-iframe" src="https://cdn.ampproject.org/v0/amp-iframe-0.1.js"></script>';
+        echo '<script>
+            window.addEventListener("message", function(event) {
+                if (event.data.type === "copyButtonClick") {
+                    var codeContent = event.data.text;
+                    gtag("event", "copy_button_click", {
+                        "event_category": "Button Clicks",
+                        "event_label": codeContent
+                    });
+                }
+            });
+        </script>';
     }
 }
 add_action( 'wp_head', 'amp_copy_code_button_scripts' );
+
 
 // Add copy button to code blocks
 function add_copy_button_to_code_blocks( $content ) {
