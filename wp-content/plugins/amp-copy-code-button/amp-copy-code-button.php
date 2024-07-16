@@ -11,6 +11,7 @@ function amp_copy_code_button_scripts() {
     if ( function_exists( 'is_amp_endpoint' ) && is_amp_endpoint() ) {
         echo '<script async custom-element="amp-iframe" src="https://cdn.ampproject.org/v0/amp-iframe-0.1.js"></script>';
         echo '<script async custom-element="amp-analytics" src="https://cdn.ampproject.org/v0/amp-analytics-0.1.js"></script>';
+        echo '<script async custom-element="amp-script" src="https://cdn.ampproject.org/v0/amp-script-0.1.js"></script>';
     }
 }
 add_action( 'wp_head', 'amp_copy_code_button_scripts' );
@@ -33,6 +34,22 @@ function add_copy_button_to_code_blocks( $content ) {
                     </div>';
         };
         $content = preg_replace_callback( $pattern, $replacement, $content );
+
+        $content .= '
+        <amp-script script="copy-button-script">
+            <script type="text/plain" target="amp-script" id="copy-button-script">
+                window.addEventListener("message", (event) => {
+                    if (event.data === "copy_button_clicked") {
+                        window.dispatchEvent(new CustomEvent("amp-script-response", {
+                            detail: {
+                                name: "copy_button_click"
+                            }
+                        }));
+                    }
+                });
+            </script>
+        </amp-script>';
+
     }
     return $content;
 }

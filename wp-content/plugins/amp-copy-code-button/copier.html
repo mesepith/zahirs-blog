@@ -40,19 +40,10 @@
         setTimeout(() => {
             document.querySelector('button').textContent = 'Copy';
         }, 2000);
-    }
-</script>
-<amp-analytics type="gtag" data-credentials="include">
-    <script type="application/json">
-    {
-      "vars" : {
-        "gtag_id": "G-27WDDW3TCL",
-        "config" : {
-          "G-27WDDW3TCL": { "groups": "default" }
-        }
-      }
+
+        // Send message to parent window
+        window.parent.postMessage('copy_button_clicked', '*');
     }
     </script>
-</amp-analytics>
 </body>
 </html>
