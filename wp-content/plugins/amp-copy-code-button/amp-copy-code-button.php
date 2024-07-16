@@ -16,7 +16,7 @@ function amp_copy_code_button_scripts() {
 }
 add_action( 'wp_head', 'amp_copy_code_button_scripts' );
 
-// Add copy button to code blocks
+// Add copy button to code blocks .
 function add_copy_button_to_code_blocks( $content ) {
     if ( function_exists( 'is_amp_endpoint' ) && is_amp_endpoint() ) {
         $pattern = '/<pre class="wp-block-code"><code>(.*?)<\/code><\/pre>/is';
