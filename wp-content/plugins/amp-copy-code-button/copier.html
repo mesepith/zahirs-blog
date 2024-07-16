@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>Copy Code</title>
     <link rel="canonical" href="self.html">
+    <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
     <style amp-custom>
         button {
             font-size: 18px;
@@ -20,9 +21,10 @@
         }
     </style>
     <script async custom-element="amp-analytics" src="https://cdn.ampproject.org/v0/amp-analytics-0.1.js"></script>
+    <script async custom-element="amp-bind" src="https://cdn.ampproject.org/v0/amp-bind-0.1.js"></script>
 </head>
 <body>
-    <button on="tap:copyCode()">Copy</button>
+    <button on="tap:AMP.setState({ copied: true }), copyCode()">Copy</button>
     <amp-analytics>
         <script type="application/json">
         {
