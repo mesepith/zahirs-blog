@@ -37,7 +37,6 @@
         document.execCommand('copy');
         document.body.removeChild(textArea);
         document.querySelector('button').textContent = 'Copied!';
-        window.parent.postMessage({ type: 'copyButtonClick', text: text }, '*');
         setTimeout(() => {
             document.querySelector('button').textContent = 'Copy';
         }, 2000);
