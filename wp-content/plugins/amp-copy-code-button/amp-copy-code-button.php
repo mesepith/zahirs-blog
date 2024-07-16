@@ -40,11 +40,44 @@ function add_copy_button_to_code_blocks( $content ) {
             <script type="text/plain" target="amp-script" id="copy-button-script">
                 window.addEventListener("message", (event) => {
                     if (event.data === "copy_button_clicked") {
-                        window.dispatchEvent(new CustomEvent("amp-script-response", {
+                        const copyEvent = new CustomEvent("amp-script-response", {
                             detail: {
                                 name: "copy_button_click"
                             }
-                        }));
+                        });
+                        window.dispatchEvent(copyEvent);
+                        
+                        // Explicitly trigger analytics event
+                        const analytics = document.createElement("amp-analytics");
+                        analytics.setAttribute("type", "gtag");
+                        analytics.setAttribute("data-credentials", "include");
+                        analytics.innerHTML = `
+                            <script type="application/json">
+                            {
+                                "requests": {
+                                    "copyClick": {
+                                        "baseUrl": "https://www.google-analytics.com/collect",
+                                        "params": {
+                                            "v": "1",
+                                            "t": "event",
+                                            "tid": "G-27WDDW3TCL",
+                                            "cid": "CLIENT_ID(AMP_ECID_GOOGLE)",
+                                            "ec": "User Interaction",
+                                            "ea": "copy_button_click",
+                                            "el": "Copy Button"
+                                        }
+                                    }
+                                },
+                                "triggers": {
+                                    "trackCopyClick": {
+                                        "on": "visible",
+                                        "request": "copyClick"
+                                    }
+                                }
+                            }
+                            </script>
+                        `;
+                        document.body.appendChild(analytics);
                     }
                 });
             </script>
