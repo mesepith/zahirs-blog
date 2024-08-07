@@ -8,3 +8,4 @@ staging_trade
 trade
 wp-content/uploads/
 .htaccess
+wp-config.php
