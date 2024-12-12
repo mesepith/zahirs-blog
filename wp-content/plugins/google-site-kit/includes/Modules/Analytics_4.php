@@ -57,7 +57,6 @@ use Google\Site_Kit\Modules\AdSense\Settings as AdSense_Settings;
 use Google\Site_Kit\Modules\Analytics_4\Account_Ticket;
 use Google\Site_Kit\Modules\Analytics_4\Advanced_Tracking;
 use Google\Site_Kit\Modules\Analytics_4\AMP_Tag;
-use Google\Site_Kit\Modules\Analytics_4\Audience_Settings;
 use Google\Site_Kit\Modules\Analytics_4\Custom_Dimensions_Data_Available;
 use Google\Site_Kit\Modules\Analytics_4\Synchronize_Property;
 use Google\Site_Kit\Modules\Analytics_4\Synchronize_AdSenseLinked;
@@ -90,6 +89,10 @@ use Google\Site_Kit_Dependencies\Google\Service\TagManager as Google_Service_Tag
 use Google\Site_Kit_Dependencies\Google_Service_TagManager_Container;
 use Google\Site_Kit_Dependencies\Psr\Http\Message\RequestInterface;
 use Google\Site_Kit\Core\REST_API\REST_Routes;
+use Google\Site_Kit\Modules\Analytics_4\Conversion_Reporting\Conversion_Reporting_Cron;
+use Google\Site_Kit\Modules\Analytics_4\Conversion_Reporting\Conversion_Reporting_Events_Sync;
+use Google\Site_Kit\Modules\Analytics_4\Conversion_Reporting\Conversion_Reporting_Provider;
+use Google\Site_Kit\Modules\Analytics_4\Reset_Audiences;
 use stdClass;
 use WP_Error;
 
@@ -151,12 +154,12 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 	protected $custom_dimensions_data_available;
 
 	/**
-	 * Audience_Settings instance.
+	 * Reset_Audiences instance.
 	 *
-	 * @since 1.124.0
-	 * @var Audience_Settings
+	 * @since 1.137.0
+	 * @var Reset_Audiences
 	 */
-	protected $audience_settings;
+	protected $reset_audiences;
 
 	/**
 	 * Resource_Data_Availability_Date instance.
@@ -186,7 +189,7 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 	) {
 		parent::__construct( $context, $options, $user_options, $authentication, $assets );
 		$this->custom_dimensions_data_available = new Custom_Dimensions_Data_Available( $this->transients );
-		$this->audience_settings                = new Audience_Settings( $this->user_options );
+		$this->reset_audiences                  = new Reset_Audiences( $this->user_options );
 		$this->resource_data_availability_date  = new Resource_Data_Availability_Date( $this->transients, $this->get_settings() );
 	}
 
@@ -218,11 +221,21 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 		);
 		$synchronize_ads_linked->register();
 
+		if ( Feature_Flags::enabled( 'conversionReporting' ) ) {
+			$conversion_reporting_provider = new Conversion_Reporting_Provider(
+				$this->context,
+				$this->settings,
+				$this->user_options,
+				$this
+			);
+			$conversion_reporting_provider->register();
+		}
+
 		( new Advanced_Tracking( $this->context ) )->register();
 
 		add_action( 'admin_init', array( $synchronize_property, 'maybe_schedule_synchronize_property' ) );
 		add_action( 'admin_init', array( $synchronize_adsense_linked, 'maybe_schedule_synchronize_adsense_linked' ) );
-		add_action( 'admin_init', array( $synchronize_ads_linked, 'maybe_schedule_synchronize_ads_linked' ) );
+		add_action( 'load-toplevel_page_googlesitekit-dashboard', array( $synchronize_ads_linked, 'maybe_schedule_synchronize_ads_linked' ) );
 		add_action( 'admin_init', $this->get_method_proxy( 'handle_provisioning_callback' ) );
 
 		// For non-AMP and AMP.
@@ -285,13 +298,21 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 							'adSenseLinkedLastSyncedAt' => 0,
 							'adsLinked'                 => false,
 							'adsLinkedLastSyncedAt'     => 0,
+							'detectedEvents'            => array(),
 							'availableAudiencesLastSyncedAt' => 0,
 						)
 					);
 
 					if ( ! empty( $new_value['propertyID'] ) ) {
 						do_action( Synchronize_AdSenseLinked::CRON_SYNCHRONIZE_ADSENSE_LINKED );
+
+						if ( Feature_Flags::enabled( 'conversionReporting' ) ) {
+							do_action( Conversion_Reporting_Cron::CRON_ACTION );
+						}
 					}
+
+					// Reset audience specific settings.
+					$this->reset_audiences->reset_audience_data();
 				}
 			}
 		);
@@ -304,8 +325,9 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 			'pre_update_option_googlesitekit_analytics-4_settings',
 			function ( $new_value, $old_value ) {
 				if ( $new_value['propertyID'] !== $old_value['propertyID'] ) {
-					$new_value['availableCustomDimensions'] = null;
-					$new_value['availableAudiences']        = null;
+					$new_value['availableCustomDimensions']            = null;
+					$new_value['availableAudiences']                   = null;
+					$new_value['audienceSegmentationSetupCompletedBy'] = null;
 				}
 
 				return $new_value;
@@ -320,6 +342,10 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 
 		if ( Feature_Flags::enabled( 'audienceSegmentation' ) ) {
 			add_filter( 'googlesitekit_inline_modules_data', $this->get_method_proxy( 'inline_resource_availability_dates_data' ) );
+		}
+
+		if ( Feature_Flags::enabled( 'conversionReporting' ) ) {
+			add_filter( 'googlesitekit_inline_modules_data', $this->get_method_proxy( 'inline_conversion_reporting_events_detection' ), 15 );
 		}
 
 		add_filter(
@@ -447,6 +473,7 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 		$this->get_settings()->delete();
 		$this->reset_data_available();
 		$this->custom_dimensions_data_available->reset_data_available();
+		$this->reset_audiences->reset_audience_data();
 	}
 
 	/**
@@ -478,37 +505,37 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 
 		$debug_fields = array(
 			'analytics_4_account_id'                  => array(
-				'label' => __( 'Analytics account ID', 'google-site-kit' ),
+				'label' => __( 'Analytics: Account ID', 'google-site-kit' ),
 				'value' => $settings['accountID'],
 				'debug' => Debug_Data::redact_debug_value( $settings['accountID'] ),
 			),
 			'analytics_4_property_id'                 => array(
-				'label' => __( 'Analytics property ID', 'google-site-kit' ),
+				'label' => __( 'Analytics: Property ID', 'google-site-kit' ),
 				'value' => $settings['propertyID'],
 				'debug' => Debug_Data::redact_debug_value( $settings['propertyID'], 7 ),
 			),
 			'analytics_4_web_data_stream_id'          => array(
-				'label' => __( 'Analytics web data stream ID', 'google-site-kit' ),
+				'label' => __( 'Analytics: Web Data Stream ID', 'google-site-kit' ),
 				'value' => $settings['webDataStreamID'],
 				'debug' => Debug_Data::redact_debug_value( $settings['webDataStreamID'] ),
 			),
 			'analytics_4_measurement_id'              => array(
-				'label' => __( 'Analytics measurement ID', 'google-site-kit' ),
+				'label' => __( 'Analytics: Measurement ID', 'google-site-kit' ),
 				'value' => $settings['measurementID'],
 				'debug' => Debug_Data::redact_debug_value( $settings['measurementID'] ),
 			),
 			'analytics_4_use_snippet'                 => array(
-				'label' => __( 'Analytics snippet placed', 'google-site-kit' ),
+				'label' => __( 'Analytics: Snippet placed', 'google-site-kit' ),
 				'value' => $settings['useSnippet'] ? __( 'Yes', 'google-site-kit' ) : __( 'No', 'google-site-kit' ),
 				'debug' => $settings['useSnippet'] ? 'yes' : 'no',
 			),
 			'analytics_4_ads_conversion_id'           => array(
-				'label' => __( 'Analytics Ads conversion ID', 'google-site-kit' ),
+				'label' => __( 'Analytics: Ads Conversion ID', 'google-site-kit' ),
 				'value' => $settings['adsConversionID'],
 				'debug' => Debug_Data::redact_debug_value( $settings['adsConversionID'] ),
 			),
 			'analytics_4_available_custom_dimensions' => array(
-				'label' => __( 'Analytics available custom dimensions', 'google-site-kit' ),
+				'label' => __( 'Analytics: Available Custom Dimensions', 'google-site-kit' ),
 				'value' => empty( $settings['availableCustomDimensions'] )
 					? __( 'None', 'google-site-kit' )
 					: join(
@@ -521,12 +548,12 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 					: join( ', ', $settings['availableCustomDimensions'] ),
 			),
 			'analytics_4_ads_linked'                  => array(
-				'label' => __( 'Analytics Ads Linked', 'google-site-kit' ),
+				'label' => __( 'Analytics: Ads Linked', 'google-site-kit' ),
 				'value' => $settings['adsLinked'] ? __( 'Connected', 'google-site-kit' ) : __( 'Not connected', 'google-site-kit' ),
 				'debug' => $settings['adsLinked'],
 			),
 			'analytics_4_ads_linked_last_synced_at'   => array(
-				'label' => __( 'Analytics Ads Linked Last Synced At', 'google-site-kit' ),
+				'label' => __( 'Analytics: Ads Linked Last Synced At', 'google-site-kit' ),
 				'value' => $settings['adsLinkedLastSyncedAt'] ? gmdate( 'Y-m-d H:i:s', $settings['adsLinkedLastSyncedAt'] ) : __( 'Never synced', 'google-site-kit' ),
 				'debug' => $settings['adsLinkedLastSyncedAt'],
 			),
@@ -534,13 +561,13 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 
 		if ( $this->is_adsense_connected() ) {
 			$debug_fields['analytics_4_adsense_linked'] = array(
-				'label' => __( 'Analytics AdSense Linked', 'google-site-kit' ),
+				'label' => __( 'Analytics: AdSense Linked', 'google-site-kit' ),
 				'value' => $settings['adSenseLinked'] ? __( 'Connected', 'google-site-kit' ) : __( 'Not connected', 'google-site-kit' ),
 				'debug' => Debug_Data::redact_debug_value( $settings['adSenseLinked'] ),
 			);
 
 			$debug_fields['analytics_4_adsense_linked_last_synced_at'] = array(
-				'label' => __( 'Analytics AdSense Linked Last Synced At', 'google-site-kit' ),
+				'label' => __( 'Analytics: AdSense Linked Last Synced At', 'google-site-kit' ),
 				'value' => $settings['adSenseLinkedLastSyncedAt'] ? gmdate( 'Y-m-d H:i:s', $settings['adSenseLinkedLastSyncedAt'] ) : __( 'Never synced', 'google-site-kit' ),
 				'debug' => Debug_Data::redact_debug_value( $settings['adSenseLinkedLastSyncedAt'] ),
 			);
@@ -552,7 +579,7 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 			$site_kit_audiences = $this->get_site_kit_audiences( $settings['availableAudiences'] ?? array() );
 
 			$debug_fields['analytics_4_site_kit_audiences'] = array(
-				'label' => __( 'Analytics site created audiences', 'google-site-kit' ),
+				'label' => __( 'Analytics: Site created audiences', 'google-site-kit' ),
 				'value' => empty( $site_kit_audiences )
 					? __( 'None', 'google-site-kit' )
 					: join(
@@ -659,16 +686,22 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 				'scopes'                 => array( self::EDIT_SCOPE ),
 				'request_scopes_message' => __( 'You’ll need to grant Site Kit permission to create new audiences for your Analytics property on your behalf.', 'google-site-kit' ),
 			);
-			$datapoints['GET:audience-settings']                     = array(
-				'service' => '',
-			);
-			$datapoints['POST:audience-settings']                    = array(
-				'service' => '',
-			);
 			$datapoints['POST:save-resource-data-availability-date'] = array(
 				'service' => '',
 			);
-			$datapoints['POST:sync-audiences']                       = array( 'service' => 'analyticsaudiences' );
+			$datapoints['POST:sync-audiences']                       = array(
+				'service'   => 'analyticsaudiences',
+				'shareable' => true,
+			);
+		}
+
+		if ( Feature_Flags::enabled( 'conversionReporting' ) ) {
+			$datapoints['POST:clear-conversion-reporting-new-events']  = array(
+				'service' => '',
+			);
+			$datapoints['POST:clear-conversion-reporting-lost-events'] = array(
+				'service' => '',
+			);
 		}
 
 		return $datapoints;
@@ -1030,7 +1063,12 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 			case 'GET:accounts':
 				return $this->get_service( 'analyticsadmin' )->accounts->listAccounts();
 			case 'GET:account-summaries':
-				return $this->get_service( 'analyticsadmin' )->accountSummaries->listAccountSummaries( array( 'pageSize' => 200 ) );
+				return $this->get_service( 'analyticsadmin' )->accountSummaries->listAccountSummaries(
+					array(
+						'pageSize'  => 200,
+						'pageToken' => $data['pageToken'],
+					)
+				);
 			case 'GET:ads-links':
 				if ( empty( $data['propertyID'] ) ) {
 					throw new Missing_Required_Param_Exception( 'propertyID' );
@@ -1096,33 +1134,6 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 						$property_id,
 						$post_body
 					);
-			case 'GET:audience-settings':
-				return function () {
-					return $this->audience_settings->get();
-				};
-			case 'POST:audience-settings':
-				$settings = $data['settings'];
-				if ( ! isset( $settings['configuredAudiences'] ) ) {
-					throw new Missing_Required_Param_Exception( 'configuredAudiences' );
-				}
-
-				if ( ! is_array( $settings['configuredAudiences'] ) ) {
-					throw new Invalid_Param_Exception( 'configuredAudiences' );
-				}
-
-				if ( ! isset( $settings['isAudienceSegmentationWidgetHidden'] ) ) {
-					throw new Missing_Required_Param_Exception( 'isAudienceSegmentationWidgetHidden' );
-				}
-
-				if ( ! is_bool( $settings['isAudienceSegmentationWidgetHidden'] ) ) {
-					throw new Invalid_Param_Exception( 'isAudienceSegmentationWidgetHidden' );
-				}
-
-				$this->audience_settings->merge( $data['settings'] );
-
-				return function () {
-					return $this->audience_settings->get();
-				};
 			case 'POST:create-account-ticket':
 				if ( empty( $data['displayName'] ) ) {
 					throw new Missing_Required_Param_Exception( 'displayName' );
@@ -1450,6 +1461,14 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 						$custom_dimension
 					);
 			case 'POST:sync-audiences':
+				if ( ! $this->authentication->is_authenticated() ) {
+					return new WP_Error(
+						'forbidden',
+						__( 'User must be authenticated to sync audiences.', 'google-site-kit' ),
+						array( 'status' => 403 )
+					);
+				}
+
 				$settings = $this->get_settings()->get();
 				if ( empty( $settings['propertyID'] ) ) {
 					return new WP_Error(
@@ -1655,6 +1674,14 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 				return function () use ( $data ) {
 					return $this->transients->set( 'googlesitekit_inline_tag_id_mismatch', $data['hasMismatchedTag'] );
 				};
+			case 'POST:clear-conversion-reporting-new-events':
+				return function () {
+					return $this->transients->delete( Conversion_Reporting_Events_Sync::DETECTED_EVENTS_TRANSIENT );
+				};
+			case 'POST:clear-conversion-reporting-lost-events':
+				return function () {
+					return $this->transients->delete( Conversion_Reporting_Events_Sync::LOST_EVENTS_TRANSIENT );
+				};
 		}
 
 		return parent::create_data_request( $data );
@@ -1674,25 +1701,6 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 		switch ( "{$data->method}:{$data->datapoint}" ) {
 			case 'GET:accounts':
 				return array_map( array( self::class, 'filter_account_with_ids' ), $response->getAccounts() );
-			case 'GET:account-summaries':
-				$account_summaries = array_map(
-					function ( $account ) {
-						$obj                    = self::filter_account_with_ids( $account, 'account' );
-						$obj->propertySummaries = array_map( // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
-							function ( $property ) {
-								return self::filter_property_with_ids( $property, 'property' );
-							},
-							$account->getPropertySummaries()
-						);
-
-						return $obj;
-					},
-					$response->getAccountSummaries()
-				);
-				return Sort::case_insensitive_list_sort(
-					$account_summaries,
-					'displayName'
-				);
 			case 'GET:ads-links':
 				return (array) $response->getGoogleAdsLinks();
 			case 'GET:adsense-links':
@@ -2089,12 +2097,12 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 		$obj = $property->toSimpleObject();
 
 		$matches = array();
-		if ( preg_match( '#properties/([^/]+)#', $property[ $id_key ], $matches ) ) {
+		if ( preg_match( '#properties/([^/]+)#', $property[ $id_key ] ?? '', $matches ) ) {
 			$obj->_id = $matches[1];
 		}
 
 		$matches = array();
-		if ( preg_match( '#accounts/([^/]+)#', $property['parent'], $matches ) ) {
+		if ( preg_match( '#accounts/([^/]+)#', $property['parent'] ?? '', $matches ) ) {
 			$obj->_accountID = $matches[1]; // phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase
 		}
 
@@ -2419,11 +2427,36 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 
 		usort(
 			$available_audiences,
-			function ( $a, $b ) {
-				$a_weight = self::AUDIENCE_TYPE_SORT_ORDER[ $a['audienceType'] ];
-				$b_weight = self::AUDIENCE_TYPE_SORT_ORDER[ $b['audienceType'] ];
+			function ( $audience_a, $audience_b ) use ( $available_audiences ) {
+				$audience_index_a = array_search( $audience_a, $available_audiences, true );
+				$audience_index_b = array_search( $audience_b, $available_audiences, true );
 
-				return $a_weight - $b_weight;
+				if ( false === $audience_index_a || false === $audience_index_b ) {
+					return 0;
+				}
+
+				$audience_a = $available_audiences[ $audience_index_a ];
+				$audience_b = $available_audiences[ $audience_index_b ];
+
+				$audience_type_a = $audience_a['audienceType'];
+				$audience_type_b = $audience_b['audienceType'];
+
+				if ( $audience_type_a === $audience_type_b ) {
+					if ( 'SITE_KIT_AUDIENCE' === $audience_type_b ) {
+						return 'new-visitors' === $audience_a['audienceSlug'] ? -1 : 1;
+					}
+
+					return $audience_index_a - $audience_index_b;
+				}
+
+				$weight_a = self::AUDIENCE_TYPE_SORT_ORDER[ $audience_type_a ];
+				$weight_b = self::AUDIENCE_TYPE_SORT_ORDER[ $audience_type_b ];
+
+				if ( $weight_a === $weight_b ) {
+					return $audience_index_a - $audience_index_b;
+				}
+
+				return $weight_a - $weight_b;
 			}
 		);
 
@@ -2555,5 +2588,26 @@ final class Analytics_4 extends Module implements Module_With_Scopes, Module_Wit
 		}
 
 		return wp_list_pluck( $site_kit_audiences, 'displayName' );
+	}
+
+	/**
+	 * Populates conversion reporting event data to pass to JS via _googlesitekitModulesData.
+	 *
+	 * @since 1.139.0
+	 *
+	 * @param array $modules_data Inline modules data.
+	 * @return array Inline modules data.
+	 */
+	public function inline_conversion_reporting_events_detection( $modules_data ) {
+		if ( ! $this->is_connected() ) {
+			return $modules_data;
+		}
+
+		$detected_events                           = $this->transients->get( Conversion_Reporting_Events_Sync::DETECTED_EVENTS_TRANSIENT );
+		$lost_events                               = $this->transients->get( Conversion_Reporting_Events_Sync::LOST_EVENTS_TRANSIENT );
+		$modules_data['analytics-4']['newEvents']  = is_array( $detected_events ) ? $detected_events : array();
+		$modules_data['analytics-4']['lostEvents'] = is_array( $lost_events ) ? $lost_events : array();
+
+		return $modules_data;
 	}
 }

@@ -157,7 +157,7 @@ class RequestHelpers {
 			array_filter(
 				$metrics,
 				function ( $metric ) use ( $valid_name_expression ) {
-					return ! preg_match( "#$valid_name_expression#", $metric->getName() );
+					return ! preg_match( "#$valid_name_expression#", $metric->getName() ?? '' );
 				}
 			)
 		);
@@ -203,11 +203,14 @@ class RequestHelpers {
 			'googlesitekit_shareable_analytics_4_metrics',
 			array(
 				'activeUsers',
+				'addToCarts',
 				'averageSessionDuration',
 				'bounceRate',
 				'conversions',
+				'ecommercePurchases',
 				'engagedSessions',
 				'engagementRate',
+				'eventCount',
 				'screenPageViews',
 				'screenPageViewsPerSession',
 				'sessions',
@@ -268,11 +271,13 @@ class RequestHelpers {
 		$valid_dimensions = apply_filters(
 			'googlesitekit_shareable_analytics_4_dimensions',
 			array(
+				'audienceResourceName',
 				'adSourceName',
 				'city',
 				'country',
 				'date',
 				'deviceCategory',
+				'eventName',
 				'newVsReturning',
 				'pagePath',
 				'pageTitle',

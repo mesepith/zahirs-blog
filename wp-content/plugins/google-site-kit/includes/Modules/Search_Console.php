@@ -165,7 +165,7 @@ final class Search_Console extends Module implements Module_With_Scopes, Module_
 	public function get_debug_fields() {
 		return array(
 			'search_console_property' => array(
-				'label' => __( 'Search Console property', 'google-site-kit' ),
+				'label' => __( 'Search Console: Property', 'google-site-kit' ),
 				'value' => $this->get_property_id(),
 			),
 		);
@@ -303,7 +303,7 @@ final class Search_Console extends Module implements Module_With_Scopes, Module_
 				/* @var Google_Service_SearchConsole_SitesListResponse $response Response object. */
 				$entries     = Sort::case_insensitive_list_sort(
 					$this->map_sites( (array) $response->getSiteEntry() ),
-					'name'
+					'siteURL' // Must match the mapped value.
 				);
 				$strict      = filter_var( $data['strict'], FILTER_VALIDATE_BOOLEAN );
 				$current_url = $this->context->get_reference_site_url();

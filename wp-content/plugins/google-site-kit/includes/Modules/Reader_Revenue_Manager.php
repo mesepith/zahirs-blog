@@ -28,16 +28,19 @@ use Google\Site_Kit\Core\Modules\Module_With_Settings_Trait;
 use Google\Site_Kit\Core\Modules\Module_With_Tag;
 use Google\Site_Kit\Core\Modules\Module_With_Tag_Trait;
 use Google\Site_Kit\Core\REST_API\Data_Request;
+use Google\Site_Kit\Core\REST_API\Exception\Missing_Required_Param_Exception;
 use Google\Site_Kit\Core\Site_Health\Debug_Data;
 use Google\Site_Kit\Core\Tags\Guards\Tag_Environment_Type_Guard;
 use Google\Site_Kit\Core\Tags\Guards\Tag_Verify_Guard;
 use Google\Site_Kit\Core\Util\URL;
 use Google\Site_Kit\Modules\Reader_Revenue_Manager\Settings;
+use Google\Site_Kit\Modules\Reader_Revenue_Manager\Synchronize_OnboardingState;
 use Google\Site_Kit\Modules\Reader_Revenue_Manager\Tag_Guard;
 use Google\Site_Kit\Modules\Reader_Revenue_Manager\Tag_Matchers;
 use Google\Site_Kit\Modules\Reader_Revenue_Manager\Web_Tag;
 use Google\Site_Kit\Modules\Search_Console\Settings as Search_Console_Settings;
 use Google\Site_Kit_Dependencies\Google\Service\SubscribewithGoogle as Google_Service_SubscribewithGoogle;
+use WP_Error;
 
 /**
  * Class representing the Reader Revenue Manager module.
@@ -65,6 +68,15 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 	 */
 	public function register() {
 		$this->register_scopes_hook();
+
+		$synchronize_onboarding_state = new Synchronize_OnboardingState(
+			$this,
+			$this->user_options
+		);
+		$synchronize_onboarding_state->register();
+
+		add_action( 'load-toplevel_page_googlesitekit-dashboard', array( $synchronize_onboarding_state, 'maybe_schedule_synchronize_onboarding_state' ) );
+		add_action( 'load-toplevel_page_googlesitekit-settings', array( $synchronize_onboarding_state, 'maybe_schedule_synchronize_onboarding_state' ) );
 
 		// Reader Revenue Manager tag placement logic.
 		add_action( 'template_redirect', array( $this, 'register_tag' ) );
@@ -142,6 +154,7 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 	 * Checks if the current user has access to the current configured service entity.
 	 *
 	 * @since 1.131.0
+	 * @since 1.134.0 Checks if the user's publications includes the saved publication.
 	 *
 	 * @return boolean|WP_Error
 	 */
@@ -154,11 +167,7 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 		$subscribewithgoogle = $this->get_service( 'subscribewithgoogle' );
 
 		try {
-			$subscribewithgoogle->publications->listPublications(
-				array(
-					'pageSize' => 1,
-				)
-			);
+			$response = $subscribewithgoogle->publications->listPublications();
 		} catch ( Exception $e ) {
 			if ( $e->getCode() === 403 ) {
 				return false;
@@ -166,7 +175,22 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 			return $this->exception_to_error( $e );
 		}
 
-		return true;
+		$publications   = array_values( $response->getPublications() );
+		$settings       = $this->get_settings()->get();
+		$publication_id = $settings['publicationID'];
+
+		// Check if the $publications array contains a publication with the saved
+		// publication ID.
+		foreach ( $publications as $publication ) {
+			if (
+				isset( $publication['publicationId'] ) &&
+				$publication_id === $publication['publicationId']
+			) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	/**
@@ -178,7 +202,12 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 	 */
 	protected function get_datapoint_definitions() {
 		return array(
-			'GET:publications' => array( 'service' => 'subscribewithgoogle' ),
+			'GET:publications'                       => array(
+				'service' => 'subscribewithgoogle',
+			),
+			'POST:sync-publication-onboarding-state' => array(
+				'service' => 'subscribewithgoogle',
+			),
 		);
 	}
 
@@ -190,7 +219,7 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 	 * @param Data_Request $data Data request object.
 	 * @return RequestInterface|callable|WP_Error Request object or callable on success, or WP_Error on failure.
 	 *
-	 * @throws Invalid_Datapoint_Exception Thrown if the datapoint does not exist.
+	 * @throws Invalid_Datapoint_Exception|Missing_Required_Param_Exception Thrown if the datapoint does not exist or parameters are missing.
 	 */
 	protected function create_data_request( Data_Request $data ) {
 		switch ( "{$data->method}:{$data->datapoint}" ) {
@@ -202,6 +231,70 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 				 */
 				$subscribewithgoogle = $this->get_service( 'subscribewithgoogle' );
 				return $subscribewithgoogle->publications->listPublications( array( 'filter' => $this->get_publication_filter() ) );
+
+			case 'POST:sync-publication-onboarding-state':
+				if ( empty( $data['publicationID'] ) ) {
+					throw new Missing_Required_Param_Exception( 'publicationID' );
+				}
+
+				if ( empty( $data['publicationOnboardingState'] ) ) {
+					throw new Missing_Required_Param_Exception( 'publicationOnboardingState' );
+				}
+
+				$publications = $this->get_data( 'publications' );
+
+				if ( is_wp_error( $publications ) ) {
+					return $publications;
+				}
+
+				if ( empty( $publications ) ) {
+					return new WP_Error(
+						'publication_not_found',
+						__( 'Publication not found.', 'google-site-kit' ),
+						array( 'status' => 404 )
+					);
+				}
+
+				$publication = array_filter(
+					$publications,
+					function ( $publication ) use ( $data ) {
+						return $publication->getPublicationId() === $data['publicationID'];
+					}
+				);
+
+				if ( empty( $publication ) ) {
+					return new WP_Error(
+						'publication_not_found',
+						__( 'Publication not found.', 'google-site-kit' ),
+						array( 'status' => 404 )
+					);
+				}
+
+				$publication          = reset( $publication );
+				$new_onboarding_state = $publication->getOnboardingState();
+
+				if ( $new_onboarding_state === $data['publicationOnboardingState'] ) {
+					return function () {
+						return (object) array();
+					};
+				}
+
+				$settings = $this->get_settings();
+
+				if ( $data['publicationID'] === $settings->get()['publicationID'] ) {
+					$settings->merge(
+						array(
+							'publicationOnboardingState' => $new_onboarding_state,
+						)
+					);
+				}
+
+				return function () use ( $data, $new_onboarding_state ) {
+					return (object) array(
+						'publicationID'              => $data['publicationID'],
+						'publicationOnboardingState' => $new_onboarding_state,
+					);
+				};
 		}
 
 		return parent::create_data_request( $data );
@@ -240,7 +333,7 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 			'name'        => _x( 'Reader Revenue Manager', 'Service name', 'google-site-kit' ),
 			'description' => __( 'Reader Revenue Manager helps publishers grow, retain, and engage their audiences, creating new revenue opportunities', 'google-site-kit' ),
 			'order'       => 5,
-			'homepage'    => __( 'https://readerrevenue.withgoogle.com/', 'google-site-kit' ),
+			'homepage'    => 'https://publishercenter.google.com',
 		);
 	}
 
@@ -254,30 +347,26 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 	private function get_publication_filter() {
 		$sc_settings    = $this->options->get( Search_Console_Settings::OPTION );
 		$sc_property_id = $sc_settings['propertyID'];
-		$raw_url        = str_replace(
-			array( 'sc-domain:', 'https://', 'http://', 'www.' ),
-			'',
-			$sc_property_id
-		);
 
 		if ( 0 === strpos( $sc_property_id, 'sc-domain:' ) ) { // Domain property.
+			$host   = str_replace( 'sc-domain:', '', $sc_property_id );
 			$filter = join(
 				' OR ',
 				array_map(
-					function ( $host ) {
-						return sprintf( 'domain = "%s"', $host );
+					function ( $domain ) {
+						return sprintf( 'domain = "%s"', $domain );
 					},
-					URL::permute_site_hosts( $raw_url )
+					URL::permute_site_hosts( $host )
 				)
 			);
 		} else { // URL property.
 			$filter = join(
 				' OR ',
 				array_map(
-					function ( $host ) {
-						return sprintf( 'site_url = "%s"', $host );
+					function ( $url ) {
+						return sprintf( 'site_url = "%s"', $url );
 					},
-					URL::permute_site_url( $raw_url )
+					URL::permute_site_url( $sc_property_id )
 				)
 			);
 		}
@@ -363,19 +452,14 @@ final class Reader_Revenue_Manager extends Module implements Module_With_Scopes,
 
 		return array(
 			'reader_revenue_manager_publication_id' => array(
-				'label' => __( 'Reader Revenue Manager publication ID', 'google-site-kit' ),
+				'label' => __( 'Reader Revenue Manager: Publication ID', 'google-site-kit' ),
 				'value' => $settings['publicationID'],
 				'debug' => Debug_Data::redact_debug_value( $settings['publicationID'] ),
 			),
 			'reader_revenue_manager_publication_onboarding_state' => array(
-				'label' => __( 'Reader Revenue Manager publication onboarding state', 'google-site-kit' ),
+				'label' => __( 'Reader Revenue Manager: Publication onboarding state', 'google-site-kit' ),
 				'value' => $settings['publicationOnboardingState'],
 				'debug' => $settings['publicationOnboardingState'],
-			),
-			'reader_revenue_manager_publication_onboarding_state_last_synced_at' => array(
-				'label' => __( 'Reader Revenue Manager publication onboarding state last synced at', 'google-site-kit' ),
-				'value' => $settings['publicationOnboardingStateLastSyncedAtMs'] ? gmdate( 'Y-m-d H:i:s', $settings['publicationOnboardingStateLastSyncedAtMs'] / 1000 ) : __( 'Never synced', 'google-site-kit' ),
-				'debug' => $settings['publicationOnboardingStateLastSyncedAtMs'],
 			),
 		);
 	}

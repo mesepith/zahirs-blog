@@ -381,9 +381,11 @@ final class Authentication {
 
 		add_action(
 			'heartbeat_tick',
-			function () {
-				$this->maybe_refresh_token_for_screen( $this->context->input()->filter( INPUT_POST, 'screen_id' ) );
-			}
+			function ( $response, $screen_id ) {
+				$this->maybe_refresh_token_for_screen( $screen_id );
+			},
+			10,
+			2
 		);
 
 		// Regularly synchronize Google profile data.
@@ -763,11 +765,16 @@ final class Authentication {
 			$redirect_url = esc_url_raw( wp_unslash( $redirect_url ) );
 		}
 
+		$error_redirect_url = $input->filter( INPUT_GET, 'errorRedirect', FILTER_DEFAULT );
+		if ( $error_redirect_url ) {
+			$error_redirect_url = esc_url_raw( wp_unslash( $error_redirect_url ) );
+		}
+
 		// User is trying to authenticate, but access token hasn't been set.
 		$additional_scopes = $input->filter( INPUT_GET, 'additional_scopes', FILTER_DEFAULT, FILTER_REQUIRE_ARRAY );
 
 		wp_safe_redirect(
-			$this->get_oauth_client()->get_authentication_url( $redirect_url, $additional_scopes )
+			$this->get_oauth_client()->get_authentication_url( $redirect_url, $error_redirect_url, $additional_scopes )
 		);
 		exit();
 	}
@@ -811,7 +818,7 @@ final class Authentication {
 	 */
 	private function get_update_core_url() {
 		if ( ! current_user_can( 'update_core' ) ) {
-			return null;
+			return '';
 		}
 
 		if ( is_multisite() ) {
