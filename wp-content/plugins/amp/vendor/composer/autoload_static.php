@@ -4,7 +4,7 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInitb895608e131622df90c44f80ccf9a2cf
+class ComposerStaticInit2c79d998e9d0686a4caa916f5e909039
 {
     public static $files = array (
         '356506e5d3d2f49e680971cd925046fa' => __DIR__ . '/..' . '/ampproject/amp-toolbox/include/compatibility-fixes.php',
@@ -58,7 +58,6 @@ class ComposerStaticInitb895608e131622df90c44f80ccf9a2cf
         'AMP_Base_Sanitizer' => __DIR__ . '/../..' . '/includes/sanitizers/class-amp-base-sanitizer.php',
         'AMP_Bento_Sanitizer' => __DIR__ . '/../..' . '/includes/sanitizers/class-amp-bento-sanitizer.php',
         'AMP_Block_Sanitizer' => __DIR__ . '/../..' . '/includes/sanitizers/class-amp-block-sanitizer.php',
-        'AMP_Block_Uniqid_Sanitizer' => __DIR__ . '/../..' . '/includes/sanitizers/class-amp-block-uniqid-sanitizer.php',
         'AMP_Comment_Walker' => __DIR__ . '/../..' . '/includes/class-amp-comment-walker.php',
         'AMP_Comments_Sanitizer' => __DIR__ . '/../..' . '/includes/sanitizers/class-amp-comments-sanitizer.php',
         'AMP_Content' => __DIR__ . '/../..' . '/includes/templates/class-amp-content.php',
@@ -150,7 +149,6 @@ class ComposerStaticInitb895608e131622df90c44f80ccf9a2cf
         'AmpProject\\AmpWP\\Admin\\ReenableCssTransientCachingAjaxAction' => __DIR__ . '/../..' . '/src/Admin/ReenableCssTransientCachingAjaxAction.php',
         'AmpProject\\AmpWP\\Admin\\SiteHealth' => __DIR__ . '/../..' . '/src/Admin/SiteHealth.php',
         'AmpProject\\AmpWP\\Admin\\SupportLink' => __DIR__ . '/../..' . '/src/Admin/SupportLink.php',
-        'AmpProject\\AmpWP\\Admin\\SupportScreen' => __DIR__ . '/../..' . '/src/Admin/SupportScreen.php',
         'AmpProject\\AmpWP\\Admin\\UserRESTEndpointExtension' => __DIR__ . '/../..' . '/src/Admin/UserRESTEndpointExtension.php',
         'AmpProject\\AmpWP\\Admin\\ValidationCounts' => __DIR__ . '/../..' . '/src/Admin/ValidationCounts.php',
         'AmpProject\\AmpWP\\AmpSlugCustomizationWatcher' => __DIR__ . '/../..' . '/src/AmpSlugCustomizationWatcher.php',
@@ -163,7 +161,6 @@ class ComposerStaticInitb895608e131622df90c44f80ccf9a2cf
         'AmpProject\\AmpWP\\BackgroundTask\\SingleScheduledBackgroundTask' => __DIR__ . '/../..' . '/src/BackgroundTask/SingleScheduledBackgroundTask.php',
         'AmpProject\\AmpWP\\BackgroundTask\\ValidatedUrlStylesheetDataGarbageCollection' => __DIR__ . '/../..' . '/src/BackgroundTask/ValidatedUrlStylesheetDataGarbageCollection.php',
         'AmpProject\\AmpWP\\BackgroundTask\\ValidationDataGarbageCollection' => __DIR__ . '/../..' . '/src/BackgroundTask/ValidationDataGarbageCollection.php',
-        'AmpProject\\AmpWP\\BlockUniqidTransformer' => __DIR__ . '/../..' . '/src/BlockUniqidTransformer.php',
         'AmpProject\\AmpWP\\Cli\\AmpCommandNamespace' => __DIR__ . '/../..' . '/src/Cli/AmpCommandNamespace.php',
         'AmpProject\\AmpWP\\Cli\\CommandNamespaceRegistration' => __DIR__ . '/../..' . '/src/Cli/CommandNamespaceRegistration.php',
         'AmpProject\\AmpWP\\Cli\\OptimizerCommand' => __DIR__ . '/../..' . '/src/Cli/OptimizerCommand.php',
@@ -243,9 +240,6 @@ class ComposerStaticInitb895608e131622df90c44f80ccf9a2cf
         'AmpProject\\AmpWP\\RemoteRequest\\WpHttpRemoteGetRequest' => __DIR__ . '/../..' . '/src/RemoteRequest/WpHttpRemoteGetRequest.php',
         'AmpProject\\AmpWP\\Sandboxing' => __DIR__ . '/../..' . '/src/Sandboxing.php',
         'AmpProject\\AmpWP\\Services' => __DIR__ . '/../..' . '/src/Services.php',
-        'AmpProject\\AmpWP\\Support\\SupportCliCommand' => __DIR__ . '/../..' . '/src/Support/SupportCliCommand.php',
-        'AmpProject\\AmpWP\\Support\\SupportData' => __DIR__ . '/../..' . '/src/Support/SupportData.php',
-        'AmpProject\\AmpWP\\Support\\SupportRESTController' => __DIR__ . '/../..' . '/src/Support/SupportRESTController.php',
         'AmpProject\\AmpWP\\ValidationExemption' => __DIR__ . '/../..' . '/src/ValidationExemption.php',
         'AmpProject\\AmpWP\\Validation\\ScannableURLProvider' => __DIR__ . '/../..' . '/src/Validation/ScannableURLProvider.php',
         'AmpProject\\AmpWP\\Validation\\ScannableURLsRestController' => __DIR__ . '/../..' . '/src/Validation/ScannableURLsRestController.php',
@@ -1431,9 +1425,9 @@ class ComposerStaticInitb895608e131622df90c44f80ccf9a2cf
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInitb895608e131622df90c44f80ccf9a2cf::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInitb895608e131622df90c44f80ccf9a2cf::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInitb895608e131622df90c44f80ccf9a2cf::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInit2c79d998e9d0686a4caa916f5e909039::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInit2c79d998e9d0686a4caa916f5e909039::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInit2c79d998e9d0686a4caa916f5e909039::$classMap;
 
         }, null, ClassLoader::class);
     }
