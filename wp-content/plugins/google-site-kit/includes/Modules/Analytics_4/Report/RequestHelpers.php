@@ -15,20 +15,20 @@ use Google\Site_Kit\Core\REST_API\Data_Request;
 use Google\Site_Kit\Core\Validation\Exception\Invalid_Report_Dimensions_Exception;
 use Google\Site_Kit\Core\Validation\Exception\Invalid_Report_Metrics_Exception;
 use Google\Site_Kit\Core\Util\URL;
-use Google\Site_Kit\Modules\Analytics_4\Report\Dimension_Filter\In_List_Filter;
-use Google\Site_Kit\Modules\Analytics_4\Report\Dimension_Filter\String_Filter;
+use Google\Site_Kit\Modules\Analytics_4\Report\Filters\Empty_Filter;
+use Google\Site_Kit\Modules\Analytics_4\Report\Filters\In_List_Filter;
+use Google\Site_Kit\Modules\Analytics_4\Report\Filters\String_Filter;
 use Google\Site_Kit\Modules\Analytics_4\Report\Filters\Numeric_Filter;
 use Google\Site_Kit\Modules\Analytics_4\Report\Filters\Between_Filter;
 use Google\Site_Kit_Dependencies\Google\Service\AnalyticsData\Dimension as Google_Service_AnalyticsData_Dimension;
 use Google\Site_Kit_Dependencies\Google\Service\AnalyticsData\FilterExpression as Google_Service_AnalyticsData_FilterExpression;
 use Google\Site_Kit_Dependencies\Google\Service\AnalyticsData\FilterExpressionList as Google_Service_AnalyticsData_FilterExpressionList;
 use Google\Site_Kit_Dependencies\Google\Service\AnalyticsData\RunReportRequest as Google_Service_AnalyticsData_RunReportRequest;
-use Google\Site_Kit_Dependencies\Google\Service\AnalyticsData\RunPivotReportRequest as Google_Service_AnalyticsData_RunPivotReportRequest;
 use Google\Site_Kit_Dependencies\Google\Service\AnalyticsData\Metric as Google_Service_AnalyticsData_Metric;
 use WP_Error;
 
 /**
- * A class containing shared methods for creating AnalyticsData Report and PivotReport requests.
+ * A class containing shared methods for creating AnalyticsData Report requests.
  *
  * @since 1.130.0
  * @access private
@@ -54,17 +54,19 @@ class RequestHelpers {
 	}
 
 	/**
-	 * Builds a Analytics Data Report or Pivot Report request's shared properties.
+	 * Builds a Analytics Data Report request's shared properties.
 	 *
 	 * @since 1.130.0
 	 *
-	 * @param Data_Request                                                                                     $data Data request object.
-	 * @param Google_Service_AnalyticsData_RunPivotReportRequest|Google_Service_AnalyticsData_RunReportRequest $request The report request object.
-	 * @param bool                                                                                             $is_shared_request Determines whether the current request is shared or not.
-	 * @return Google_Service_AnalyticsData_RunPivotReportRequest|Google_Service_AnalyticsData_RunReportRequest The report request object.
+	 * @param Data_Request                                  $data Data request object.
+	 * @param Google_Service_AnalyticsData_RunReportRequest $request The report request object.
+	 * @param bool                                          $is_shared_request Determines whether the current request is shared or not.
+	 * @return Google_Service_AnalyticsData_RunReportRequest The report request object.
 	 */
 	public function shared_create_request( Data_Request $data, $request, $is_shared_request = false ) {
-		$request->setKeepEmptyRows( true );
+		$keep_empty_rows = is_array( $data->data ) && array_key_exists( 'keepEmptyRows', $data->data ) ? filter_var( $data->data['keepEmptyRows'], FILTER_VALIDATE_BOOLEAN ) : true;
+
+		$request->setKeepEmptyRows( $keep_empty_rows );
 
 		$dimension_filters = $this->parse_dimension_filters( $data );
 		$request->setDimensionFilter( $dimension_filters );
@@ -142,7 +144,7 @@ class RequestHelpers {
 	 * Metrics must have valid names, matching the regular expression ^[a-zA-Z0-9_]+$ in keeping with the GA4 API.
 	 *
 	 * @since 1.99.0
-	 * @since 1.130.0 Moved into RequestHelpers for shared use between Report and PivotReport.
+	 * @since 1.130.0 Moved into RequestHelpers for shared use in reports.
 	 *
 	 * @param Google_Service_AnalyticsData_Metric[] $metrics The metrics to validate.
 	 * @throws Invalid_Report_Metrics_Exception Thrown if the metrics are invalid.
@@ -193,7 +195,7 @@ class RequestHelpers {
 	 * Validates the report metrics for a shared request.
 	 *
 	 * @since 1.99.0
-	 * @since 1.130.0 Moved into RequestHelpers for shared use between Report and PivotReport.
+	 * @since 1.130.0 Moved into RequestHelpers for shared use in reports.
 	 *
 	 * @param Google_Service_AnalyticsData_Metric[] $metrics The metrics to validate.
 	 * @throws Invalid_Report_Metrics_Exception Thrown if the metrics are invalid.
@@ -206,7 +208,7 @@ class RequestHelpers {
 				'addToCarts',
 				'averageSessionDuration',
 				'bounceRate',
-				'conversions',
+				'keyEvents',
 				'ecommercePurchases',
 				'engagedSessions',
 				'engagementRate',
@@ -214,7 +216,7 @@ class RequestHelpers {
 				'screenPageViews',
 				'screenPageViewsPerSession',
 				'sessions',
-				'sessionConversionRate',
+				'sessionKeyEventRate',
 				'sessionsPerUser',
 				'totalAdRevenue',
 				'totalUsers',
@@ -262,7 +264,7 @@ class RequestHelpers {
 	 * Validates the report dimensions for a shared request.
 	 *
 	 * @since 1.99.0
-	 * @since 1.130.0 Moved into RequestHelpers for shared use between Report and PivotReport.
+	 * @since 1.130.0 Moved into RequestHelpers for shared use in reports.
 	 *
 	 * @param Google_Service_AnalyticsData_Dimension[] $dimensions The dimensions to validate.
 	 * @throws Invalid_Report_Dimensions_Exception Thrown if the dimensions are invalid.
@@ -329,7 +331,7 @@ class RequestHelpers {
 	 * Parses dimension filters and returns a filter expression that should be added to the report request.
 	 *
 	 * @since 1.106.0
-	 * @since 1.130.0 Moved into RequestHelpers for shared use between Report and PivotReport.
+	 * @since 1.130.0 Moved into RequestHelpers for shared use in reports.
 	 *
 	 * @param Data_Request $data Data request object.
 	 * @return Google_Service_AnalyticsData_FilterExpression The filter expression to use with the report request.
@@ -365,7 +367,7 @@ class RequestHelpers {
 	 * Parses and returns a single dimension filter.
 	 *
 	 * @since 1.106.0
-	 * @since 1.130.0 Moved into RequestHelpers for shared use between Report and PivotReport.
+	 * @since 1.130.0 Moved into RequestHelpers for shared use in reports.
 	 *
 	 * @param string $dimension_name The dimension name.
 	 * @param mixed  $dimension_value The dimension fileter settings.
@@ -392,6 +394,8 @@ class RequestHelpers {
 			if ( isset( $dimension_value['value'] ) ) {
 				$dimension_value = $dimension_value['value'];
 			}
+		} elseif ( 'emptyFilter' === $filter_type ) {
+			$filter_class = Empty_Filter::class;
 		} else {
 			return null;
 		}
@@ -412,7 +416,7 @@ class RequestHelpers {
 	 * Parses metric filters and returns a filter expression that should be added to the report request.
 	 *
 	 * @since 1.111.0
-	 * @since 1.130.0 Moved into RequestHelpers for shared use between Report and PivotReport.
+	 * @since 1.130.0 Moved into RequestHelpers for shared use in reports.
 	 *
 	 * @param Data_Request $data Data request object.
 	 * @return Google_Service_AnalyticsData_FilterExpression The filter expression to use with the report request.
@@ -443,7 +447,7 @@ class RequestHelpers {
 	 * Parses and returns a single metric filter.
 	 *
 	 * @since 1.111.0
-	 * @since 1.130.0 Moved into RequestHelpers for shared use between Report and PivotReport.
+	 * @since 1.130.0 Moved into RequestHelpers for shared use in reports.
 	 *
 	 * @param string $metric_name The metric name.
 	 * @param mixed  $metric_value The metric filter settings.
@@ -497,7 +501,7 @@ class RequestHelpers {
 	 * Returns correct filter expression instance based on the metric filter instance.
 	 *
 	 * @since 1.111.0
-	 * @since 1.130.0 Moved into RequestHelpers for shared use between Report and PivotReport.
+	 * @since 1.130.0 Moved into RequestHelpers for shared use in reports.
 	 *
 	 * @param Numeric_Filter|Between_Filter $filter The metric filter instance.
 	 * @param string                        $metric_name The metric name.

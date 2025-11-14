@@ -15,7 +15,6 @@ use Google\Site_Kit\Core\Modules\Module_Sharing_Settings;
 use Google\Site_Kit\Core\Permissions\Permissions;
 use Google\Site_Kit\Core\Storage\Options;
 use Google\Site_Kit\Core\Util\Feature_Flags;
-use Google\Site_Kit\Core\Util\URL;
 use WP_Dependencies;
 use WP_Post_Type;
 
@@ -134,6 +133,24 @@ final class Assets {
 			}
 		);
 
+		if ( is_admin() ) {
+			add_action(
+				'enqueue_block_assets',
+				function () {
+					$assets = $this->get_assets();
+
+					array_walk(
+						$assets,
+						function ( $asset ) {
+							if ( $asset->has_context( Asset::CONTEXT_ADMIN_BLOCK_EDITOR ) ) {
+								$this->enqueue_asset( $asset->get_handle() );
+							}
+						}
+					);
+				}
+			);
+		}
+
 		add_action(
 			'enqueue_block_editor_assets',
 			function () {
@@ -217,10 +234,6 @@ final class Assets {
 			'Google+Sans+Text:400,500',
 			'Google+Sans+Display:400,500,700',
 		);
-
-		if ( Feature_Flags::enabled( 'gm3Components' ) ) {
-			$font_families[] = 'Roboto:300,400,500';
-		}
 
 		$filtered_font_families = apply_filters( 'googlesitekit_font_families', $font_families );
 
@@ -469,11 +482,7 @@ final class Assets {
 			new Script(
 				'googlesitekit-components',
 				array(
-					'src' => $base_url . (
-						Feature_Flags::enabled( 'gm3Components' )
-							? 'js/googlesitekit-components-gm3.js'
-							: 'js/googlesitekit-components-gm2.js'
-						),
+					'src' => $base_url . 'js/googlesitekit-components.js',
 				)
 			),
 			new Script(
@@ -512,6 +521,7 @@ final class Assets {
 						'googlesitekit-data',
 						'googlesitekit-api',
 						'googlesitekit-user-data',
+						'googlesitekit-datastore-site',
 					),
 				)
 			),
@@ -598,6 +608,13 @@ final class Assets {
 					'dependencies' => $this->get_asset_dependencies( 'dashboard' ),
 				)
 			),
+			new Script(
+				'googlesitekit-key-metrics-setup',
+				array(
+					'src'          => $base_url . 'js/googlesitekit-key-metrics-setup.js',
+					'dependencies' => $this->get_asset_dependencies( 'dashboard' ),
+				)
+			),
 			// End JSR Assets.
 			new Script(
 				'googlesitekit-splash',
@@ -628,10 +645,32 @@ final class Assets {
 				)
 			),
 			new Script(
+				'googlesitekit-sign-in-with-google-comments',
+				array(
+					'src'           => $base_url . 'js/googlesitekit-sign-in-with-google-comments.js',
+					'dependencies'  => array(
+						'googlesitekit-tracking-data',
+						'googlesitekit-data',
+					),
+					'load_contexts' => array( Asset::CONTEXT_ADMIN_POST_EDITOR ),
+				)
+			),
+			new Script(
 				'googlesitekit-ad-blocking-recovery',
 				array(
 					'src'          => $base_url . 'js/googlesitekit-ad-blocking-recovery.js',
 					'dependencies' => $this->get_asset_dependencies( 'dashboard' ),
+				)
+			),
+			new Script(
+				'googlesitekit-block-tracking',
+				array(
+					'src'           => $base_url . 'js/googlesitekit-block-tracking.js',
+					'dependencies'  => array(
+						'googlesitekit-tracking-data',
+						'googlesitekit-data',
+					),
+					'load_contexts' => array( Asset::CONTEXT_ADMIN_POST_EDITOR ),
 				)
 			),
 			new Stylesheet(
@@ -677,6 +716,13 @@ final class Assets {
 					'src'          => $base_url . 'js/googlesitekit-adminbar.js',
 					'dependencies' => $dependencies,
 					'execution'    => 'defer',
+				)
+			),
+			new Script(
+				'googlesitekit-metric-selection',
+				array(
+					'src'          => $base_url . 'js/googlesitekit-metric-selection.js',
+					'dependencies' => $this->get_asset_dependencies( 'dashboard' ),
 				)
 			),
 			new Stylesheet(
@@ -739,7 +785,9 @@ final class Assets {
 			'ampMode'           => $this->context->get_amp_mode(),
 			'isNetworkMode'     => $this->context->is_network_mode(),
 			'timezone'          => get_option( 'timezone_string' ),
+			'startOfWeek'       => (int) get_option( 'start_of_week' ),
 			'siteName'          => wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ),
+			'siteLocale'        => $this->context->get_locale(),
 			'enabledFeatures'   => Feature_Flags::get_enabled_features(),
 			'webStoriesActive'  => defined( 'WEBSTORIES_VERSION' ),
 			'postTypes'         => $this->get_post_types(),
@@ -747,6 +795,7 @@ final class Assets {
 			'referenceDate'     => apply_filters( 'googlesitekit_reference_date', null ),
 			'productPostType'   => $this->get_product_post_type(),
 			'anyoneCanRegister' => (bool) get_option( 'users_can_register' ),
+			'isMultisite'       => is_multisite(),
 		);
 
 		/**
@@ -837,6 +886,7 @@ final class Assets {
 			'user' => array(
 				'id'      => $current_user->ID,
 				'email'   => $current_user->user_email,
+				'wpEmail' => $current_user->user_email, // Preserved for features that need the original WP email (email gets overridden during proxy auth).
 				'name'    => $current_user->display_name,
 				'picture' => get_avatar_url( $current_user->user_email ),
 			),
@@ -996,9 +1046,9 @@ final class Assets {
 			return $tag;
 		}
 
-		// Abort adding async/defer for scripts that have this script as a dependency.
+		// Abort adding async/defer for scripts that have this script as a dependency, unless it is an alias.
 		foreach ( wp_scripts()->registered as $script ) {
-			if ( in_array( $handle, $script->deps, true ) ) {
+			if ( $script->src && in_array( $handle, $script->deps, true ) ) {
 				return $tag;
 			}
 		}

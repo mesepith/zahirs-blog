@@ -8,6 +8,8 @@
  * @link      https://sitekit.withgoogle.com
  */
 
+// phpcs:disable Generic.Metrics.CyclomaticComplexity.MaxExceeded
+
 namespace Google\Site_Kit\Modules;
 
 use Google\Site_Kit\Core\Modules\Module;
@@ -60,6 +62,8 @@ use Google\Site_Kit\Core\Storage\Encrypted_Options;
 use Google\Site_Kit\Core\Storage\Options;
 use Google\Site_Kit\Core\Storage\User_Options;
 use Google\Site_Kit\Core\Tags\Guards\WP_Query_404_Guard;
+use Google\Site_Kit\Core\Tracking\Feature_Metrics_Trait;
+use Google\Site_Kit\Core\Tracking\Provides_Feature_Metrics;
 use Google\Site_Kit\Modules\AdSense\Ad_Blocking_Recovery_Tag_Guard;
 use Google\Site_Kit\Modules\AdSense\Ad_Blocking_Recovery_Web_Tag;
 use Google\Site_Kit\Modules\Analytics_4\Settings as Analytics_Settings;
@@ -74,13 +78,14 @@ use WP_REST_Response;
  * @access private
  * @ignore
  */
-final class AdSense extends Module implements Module_With_Scopes, Module_With_Settings, Module_With_Assets, Module_With_Debug_Fields, Module_With_Owner, Module_With_Service_Entity, Module_With_Deactivation, Module_With_Tag {
+final class AdSense extends Module implements Module_With_Scopes, Module_With_Settings, Module_With_Assets, Module_With_Debug_Fields, Module_With_Owner, Module_With_Service_Entity, Module_With_Deactivation, Module_With_Tag, Provides_Feature_Metrics {
 	use Method_Proxy_Trait;
 	use Module_With_Assets_Trait;
 	use Module_With_Owner_Trait;
 	use Module_With_Scopes_Trait;
 	use Module_With_Settings_Trait;
 	use Module_With_Tag_Trait;
+	use Feature_Metrics_Trait;
 
 	/**
 	 * Module slug name.
@@ -108,10 +113,10 @@ final class AdSense extends Module implements Module_With_Scopes, Module_With_Se
 	 */
 	public function __construct(
 		Context $context,
-		Options $options = null,
-		User_Options $user_options = null,
-		Authentication $authentication = null,
-		Assets $assets = null
+		?Options $options = null,
+		?User_Options $user_options = null,
+		?Authentication $authentication = null,
+		?Assets $assets = null
 	) {
 		parent::__construct( $context, $options, $user_options, $authentication, $assets );
 		$this->ad_blocking_recovery_tag = new Ad_Blocking_Recovery_Tag( new Encrypted_Options( $this->options ) );
@@ -124,6 +129,7 @@ final class AdSense extends Module implements Module_With_Scopes, Module_With_Se
 	 */
 	public function register() {
 		$this->register_scopes_hook();
+		$this->register_feature_metrics();
 
 		$this->ad_blocking_recovery_tag->register();
 
@@ -748,7 +754,6 @@ final class AdSense extends Module implements Module_With_Scopes, Module_With_Se
 			'slug'        => self::MODULE_SLUG,
 			'name'        => _x( 'AdSense', 'Service name', 'google-site-kit' ),
 			'description' => __( 'Earn money by placing ads on your website. It’s free and easy.', 'google-site-kit' ),
-			'order'       => 2,
 			'homepage'    => add_query_arg( $idenfifier_args, 'https://adsense.google.com/start' ),
 		);
 	}
@@ -803,6 +808,7 @@ final class AdSense extends Module implements Module_With_Scopes, Module_With_Se
 						'googlesitekit-api',
 						'googlesitekit-data',
 						'googlesitekit-modules',
+						'googlesitekit-notifications',
 						'googlesitekit-datastore-site',
 						'googlesitekit-datastore-user',
 						'googlesitekit-components',
@@ -1147,5 +1153,18 @@ final class AdSense extends Module implements Module_With_Scopes, Module_With_Se
 		if ( isset( $current_dismissals['ad-blocking-recovery-notification'] ) && $current_dismissals['ad-blocking-recovery-notification']['count'] < 3 ) {
 			$dismissed_prompts->remove( 'ad-blocking-recovery-notification' );
 		}
+	}
+
+	/**
+	 * Gets an array of internal feature metrics.
+	 *
+	 * @since 1.163.0
+	 *
+	 * @return array
+	 */
+	public function get_feature_metrics() {
+		return array(
+			'adsense_abr_status' => $this->is_connected() ? $this->get_settings()->get()['adBlockingRecoverySetupStatus'] : '',
+		);
 	}
 }

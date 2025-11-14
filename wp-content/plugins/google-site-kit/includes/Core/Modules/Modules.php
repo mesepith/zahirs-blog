@@ -16,7 +16,8 @@ use Google\Site_Kit\Core\Permissions\Permissions;
 use Google\Site_Kit\Core\Storage\Options;
 use Google\Site_Kit\Core\Storage\User_Options;
 use Google\Site_Kit\Core\Authentication\Authentication;
-use Google\Site_Kit\Core\Util\Feature_Flags;
+use Google\Site_Kit\Core\Tracking\Feature_Metrics_Trait;
+use Google\Site_Kit\Core\Tracking\Provides_Feature_Metrics;
 use Google\Site_Kit\Core\Util\Method_Proxy_Trait;
 use Google\Site_Kit\Modules\Ads;
 use Google\Site_Kit\Modules\AdSense;
@@ -36,9 +37,10 @@ use Exception;
  * @access private
  * @ignore
  */
-final class Modules {
+final class Modules implements Provides_Feature_Metrics {
 
 	use Method_Proxy_Trait;
+	use Feature_Metrics_Trait;
 
 	const OPTION_ACTIVE_MODULES = 'googlesitekit_active_modules';
 
@@ -145,13 +147,15 @@ final class Modules {
 	 * @var string[] Core module class names.
 	 */
 	private $core_modules = array(
-		Site_Verification::MODULE_SLUG  => Site_Verification::class,
-		Search_Console::MODULE_SLUG     => Search_Console::class,
-		Ads::MODULE_SLUG                => Ads::class,
-		Analytics_4::MODULE_SLUG        => Analytics_4::class,
-		Tag_Manager::MODULE_SLUG        => Tag_Manager::class,
-		AdSense::MODULE_SLUG            => AdSense::class,
-		PageSpeed_Insights::MODULE_SLUG => PageSpeed_Insights::class,
+		Site_Verification::MODULE_SLUG      => Site_Verification::class,
+		Search_Console::MODULE_SLUG         => Search_Console::class,
+		Ads::MODULE_SLUG                    => Ads::class,
+		Analytics_4::MODULE_SLUG            => Analytics_4::class,
+		Tag_Manager::MODULE_SLUG            => Tag_Manager::class,
+		AdSense::MODULE_SLUG                => AdSense::class,
+		PageSpeed_Insights::MODULE_SLUG     => PageSpeed_Insights::class,
+		Sign_In_With_Google::MODULE_SLUG    => Sign_In_With_Google::class,
+		Reader_Revenue_Manager::MODULE_SLUG => Reader_Revenue_Manager::class,
 	);
 
 	/**
@@ -167,10 +171,10 @@ final class Modules {
 	 */
 	public function __construct(
 		Context $context,
-		Options $options = null,
-		User_Options $user_options = null,
-		Authentication $authentication = null,
-		Assets $assets = null
+		?Options $options = null,
+		?User_Options $user_options = null,
+		?Authentication $authentication = null,
+		?Assets $assets = null
 	) {
 		$this->context          = $context;
 		$this->options          = $options ?: new Options( $this->context );
@@ -178,14 +182,6 @@ final class Modules {
 		$this->user_options     = $user_options ?: new User_Options( $this->context );
 		$this->authentication   = $authentication ?: new Authentication( $this->context, $this->options, $this->user_options );
 		$this->assets           = $assets ?: new Assets( $this->context );
-
-		if ( Feature_Flags::enabled( 'rrmModule' ) ) {
-			$this->core_modules[ Reader_Revenue_Manager::MODULE_SLUG ] = Reader_Revenue_Manager::class;
-		}
-
-		if ( Feature_Flags::enabled( 'signInWithGoogleModule' ) ) {
-			$this->core_modules[ Sign_In_With_Google::MODULE_SLUG ] = Sign_In_With_Google::class;
-		}
 
 		$this->rest_controller              = new REST_Modules_Controller( $this );
 		$this->dashboard_sharing_controller = new REST_Dashboard_Sharing_Controller( $this );
@@ -213,6 +209,8 @@ final class Modules {
 				return $body;
 			}
 		);
+
+		$this->register_feature_metrics();
 
 		$available_modules = $this->get_available_modules();
 		array_walk(
@@ -843,6 +841,29 @@ final class Modules {
 	}
 
 	/**
+	 * Lists connected modules that have a shared role.
+	 *
+	 * @since 1.163.0
+	 *
+	 * @return array Array of module slugs.
+	 */
+	public function list_shared_modules() {
+		$connected_modules = $this->get_connected_modules();
+		$sharing_settings  = $this->get_module_sharing_settings();
+
+		$shared_slugs = array();
+
+		foreach ( $connected_modules as $slug => $module ) {
+			$shared_roles = $sharing_settings->get_shared_roles( $slug );
+			if ( ! empty( $shared_roles ) ) {
+				$shared_slugs[] = $slug;
+			}
+		}
+
+		return $shared_slugs;
+	}
+
+	/**
 	 * Checks the given module is recoverable.
 	 *
 	 * A module is recoverable if:
@@ -936,6 +957,9 @@ final class Modules {
 	 * @return array Dashboard sharing settings option with default settings inserted for shared ownership modules.
 	 */
 	protected function populate_default_shared_ownership_module_settings( $sharing_settings ) {
+		if ( ! is_array( $sharing_settings ) ) {
+			$sharing_settings = array();
+		}
 		$shared_ownership_modules = array_keys( $this->get_shared_ownership_modules() );
 		foreach ( $shared_ownership_modules as $shared_ownership_module ) {
 			if ( ! isset( $sharing_settings[ $shared_ownership_module ] ) ) {
@@ -973,5 +997,18 @@ final class Modules {
 	 */
 	public function delete_dashboard_sharing_settings() {
 		return $this->options->delete( Module_Sharing_Settings::OPTION );
+	}
+
+	/**
+	 * Gets feature metrics for the modules.
+	 *
+	 * @since 1.163.0
+	 *
+	 * @return array Feature metrics data.
+	 */
+	public function get_feature_metrics() {
+		return array(
+			'shared_modules' => $this->list_shared_modules(),
+		);
 	}
 }

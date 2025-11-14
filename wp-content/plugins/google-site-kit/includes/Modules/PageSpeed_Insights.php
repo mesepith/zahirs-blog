@@ -159,6 +159,7 @@ final class PageSpeed_Insights extends Module implements Module_With_Scopes, Mod
 						'googlesitekit-api',
 						'googlesitekit-data',
 						'googlesitekit-modules',
+						'googlesitekit-notifications',
 						'googlesitekit-datastore-site',
 						'googlesitekit-components',
 					),
@@ -180,7 +181,6 @@ final class PageSpeed_Insights extends Module implements Module_With_Scopes, Mod
 			'slug'        => 'pagespeed-insights',
 			'name'        => _x( 'PageSpeed Insights', 'Service name', 'google-site-kit' ),
 			'description' => __( 'Google PageSpeed Insights gives you metrics about performance, accessibility, SEO and PWA', 'google-site-kit' ),
-			'order'       => 4,
 			'homepage'    => __( 'https://pagespeed.web.dev', 'google-site-kit' ),
 		);
 	}

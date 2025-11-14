@@ -8,6 +8,8 @@
  * @link      https://sitekit.withgoogle.com
  */
 
+// phpcs:disable Generic.Metrics.CyclomaticComplexity.MaxExceeded
+
 namespace Google\Site_Kit\Modules\Analytics_4;
 
 use Google\Site_Kit\Core\Modules\Module_Settings;
@@ -71,9 +73,9 @@ class Settings extends Module_Settings implements Setting_With_Owned_Keys_Interf
 		return array(
 			'availableCustomDimensions',
 			'adSenseLinked',
-			'availableAudiences',
-			'audienceSegmentationSetupCompletedBy',
 			'detectedEvents',
+			'newConversionEventsLastUpdateAt',
+			'lostConversionEventsLastUpdateAt',
 		);
 	}
 
@@ -86,30 +88,29 @@ class Settings extends Module_Settings implements Setting_With_Owned_Keys_Interf
 	 */
 	protected function get_default() {
 		return array(
-			'ownerID'                              => 0,
-			'accountID'                            => '',
-			'adsConversionID'                      => '',
-			'propertyID'                           => '',
-			'webDataStreamID'                      => '',
-			'measurementID'                        => '',
-			'trackingDisabled'                     => array( 'loggedinUsers' ),
-			'useSnippet'                           => true,
-			'googleTagID'                          => '',
-			'googleTagAccountID'                   => '',
-			'googleTagContainerID'                 => '',
-			'googleTagContainerDestinationIDs'     => null,
-			'googleTagLastSyncedAtMs'              => 0,
-			'availableCustomDimensions'            => null,
-			'propertyCreateTime'                   => 0,
-			'adSenseLinked'                        => false,
-			'adSenseLinkedLastSyncedAt'            => 0,
-			'adsConversionIDMigratedAtMs'          => 0,
-			'adsLinked'                            => false,
-			'adsLinkedLastSyncedAt'                => 0,
-			'availableAudiences'                   => null,
-			'availableAudiencesLastSyncedAt'       => 0,
-			'audienceSegmentationSetupCompletedBy' => null,
-			'detectedEvents'                       => array(),
+			'ownerID'                          => 0,
+			'accountID'                        => '',
+			'adsConversionID'                  => '',
+			'propertyID'                       => '',
+			'webDataStreamID'                  => '',
+			'measurementID'                    => '',
+			'trackingDisabled'                 => array( 'loggedinUsers' ),
+			'useSnippet'                       => true,
+			'googleTagID'                      => '',
+			'googleTagAccountID'               => '',
+			'googleTagContainerID'             => '',
+			'googleTagContainerDestinationIDs' => null,
+			'googleTagLastSyncedAtMs'          => 0,
+			'availableCustomDimensions'        => null,
+			'propertyCreateTime'               => 0,
+			'adSenseLinked'                    => false,
+			'adSenseLinkedLastSyncedAt'        => 0,
+			'adsConversionIDMigratedAtMs'      => 0,
+			'adsLinked'                        => false,
+			'adsLinkedLastSyncedAt'            => 0,
+			'detectedEvents'                   => array(),
+			'newConversionEventsLastUpdateAt'  => 0,
+			'lostConversionEventsLastUpdateAt' => 0,
 		);
 	}
 
@@ -196,21 +197,15 @@ class Settings extends Module_Settings implements Setting_With_Owned_Keys_Interf
 					}
 				}
 
-				if ( isset( $option['availableAudiences'] ) ) {
-					if ( ! is_array( $option['availableAudiences'] ) ) {
-						$option['availableAudiences'] = null;
+				if ( isset( $option['newConversionEventsLastUpdateAt'] ) ) {
+					if ( ! is_int( $option['newConversionEventsLastUpdateAt'] ) ) {
+						$option['newConversionEventsLastUpdateAt'] = 0;
 					}
 				}
 
-				if ( isset( $option['availableAudiencesLastSyncedAt'] ) ) {
-					if ( ! is_int( $option['availableAudiencesLastSyncedAt'] ) ) {
-						$option['availableAudiencesLastSyncedAt'] = 0;
-					}
-				}
-
-				if ( isset( $option['audienceSegmentationSetupCompletedBy'] ) ) {
-					if ( ! is_int( $option['audienceSegmentationSetupCompletedBy'] ) ) {
-						$option['audienceSegmentationSetupCompletedBy'] = null;
+				if ( isset( $option['lostConversionEventsLastUpdateAt'] ) ) {
+					if ( ! is_int( $option['lostConversionEventsLastUpdateAt'] ) ) {
+						$option['lostConversionEventsLastUpdateAt'] = 0;
 					}
 				}
 			}
