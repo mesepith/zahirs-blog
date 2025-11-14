@@ -49,8 +49,8 @@ require_once dirname( __DIR__ ) . '/vendor/autoload.php';
 /**
  * Retrieve the instance of the main plugin class.
  *
- * @since 2.6.0
  * @return Plugin
+ * @since 2.6.0
  */
 function code_snippets(): Plugin {
 	static $plugin;
@@ -63,6 +63,3 @@ function code_snippets(): Plugin {
 }
 
 code_snippets()->load_plugin();
-
-// Execute the snippets once the plugins are loaded.
-add_action( 'plugins_loaded', __NAMESPACE__ . '\execute_active_snippets', 1 );

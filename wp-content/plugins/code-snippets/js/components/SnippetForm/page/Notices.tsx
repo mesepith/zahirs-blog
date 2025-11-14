@@ -1,50 +1,23 @@
-import classnames from 'classnames'
-import React, { useEffect } from 'react'
+import { createInterpolateElement } from '@wordpress/element'
+import React from 'react'
 import { __, sprintf } from '@wordpress/i18n'
 import { useSnippetForm } from '../../../hooks/useSnippetForm'
-import type { MouseEventHandler, ReactNode} from 'react'
-
-interface DismissibleNoticeProps {
-	classNames?: classnames.Argument
-	onRemove: MouseEventHandler<HTMLButtonElement>
-	children?: ReactNode
-}
-
-const DismissibleNotice: React.FC<DismissibleNoticeProps> = ({ classNames, onRemove, children }) => {
-	useEffect(() => {
-		if (window.CODE_SNIPPETS_EDIT?.scrollToNotices) {
-			window.scrollTo({ top: 0, behavior: 'smooth' })
-		}
-	}, [])
-
-	return (
-		<div id="message" className={classnames('notice fade is-dismissible', classNames)}>
-			<>{children}</>
-
-			<button type="button" className="notice-dismiss" onClick={event => {
-				event.preventDefault()
-				onRemove(event)
-			}}>
-				<span className="screen-reader-text">{__('Dismiss notice.', 'code-snippets')}</span>
-			</button>
-		</div>
-	)
-}
+import { DismissibleNotice } from '../../common/DismissableNotice'
 
 export const Notices: React.FC = () => {
 	const { currentNotice, setCurrentNotice, snippet, setSnippet } = useSnippetForm()
 
 	return <>
-		{currentNotice ?
-			<DismissibleNotice classNames={currentNotice[0]} onRemove={() => setCurrentNotice(undefined)}>
-				<p>{currentNotice[1]}</p>
-			</DismissibleNotice> :
-			null}
+		{currentNotice
+			? <DismissibleNotice className={currentNotice[0]} onDismiss={() => setCurrentNotice(undefined)}>
+				<p>{createInterpolateElement(currentNotice[1], { strong: <strong /> })}</p>
+			</DismissibleNotice>
+			: null}
 
-		{snippet.code_error ?
-			<DismissibleNotice
-				classNames="error"
-				onRemove={() => setSnippet(previous => ({ ...previous, code_error: null }))}
+		{snippet.code_error
+			? <DismissibleNotice
+				className="notice-error"
+				onDismiss={() => setSnippet(previous => ({ ...previous, code_error: null }))}
 			>
 				<p>
 					<strong>{sprintf(
@@ -55,7 +28,7 @@ export const Notices: React.FC = () => {
 
 					<blockquote>{snippet.code_error[0]}</blockquote>
 				</p>
-			</DismissibleNotice> :
-			null}
+			</DismissibleNotice>
+			: null}
 	</>
 }

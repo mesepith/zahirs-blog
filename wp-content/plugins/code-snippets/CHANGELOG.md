@@ -1,10 +1,199 @@
 # Changelog
 
+## [3.9.1] (2025-11-14)
+
+### Changed
+* Migrated to native CSS direction handling (RTL/LTR) for improved compatibility and simpler styling
+* Updated dependencies to the latest compatible versions
+
+### Fixed
+* Fixed TinyMCE menu button registration to prevent initialization failure
+* Fixed the position of the 'code direction' control in the editor
+
+## [3.9.0] (2025-11-13)
+
+### Added
+* Added contextual notices in the Snippets list table to surface action results and warnings in the UI
+* Expanded Multisite Sharing settings for clearer control over network-wide snippet sharing
+
+### Changed
+* Modernized browser support targets and polished admin UI (clearer row-action badges, improved Pro badge hover, refined active snippet name styling)
+
+### Fixed
+* Fixed REST API pagination to return correct results and page counts
+* Resolved styling selector so the active snippet name highlights reliably
+
+## [3.9.0-beta.2] (2025-11-10)
+
+### Added
+* Added 'Snippets' row action to the Network Sites table
+* Improved snippet name visibility for network users
+
+### Changed
+* Refined badge styling and hover effects for row actions and badges
+* Impoved icon style and color usage for network snippets for clearer differentiation
+
+### Fixed
+* Improved network snippets management with better subsite menu permission checks
+* Fixed status labels for shared network snippets
+* Corrected network condition checks and improved snippet fetching logic
+* Handled fatal errors in file-based snippets to prevent crashes
+
+## [3.9.0-beta.1] (2025-11-03)
+
+### Added
+* Soft delete (Trash) functionality for snippets with ability to undo, restore or permanently delete.
+* Bulk actions for trashing, restoring, and permanently deleting multiple snippets.
+* Separate filtered view to manage trashed snippets.
+
+## [3.8.2] (2025-10-31)
+
+### Fixed
+* Improved namespaced PHP snippet handling with file based execution.
+
+## [3.8.1] (2025-10-28)
+
+### Added
+* Code line explanation widget with apply and remove actions for AI-generated comments. (PRO)
+
+### Changed
+* Improved pagination handling and display structure for cloud search results. (PRO)
+* Enhanced styling for codevault rows and inactive tabs in cloud interface. (PRO)
+
+### Removed
+* Removed `guzzlehttp/guzzle` dependency to reduce package conflicts. (PRO)
+
+### Fixed
+* Improved file-based snippet handling for multisite installations.
+
+## [3.8.0] (2025-10-24)
+
+### Added
+* @CarolinaOP and @louiswol94 join the team as plugin contributors.
+* File-based execution mode for snippets (optional in plugin settings).
+* Version switch option for easily rolling back the plugin to an earlier release.
+
+### Changed
+* Prefixed Composer packages to reduce collisions with other plugins.
+* Snippets REST API now supports pagination via page and per_page query parameters.
+* Improved editor preview behavior.
+* Minor UI improvements to the editor and sidebar.
+
+### Fixed
+* Issues with snippet evaluation and front-end initialization in edge cases.
+* Improved reliability of snippet evaluation.
+* JavaScript and CSS snippets loading twice due to a conditions bug. (PRO)
+* Issue where some conditions didn’t work due to loading before the loop. (PRO)
+
+## [3.7.1-beta.3] (2025-10-22)
+
+### Added
+* Snippets REST API now supports pagination via page and per_page query parameters.
+
+## [3.7.1-beta.2] (2025-10-22)
+
+### Added
+* Implemented version switching with a new 'Version Switch' section in Settings
+
+## [3.7.1-beta.1] (2025-10-16)
+
+### Added
+* Added @CarolinaOP and @louiswol94 as plugin contributors
+* File-based execution mode for snippets (Optional in Plugin Settings)
+
+### Changed
+* Minor UI/UX tweaks to the editor form and sidebar
+* Improved editor preview behavior.
+
+### Fixed
+* Improved reliability of snippet evaluation and front-end integration.
+* Prefixed Composer packages to reduce collisions with other plugins, especially those using Guzzle.
+* Functions conditions were loading before loop setup, resulting in some conditions not working. (PRO)
+* JavaScript and CSS snippets loading twice due to a conditions bug. (PRO)
+
+### Removed
+* Removed CSS linting within the editor until a modern replacement can be implemented.
+
+## [3.7.0] (2025-08-29)
+
+### Added
+* New 'conditions' feature: control where and when snippets execute with a powerful logic builder. (PRO)
+
+### Changed
+* Redesigned edit menu with refreshed look and functionality.
+* Updated snippet type badges to be more visually distinct.
+* Redesigned tooltips used throughout the plugin.
+* Moved content snippet shortcode options into separate modal window.
+* Updated snippet tag editor to use built-in WordPress tag editor.
+* Created proper form for sharing beta feedback.
+* Improved UX of snippet activation toggle.
+
+### Fixed
+* Fetching active snippets on a multisite network now respects the 'priority' field above all else when ordering snippets.
+* Cloud search appears correctly and allows downloading snippets in the free version of Code Snippets.
+* Improved performance of loading admin menu icon.
+
+## [3.6.9] (2025-02-17)
+
+### Changed
+* Updated `Cloud_API::get_bundles()` to properly check bundle data and return an empty array if no valid bundles are present.
+* Refactored `Cloud_List_Table::fetch_snippets()` to always return a valid `Cloud_Snippets` instance.
+* Cleaned up bundle iteration code and improved translation handling in the bundles view.
+
+### Fixed
+* Fixed errors in bundle iteration by adding a check for the bundles array before iterating.
+
+## [3.6.8] (2025-02-14)
+
+### Added
+* `code_snippets/hide_welcome_banner` filter hook for hiding welcome banner in dashboard.
+
+### Changed
+* Updated Freemius SDK to the latest version. (PRO)
+
+### Removed
+* Functionality allowing `[code_snippet]` shortcodes to be embedded recursively – it will be re-added in a future version.
+
+### Fixed
+* Shortcodes embedded within `[code_snippet]` shortcodes not evaluating correctly.
+* Translation functions being called too early in some instances when loading plugin settings.
+* 'Generate' button not appearing on some sites. (PRO)
+* Incorrect arrow entity used in cloud list table (props to [brandonjp]).
+* Removed reference to missing plugins.css file in core plugin version.
+
+## [3.6.7] (2025-01-24)
+
+### Added
+* Generated snippet shortcode tags will include the snippet name, for easier identification.
+* Admin notices will dismiss automatically after five seconds. ([#208](https://github.com/codesnippetspro/code-snippets/issues/208))
+
+### Changed
+* Updated CSS to use latest Sass features.
+* Moved theme selector to just above editor preview on settings page (thanks to [brandonjp]). ([#206](https://github.com/codesnippetspro/code-snippets/issues/206)) 
+* `[code_snippet]` shortcodes can now be nested within each other. ([#198](https://github.com/codesnippetspro/code-snippets/issues/198))
+
+### Fixed 
+* Save buttons above editor did not follow usual validation process in Pro. (PRO) ([#197](https://github.com/codesnippetspro/code-snippets/issues/197))
+* Minor inconsistencies in consistent UI elements between Core and Pro.
+* Tags input not allowing input. ([#211](https://github.com/codesnippetspro/code-snippets/issues/211))
+* Issue with Elementor source code widget. (PRO) ([#205](https://github.com/codesnippetspro/code-snippets/issues/205))
+* Snippet descriptions not visible when viewing cloud search results.
+* Snippet import page not displaying number of successfully imported snippets.
+* Use UTC time when deciding when to display campaign notices.
+
+## [3.6.6.1] (2024-11-27)
+
+### Fixed
+* Redeployment of [v3.6.6](#366-2024-11-27) to overcome issue with initial build.
+* Type issue when caching cloud links. (PRO)
+
 ## [3.6.6] (2024-11-27)
 
 ### Changed
 * Improved compatability with modern versions of PHP.
 * Extended welcome API to include admin notices.
+* Action hook `code_snippets/update_snippet` now only includes the snippet ID instead of the full snippet object.
+* Action hook `code_snippets/admin/manage` now includes the currently viewed type.
 
 ### Fixed
 * Memory issue from checking aggregate posts while loading front-end syntax highlighter. 
@@ -1132,7 +1321,12 @@
 ### Added
 * Stable version released.
 
+[brandonjp]: https://github.com/brandonjp
+
 [unreleased]: https://github.com/codesnippetspro/code-snippets/tree/core
+[3.7.0]: https://github.com/codesnippetspro/code-snippets/releases/tag/v3.7.0
+[3.6.7]: https://github.com/codesnippetspro/code-snippets/releases/tag/v3.6.7
+[3.6.6.1]: https://github.com/codesnippetspro/code-snippets/releases/tag/v3.6.6.1
 [3.6.6]: https://github.com/codesnippetspro/code-snippets/releases/tag/v3.6.6
 [3.6.5]: https://github.com/codesnippetspro/code-snippets/releases/tag/v3.6.5
 [3.6.4]: https://github.com/codesnippetspro/code-snippets/releases/tag/v3.6.4

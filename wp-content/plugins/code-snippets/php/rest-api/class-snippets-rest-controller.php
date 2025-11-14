@@ -12,7 +12,7 @@ use WP_REST_Server;
 use function Code_Snippets\activate_snippet;
 use function Code_Snippets\code_snippets;
 use function Code_Snippets\deactivate_snippet;
-use function Code_Snippets\delete_snippet;
+use function Code_Snippets\trash_snippet;
 use function Code_Snippets\get_snippet;
 use function Code_Snippets\get_snippets;
 use function Code_Snippets\save_snippet;
@@ -29,12 +29,12 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 	/**
 	 * Current API version.
 	 */
-	const VERSION = 1;
+	public const VERSION = 1;
 
 	/**
 	 * The base of this controller's route.
 	 */
-	const BASE_ROUTE = 'snippets';
+	public const BASE_ROUTE = 'snippets';
 
 	/**
 	 * The namespace of this controller's route.
@@ -80,6 +80,9 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 			[ 'network' ]
 		);
 
+		// Allow standard collection parameters (page, per_page, etc.) on the collection route.
+		$collection_args = array_merge( $network_args, $this->get_collection_params() );
+
 		register_rest_route(
 			$this->namespace,
 			$route,
@@ -88,7 +91,7 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => [ $this, 'get_items' ],
 					'permission_callback' => [ $this, 'get_items_permissions_check' ],
-					'args'                => $network_args,
+					'args'                => $collection_args,
 				],
 				[
 					'methods'             => WP_REST_Server::CREATABLE,
@@ -186,14 +189,36 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Retrieves a collection of snippets.
+	 * Retrieves a collection of snippets, with pagination.
 	 *
 	 * @param WP_REST_Request $request Full details about the request.
 	 *
 	 * @return WP_REST_Response Response object on success.
 	 */
 	public function get_items( $request ): WP_REST_Response {
-		$snippets = get_snippets();
+		$network = $request->get_param( 'network' );
+		$all_snippets = get_snippets( [], $network );
+		$all_snippets = $this->get_network_items( $all_snippets, $network );
+
+		$total_items = count( $all_snippets );
+		$query_params = $request->get_query_params();
+
+		if ( isset( $query_params['per_page'] ) || isset( $query_params['page'] ) ) {
+			$collection_params = $this->get_collection_params();
+			$per_page = isset( $query_params['per_page'] ) 
+				? max( 1, (int) $query_params['per_page'] )
+				: (int) $collection_params['per_page']['default'];
+			$page_request = (int) $request->get_param( 'page' );
+			$page = max( 1, $page_request ? $page_request : (int) $collection_params['page']['default'] );
+			$total_pages = (int) ceil( $total_items / $per_page );
+
+			$offset = ( $page - 1 ) * $per_page;
+			$snippets = array_slice( $all_snippets, $offset, $per_page );
+		} else {
+			$snippets = $all_snippets;
+			$total_pages = 1;
+		}
+
 		$snippets_data = [];
 
 		foreach ( $snippets as $snippet ) {
@@ -201,7 +226,41 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 			$snippets_data[] = $this->prepare_response_for_collection( $snippet_data );
 		}
 
-		return rest_ensure_response( $snippets_data );
+		$response = rest_ensure_response( $snippets_data );
+		$response->header( 'X-WP-Total', (string) $total_items );
+		$response->header( 'X-WP-TotalPages', (string) $total_pages );
+
+		return $response;
+	}
+
+	/**
+	 * Retrieve and merge shared network snippets.
+	 *
+	 * @param array<Snippet> $all_snippets List of snippets to merge with.
+	 * @param bool|null      $network      Whether fetching network snippets.
+	 *
+	 * @return array<Snippet> Modified list of snippets.
+	 */
+	private function get_network_items( array $all_snippets, $network ): array {
+		if ( ! is_multisite() || $network ) {
+			return $all_snippets;
+		}
+
+		$shared_ids = get_site_option( 'shared_network_snippets' );
+
+		if ( ! $shared_ids || ! is_array( $shared_ids ) ) {
+			return $all_snippets;
+		}
+
+		$active_shared_snippets = get_option( 'active_shared_network_snippets', array() );
+		$shared_snippets = get_snippets( $shared_ids, true );
+
+		foreach ( $shared_snippets as $snippet ) {
+			$snippet->shared_network = true;
+			$snippet->active = in_array( $snippet->id, $active_shared_snippets, true );
+		}
+
+		return array_merge( $all_snippets, $shared_snippets );
 	}
 
 	/**
@@ -230,13 +289,13 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 	/**
 	 * Create one item from the collection
 	 *
-	 * @param WP_REST_Request $request Full data about the request.
+	 * @param WP_REST_Request|array $request Full data about the request.
 	 *
 	 * @return WP_REST_Response|WP_Error
 	 */
 	public function create_item( $request ) {
 		$snippet = $this->prepare_item_for_database( $request );
-		$result = save_snippet( $snippet );
+		$result = $snippet ? save_snippet( $snippet ) : null;
 
 		return $result ?
 			$this->prepare_item_for_response( $result, $request ) :
@@ -282,7 +341,7 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 	}
 
 	/**
-	 * Delete one item from the collection
+	 * Delete one item from the collection (trash)
 	 *
 	 * @param WP_REST_Request $request Full data about the request.
 	 *
@@ -290,7 +349,7 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 	 */
 	public function delete_item( $request ) {
 		$item = $this->prepare_item_for_database( $request );
-		$result = delete_snippet( $item->id, $item->network );
+		$result = trash_snippet( $item->id, $item->network );
 
 		return $result ?
 			new WP_REST_Response( null, 204 ) :
@@ -511,10 +570,17 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 				'tags'           => [
 					'description' => esc_html__( 'List of tag categories the snippet belongs to.', 'code-snippets' ),
 					'type'        => 'array',
+					'items'       => [
+						'type' => 'string',
+					],
 				],
 				'scope'          => [
 					'description' => esc_html__( 'Context in which the snippet is executable.', 'code-snippets' ),
 					'type'        => 'string',
+				],
+				'condition_id'   => [
+					'description' => esc_html__( 'Identifier of condition linked to this snippet.', 'code-snippets' ),
+					'type'        => 'integer',
 				],
 				'active'         => [
 					'description' => esc_html__( 'Snippet activation status.', 'code-snippets' ),
@@ -526,16 +592,23 @@ final class Snippets_REST_Controller extends WP_REST_Controller {
 				],
 				'network'        => [
 					'description' => esc_html__( 'Whether the snippet is network-wide instead of site-wide.', 'code-snippets' ),
-					'type'        => 'boolean',
+					'type'        => [ 'boolean', 'null' ],
 					'default'     => null,
 				],
 				'shared_network' => [
 					'description' => esc_html__( 'If a network snippet, whether can be activated on discrete sites instead of network-wide.', 'code-snippets' ),
-					'type'        => 'boolean',
+					'type'        => [ 'boolean', 'null' ],
 				],
 				'modified'       => [
 					'description' => esc_html__( 'Date and time when the snippet was last modified, in ISO format.', 'code-snippets' ),
 					'type'        => 'string',
+					'format'      => 'date-time',
+					'readonly'    => true,
+				],
+				'code_error'     => [
+					'description' => esc_html__( 'Error message if the snippet code could not be parsed.', 'code-snippets' ),
+					'type'        => 'string',
+					'readonly'    => true,
 				],
 			],
 		];

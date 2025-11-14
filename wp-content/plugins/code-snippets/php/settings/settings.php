@@ -9,9 +9,9 @@
 namespace Code_Snippets\Settings;
 
 use Code_Snippets\Welcome_API;
-use Code_Snippets\Welcome_Menu;
 use function Code_Snippets\clean_snippets_cache;
 use function Code_Snippets\code_snippets;
+use const Code_Snippets\CACHE_GROUP;
 
 const CACHE_KEY = 'code_snippets_settings';
 const OPTION_GROUP = 'code-snippets';
@@ -80,7 +80,7 @@ function are_settings_unified(): bool {
  * @return array<string, array<string, mixed>>
  */
 function get_settings_values(): array {
-	$settings = wp_cache_get( CACHE_KEY );
+	$settings = wp_cache_get( CACHE_KEY, CACHE_GROUP );
 	if ( $settings ) {
 		return $settings;
 	}
@@ -94,7 +94,7 @@ function get_settings_values(): array {
 		}
 	}
 
-	wp_cache_set( CACHE_KEY, $settings );
+	wp_cache_set( CACHE_KEY, $settings, CACHE_GROUP );
 	return $settings;
 }
 
@@ -126,7 +126,7 @@ function update_setting( string $section, string $field, $new_value ): bool {
 
 	$settings[ $section ][ $field ] = $new_value;
 
-	wp_cache_set( CACHE_KEY, $settings );
+	wp_cache_set( CACHE_KEY, $settings, CACHE_GROUP );
 	return update_self_option( are_settings_unified(), OPTION_NAME, $settings );
 }
 
@@ -137,10 +137,16 @@ function update_setting( string $section, string $field, $new_value ): bool {
  */
 function get_settings_sections(): array {
 	$sections = array(
-		'general' => __( 'General', 'code-snippets' ),
-		'editor'  => __( 'Code Editor', 'code-snippets' ),
-		'debug'   => __( 'Debug', 'code-snippets' ),
+		'general'        => __( 'General', 'code-snippets' ),
+		'editor'         => __( 'Code Editor', 'code-snippets' ),
+		'debug'          => __( 'Debug', 'code-snippets' ),
 	);
+
+	// Only show the Version section when the debug setting to enable version changes is enabled.
+	$enable_version = get_setting( 'debug', 'enable_version_change' );
+	if ( $enable_version ) {
+		$sections['version-switch'] = __( 'Version', 'code-snippets' );
+	}
 
 	return apply_filters( 'code_snippets_settings_sections', $sections );
 }
@@ -169,8 +175,13 @@ function register_plugin_settings() {
 		add_settings_section( $section_id, $section_name, '__return_empty_string', 'code-snippets' );
 	}
 
-	// Register settings fields.
+	// Register settings fields. Only register fields for sections that exist (some sections may be gated by settings).
+	$registered_sections = get_settings_sections();
 	foreach ( get_settings_fields() as $section_id => $fields ) {
+		if ( ! isset( $registered_sections[ $section_id ] ) ) {
+			continue;
+		}
+
 		foreach ( $fields as $field_id => $field ) {
 			$field_object = new Setting_Field( $section_id, $field_id, $field );
 			add_settings_field( $field_id, $field['name'], [ $field_object, 'render' ], 'code-snippets', $section_id );
@@ -224,6 +235,7 @@ function sanitize_setting_value( array $field, $input_value ) {
 			return $results;
 
 		case 'text':
+		case 'hidden':
 			return trim( sanitize_text_field( $input_value ) );
 
 		case 'callback':
@@ -253,6 +265,7 @@ function process_settings_actions( array $input ): ?array {
 			'updated'
 		);
 
+		delete_option( 'code_snippets_cloud_settings' );
 		return [];
 	}
 
@@ -294,7 +307,7 @@ function process_settings_actions( array $input ): ?array {
  * @return array<string, array<string, mixed>> The validated settings.
  */
 function sanitize_settings( array $input ): array {
-	wp_cache_delete( CACHE_KEY );
+	wp_cache_delete( CACHE_KEY, CACHE_GROUP );
 	$result = process_settings_actions( $input );
 
 	if ( ! is_null( $result ) ) {
@@ -329,6 +342,8 @@ function sanitize_settings( array $input ): array {
 			__( 'Settings saved.', 'code-snippets' ),
 			'updated'
 		);
+
+		do_action( 'code_snippets/settings_updated', $settings, $input );
 	}
 
 	return $settings;
